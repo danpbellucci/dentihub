@@ -42,25 +42,16 @@ Deno.serve(async (req) => {
 
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-    // 1. Verificar se usuário já existe no Auth
-    const { data: profiles } = await supabaseAdmin
-        .from('user_profiles')
-        .select('id')
-        .eq('email', email)
-        .maybeSingle();
+    // NOTA: Removemos a verificação prévia em 'user_profiles' aqui.
+    // Motivo: Usuários convidados (funcionários/dentistas) já possuem registro em 'user_profiles',
+    // mas não possuem conta em 'auth.users'. Bloqueá-los aqui impede que criem sua conta.
+    // A validação real de "Conta Existente" ocorrerá no 'complete-signup' via Supabase Auth.
 
-    if (profiles) {
-        return new Response(JSON.stringify({ error: "Este e-mail já está cadastrado. Faça login." }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 200 
-        });
-    }
-
-    // 2. Gerar Código de 6 dígitos
+    // 1. Gerar Código de 6 dígitos
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
 
-    // 3. Salvar no Banco (Limpa códigos anteriores deste email)
+    // 2. Salvar no Banco (Limpa códigos anteriores deste email)
     await supabaseAdmin.from('verification_codes').delete().eq('email', email);
     
     const { error: dbError } = await supabaseAdmin.from('verification_codes').insert({
@@ -71,7 +62,7 @@ Deno.serve(async (req) => {
 
     if (dbError) throw dbError;
 
-    // 4. Enviar E-mail
+    // 3. Enviar E-mail
     const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {

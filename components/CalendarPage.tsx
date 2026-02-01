@@ -899,6 +899,7 @@ const CalendarPage: React.FC = () => {
                                 <th className="px-4 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
                                 <th className="px-4 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Pagamento</th>
                                 <th className="px-4 py-3 text-right text-xs font-bold text-gray-400 uppercase tracking-wider">Valor (R$)</th>
+                                <th className="px-4 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Ações</th>
                             </tr>
                         </thead>
                         <tbody className="bg-transparent divide-y divide-white/5">
@@ -966,6 +967,17 @@ const CalendarPage: React.FC = () => {
                                                 onBlur={(e) => handleQuickUpdate(appt.id, 'amount', parseFloat(e.target.value))}
                                                 className="w-20 text-sm text-gray-300 border border-transparent hover:border-gray-600 focus:border-primary rounded px-1 py-0.5 outline-none bg-transparent text-right font-medium"
                                             />
+                                        </td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-center" onClick={e => e.stopPropagation()}>
+                                            {canDelete && (
+                                                <button 
+                                                    onClick={() => setDeleteId(appt.id)}
+                                                    className="text-gray-500 hover:text-red-400 transition p-1 rounded hover:bg-white/5"
+                                                    title="Excluir"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 );
