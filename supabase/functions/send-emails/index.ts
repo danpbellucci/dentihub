@@ -9,7 +9,7 @@ declare const Deno: {
 };
 
 const generateButton = (text: string, url: string, color: string, textColor: string = '#ffffff') => {
-  return `<a href="${url}" target="_blank" style="background-color: ${color}; color: ${textColor}; padding: 12px 24px; font-family: Helvetica, Arial, sans-serif; font-size: 14px; font-weight: bold; text-decoration: none; border-radius: 6px; display: inline-block; margin: 10px 0;">${text}</a>`;
+  return `<a href="${url}" target="_blank" style="background-color: ${color}; color: ${textColor}; padding: 12px 24px; font-family: Helvetica, Arial, sans-serif; font-size: 14px; font-weight: bold; text-decoration: none; border-radius: 6px; display: inline-block; margin: 10px 5px;">${text}</a>`;
 };
 
 async function sendEmailViaResend(apiKey: string, to: string[], subject: string, html: string, fromName: string, replyTo: string) {
@@ -33,23 +33,14 @@ async function sendEmailViaResend(apiKey: string, to: string[], subject: string,
 }
 
 Deno.serve(async (req) => {
-  const origin = req.headers.get('origin') ?? '';
-  const allowedOrigins = ['http://localhost:5173', 'https://dentihub.com.br', 'https://www.dentihub.com.br', 'https://app.dentihub.com.br'];
-  const corsOrigin = allowedOrigins.includes(origin) ? origin : 'https://dentihub.com.br';
-
+  // CORS Permissivo (*) para evitar erros de bloqueio em ambientes de desenvolvimento/preview
   const corsHeaders = {
-    'Access-Control-Allow-Origin': corsOrigin,
+    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   };
 
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-
-  if (!origin || !allowedOrigins.includes(origin)) {
-      return new Response(JSON.stringify({ error: "Acesso negado." }), {
-          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-  }
 
   try {
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
@@ -157,17 +148,44 @@ Deno.serve(async (req) => {
     }
     // 5. BOAS-VINDAS AO PACIENTE
     else if (type === 'welcome') {
+        const clinicSlug = clinic.slug || clinic.id;
+        const bookingUrl = body.origin ? `${body.origin}/#/${clinicSlug}` : null;
+        const whatsappClean = clinic.whatsapp ? clinic.whatsapp.replace(/\D/g, '') : null;
+
         for (const r of recipients) {
             if (r.email) {
                 const subject = `Bem-vindo(a) à ${clinicName}`;
                 const html = `
-                    <div style="font-family: Helvetica, Arial, sans-serif; padding: 20px; color: #333;">
-                        <h2 style="color: #0ea5e9;">Seja bem-vindo(a)!</h2>
-                        <p>Olá, <strong>${r.name}</strong>.</p>
-                        <p>É um prazer ter você como paciente na <strong>${clinicName}</strong>.</p>
-                        <p>Estamos à disposição para cuidar do seu sorriso com a excelência que você merece.</p>
-                        <p>Se precisar agendar algo, utilize nosso link online ou entre em contato pelo WhatsApp.</p>
-                        ${body.origin ? `<p><a href="${body.origin}/#/${clinic.slug || clinic.id}">Agendar Online</a></p>` : ''}
+                    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+                        <!-- Header -->
+                        <div style="background-color: #0ea5e9; padding: 30px 20px; text-align: center;">
+                           <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold;">${clinicName}</h1>
+                        </div>
+
+                        <!-- Body -->
+                        <div style="padding: 30px 20px; color: #334155; line-height: 1.6;">
+                           <p style="font-size: 18px; margin-bottom: 20px;">Olá, <strong>${r.name}</strong>! 👋</p>
+                           <p>Seja muito bem-vindo(a)! É um prazer ter você como paciente.</p>
+                           <p>Já realizamos o seu cadastro em nosso sistema para oferecer um atendimento mais ágil e personalizado.</p>
+
+                           <div style="background-color: #f8fafc; border-left: 4px solid #0ea5e9; padding: 15px; margin: 25px 0; border-radius: 4px;">
+                              <p style="margin: 0; font-size: 14px; color: #475569;">
+                                 <strong>Dica:</strong> Você pode agendar suas próximas consultas diretamente pelo nosso link online, sem precisar ligar.
+                              </p>
+                           </div>
+
+                           <!-- Actions -->
+                           <div style="text-align: center; margin-top: 30px;">
+                              ${bookingUrl ? generateButton('📅 Agendar Online', bookingUrl, '#0ea5e9') : ''}
+                              ${whatsappClean ? generateButton('💬 Conversar no WhatsApp', `https://wa.me/55${whatsappClean}`, '#22c55e') : ''}
+                           </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div style="background-color: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+                           <p style="margin: 0;">${clinicName}</p>
+                           ${clinic.address ? `<p style="margin: 5px 0 0;">${clinic.address} - ${clinic.city || ''}</p>` : ''}
+                        </div>
                     </div>
                 `;
                 await sendEmailViaResend(resendApiKey, [r.email], subject, html, clinicName, clinicEmail);

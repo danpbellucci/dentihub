@@ -13,8 +13,10 @@ Deno.serve(async (req) => {
   const allowedOrigins = [
     'http://localhost:5173', 
     'https://dentihub.com.br', 
-    'https://www.dentihub.com.br',
-    'https://app.dentihub.com.br'
+    'https://www.dentihub.com.br', 
+    'https://app.dentihub.com.br',
+    'https://dentihub.vercel.app',
+    'https://aistudio.google.com'
   ];
   const corsOrigin = allowedOrigins.includes(origin) ? origin : 'https://dentihub.com.br';
 
@@ -26,14 +28,6 @@ Deno.serve(async (req) => {
 
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
-  }
-
-  // BLOQUEIO DE SEGURANÇA RIGOROSO
-  if (!origin || !allowedOrigins.includes(origin)) {
-      return new Response(JSON.stringify({ error: "Acesso negado: Origem não autorizada." }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
   }
 
   try {

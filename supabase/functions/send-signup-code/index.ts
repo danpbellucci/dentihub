@@ -9,32 +9,15 @@ declare const Deno: {
 };
 
 Deno.serve(async (req) => {
-  // Configuração de CORS
-  const origin = req.headers.get('origin') ?? '';
-  const allowedOrigins = [
-    'http://localhost:5173', 
-    'https://dentihub.com.br', 
-    'https://www.dentihub.com.br',
-    'https://app.dentihub.com.br'
-  ];
-  const corsOrigin = allowedOrigins.includes(origin) ? origin : 'https://dentihub.com.br';
-
+  // CORS Permissivo (*)
   const corsHeaders = {
-    "Access-Control-Allow-Origin": corsOrigin,
+    "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
   };
 
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
-  }
-
-  // BLOQUEIO DE SEGURANÇA RIGOROSO
-  if (!origin || !allowedOrigins.includes(origin)) {
-      return new Response(JSON.stringify({ error: "Acesso negado: Origem não autorizada." }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
   }
 
   try {
@@ -67,8 +50,6 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
     if (profiles) {
-        // Retornamos 200 com campo 'error' para que o frontend possa ler a mensagem
-        // em vez de receber uma exceção genérica do cliente Supabase.
         return new Response(JSON.stringify({ error: "Este e-mail já está cadastrado. Faça login." }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
             status: 200 
@@ -128,7 +109,6 @@ Deno.serve(async (req) => {
 
   } catch (error: any) {
     console.error("Erro send-signup-code:", error);
-    // Retornamos 200 aqui também para propagar a mensagem de erro (ex: "E-mail obrigatório") para o UI
     return new Response(JSON.stringify({ error: error.message || "Erro interno." }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200, 

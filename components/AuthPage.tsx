@@ -2,7 +2,86 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, SUPABASE_URL } from '../services/supabase';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Smile, Lock, Mail, ArrowLeft, AlertTriangle, User, KeyRound } from 'lucide-react';
+import { Smile, Lock, Mail, ArrowLeft, AlertTriangle, User, KeyRound, X, FileText } from 'lucide-react';
+
+const TERMS_OF_USE_TEXT = `TERMOS DE USO – DENTIHUB
+
+1. ACEITAÇÃO DOS TERMOS
+Ao acessar, cadastrar-se ou utilizar a plataforma DentiHub, o usuário declara que leu, compreendeu e concorda integralmente com estes Termos de Uso, bem como com a Política de Privacidade associada. Caso não concorde com qualquer condição aqui prevista, o usuário não deverá utilizar a plataforma.
+
+2. SOBRE O DENTIHUB
+O DentiHub é um software no modelo SaaS (Software as a Service) destinado à gestão de clínicas odontológicas, incluindo, mas não se limitando a:
+- Cadastro e gestão de pacientes;
+- Agendamentos;
+- Organização de informações administrativas e operacionais;
+- Apoio à gestão clínica e financeira.
+O DentiHub não presta serviços odontológicos, nem interfere em decisões clínicas, diagnósticos ou tratamentos realizados pelos profissionais de saúde.
+
+3. TITULARIDADE E RESPONSÁVEL LEGAL
+O DentiHub é de propriedade da empresa:
+Studio X
+CNPJ: 44.156.558.0001-36
+Sede: Santana de Parnaíba – SP, Brasil
+A Studio X é responsável pelo desenvolvimento, manutenção e disponibilização da plataforma.
+
+4. CADASTRO E RESPONSABILIDADE DO USUÁRIO
+4.1. Para utilizar o DentiHub, o usuário deverá fornecer informações verdadeiras, completas e atualizadas.
+4.2. O usuário é inteiramente responsável:
+- Pela confidencialidade de seu login e senha;
+- Por todas as atividades realizadas em sua conta;
+- Pelos dados inseridos na plataforma, especialmente dados de pacientes.
+4.3. O uso do sistema deve respeitar a legislação vigente, incluindo, mas não se limitando à Lei Geral de Proteção de Dados (LGPD – Lei nº 13.709/2018).
+
+5. DADOS DE PACIENTES E LGPD
+5.1. O usuário reconhece que é o controlador dos dados pessoais e dados sensíveis de pacientes inseridos no sistema.
+5.2. O DentiHub atua como operador de dados, tratando as informações conforme as instruções do usuário e de acordo com a legislação aplicável.
+5.3. É responsabilidade exclusiva do usuário:
+- Obter consentimento dos pacientes, quando necessário;
+- Garantir o uso legítimo das informações;
+- Atender solicitações de titulares de dados.
+
+6. LIMITAÇÃO DE RESPONSABILIDADE
+6.1. A Studio X não se responsabiliza por:
+- Erros de diagnóstico, tratamentos ou condutas clínicas;
+- Uso indevido da plataforma pelo usuário;
+- Perda de dados causada por falhas externas, força maior ou uso inadequado de credenciais;
+- Decisões administrativas ou financeiras tomadas com base nas informações do sistema.
+6.2. O DentiHub é fornecido “como está”, podendo passar por melhorias, atualizações ou interrupções temporárias.
+
+7. DISPONIBILIDADE DO SERVIÇO
+7.1. A Studio X envida esforços para manter a plataforma disponível de forma contínua, mas não garante disponibilidade ininterrupta.
+7.2. Poderão ocorrer manutenções programadas ou emergenciais, com ou sem aviso prévio.
+
+8. PLANOS, PAGAMENTOS E CANCELAMENTO
+8.1. O uso do DentiHub pode estar condicionado à contratação de planos pagos.
+8.2. Valores, funcionalidades e condições estarão descritos no momento da contratação.
+8.3. O usuário poderá cancelar o serviço conforme regras do plano contratado, ciente de que:
+- O cancelamento não gera reembolso proporcional, salvo disposição expressa em contrário;
+- Após o encerramento, os dados poderão ser excluídos conforme a Política de Privacidade.
+
+9. PROPRIEDADE INTELECTUAL
+9.1. Todo o software, layout, marca, logotipo, código-fonte e demais elementos do DentiHub são de propriedade exclusiva da Studio X.
+9.2. É proibido:
+- Copiar, modificar ou distribuir o sistema;
+- Realizar engenharia reversa;
+- Utilizar a marca sem autorização expressa.
+
+10. SUSPENSÃO OU ENCERRAMENTO DE CONTA
+A Studio X poderá suspender ou encerrar contas que:
+- Violem estes Termos;
+- Utilizem o sistema para fins ilegais;
+- Coloquem em risco a segurança da plataforma ou de terceiros.
+
+11. ALTERAÇÕES DOS TERMOS
+A Studio X poderá atualizar estes Termos a qualquer momento. A continuidade do uso da plataforma após alterações implica aceitação automática das novas condições.
+
+12. LEGISLAÇÃO E FORO
+Estes Termos são regidos pelas leis da República Federativa do Brasil.
+Fica eleito o foro da comarca de Santana de Parnaíba – SP, com renúncia a qualquer outro, por mais privilegiado que seja.
+
+13. CONTATO
+Para dúvidas, solicitações ou suporte:
+📧 contato@dentihub.com.br`;
 
 type AuthView = 'login' | 'signup' | 'forgot';
 
@@ -17,6 +96,8 @@ const AuthPage: React.FC = () => {
   // Signup Specific
   const [name, setName] = useState(''); // Nome da Clínica/Doutor
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   
   // Verification Flow
   const [isVerifying, setIsVerifying] = useState(false);
@@ -72,6 +153,7 @@ const AuthPage: React.FC = () => {
       if (!isValidEmail(email)) throw new Error("Por favor, insira um e-mail válido.");
       if (password.length < 6) throw new Error("A senha deve ter pelo menos 6 caracteres.");
       if (password !== confirmPassword) throw new Error("As senhas não conferem.");
+      if (!termsAccepted) throw new Error("Você deve ler e aceitar os Termos de Uso.");
 
       // Chama a Edge Function para enviar o código
       const { data, error } = await supabase.functions.invoke('send-signup-code', {
@@ -271,23 +353,50 @@ const AuthPage: React.FC = () => {
                     )}
 
                     {view === 'signup' && (
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Confirmar Senha</label>
-                        <div className="mt-1 relative rounded-md shadow-sm">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <KeyRound className="h-5 w-5 text-gray-400" />
+                    <>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Confirmar Senha</label>
+                            <div className="mt-1 relative rounded-md shadow-sm">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <KeyRound className="h-5 w-5 text-gray-400" />
+                            </div>
+                            <input
+                                type="password"
+                                required
+                                minLength={6}
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                className="focus:ring-primary focus:border-primary block w-full pl-10 sm:text-sm border-gray-300 rounded-md py-2 border"
+                                placeholder="Repita a senha"
+                            />
+                            </div>
                         </div>
-                        <input
-                            type="password"
-                            required
-                            minLength={6}
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            className="focus:ring-primary focus:border-primary block w-full pl-10 sm:text-sm border-gray-300 rounded-md py-2 border"
-                            placeholder="Repita a senha"
-                        />
+
+                        <div className="flex items-start mt-2">
+                            <div className="flex items-center h-5">
+                                <input
+                                    id="terms"
+                                    name="terms"
+                                    type="checkbox"
+                                    checked={termsAccepted}
+                                    onChange={(e) => setTermsAccepted(e.target.checked)}
+                                    className="focus:ring-primary h-4 w-4 text-primary border-gray-300 rounded cursor-pointer"
+                                />
+                            </div>
+                            <div className="ml-2 text-sm">
+                                <label htmlFor="terms" className="font-medium text-gray-700">
+                                    Li e concordo com os{' '}
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setShowTermsModal(true)} 
+                                        className="text-primary hover:text-sky-700 font-bold underline"
+                                    >
+                                        Termos de Uso
+                                    </button>
+                                </label>
+                            </div>
                         </div>
-                    </div>
+                    </>
                     )}
                 </>
             )}
@@ -341,6 +450,7 @@ const AuthPage: React.FC = () => {
                       setConfirmPassword(''); 
                       setIsVerifying(false);
                       setVerificationCode('');
+                      setTermsAccepted(false);
                   }}
                   disabled={isMisconfigured}
                   className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors"
@@ -352,6 +462,39 @@ const AuthPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal de Termos de Uso */}
+      {showTermsModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-60 p-4 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+                <div className="p-5 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
+                    <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <FileText className="text-primary"/> Termos de Uso
+                    </h3>
+                    <button onClick={() => setShowTermsModal(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                        <X size={24}/>
+                    </button>
+                </div>
+                <div className="p-6 overflow-y-auto text-sm text-gray-700 leading-relaxed whitespace-pre-wrap custom-scrollbar">
+                    {TERMS_OF_USE_TEXT}
+                </div>
+                <div className="p-4 border-t bg-gray-50 rounded-b-xl flex justify-end gap-3">
+                    <button 
+                        onClick={() => setShowTermsModal(false)}
+                        className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg font-bold hover:bg-gray-100 transition"
+                    >
+                        Fechar
+                    </button>
+                    <button 
+                        onClick={() => { setTermsAccepted(true); setShowTermsModal(false); }}
+                        className="px-6 py-2 bg-primary text-white rounded-lg font-bold hover:bg-sky-600 transition shadow-sm"
+                    >
+                        Li e Concordo
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -383,13 +383,15 @@ const ClientsPage: React.FC = () => {
                             id: newClient.id, 
                             name: newClient.name, 
                             email: newClient.email 
-                        }]
+                        }],
+                        // CRITICAL: Incluir a origem para que o link "Agendar Online" funcione no e-mail
+                        origin: window.location.origin 
                     }
                 });
-                // Não bloqueia o fluxo se falhar, apenas loga
                 console.log("E-mail de boas-vindas enviado com sucesso.");
             } catch (mailErr) {
                 console.error("Erro ao enviar e-mail de boas-vindas:", mailErr);
+                // Não exibir erro ao usuário se o cadastro funcionou, mas o e-mail falhou
             }
         }
       }
