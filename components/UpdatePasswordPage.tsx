@@ -17,15 +17,12 @@ const UpdatePasswordPage: React.FC = () => {
     // Verifica se há uma sessão ativa
     const checkSession = async () => {
         const { data: { session } } = await supabase.auth.getSession();
-        // Se não houver sessão e não houver hash na URL (que o supabase client usa para recuperar a sessão),
-        // então provavelmente o link é inválido ou expirou.
         if (!session && !window.location.hash.includes('access_token')) {
             setMessage({ text: "Link de recuperação inválido ou expirado. Tente solicitar novamente.", type: 'error' });
         }
         setCheckingSession(false);
     };
     
-    // Pequeno delay para dar tempo ao Supabase Client processar o hash da URL se ele existir
     setTimeout(checkSession, 500);
   }, []);
 
@@ -55,7 +52,12 @@ const UpdatePasswordPage: React.FC = () => {
 
     } catch (error: any) {
         console.error(error);
-        setMessage({ text: error.message || "Erro ao atualizar senha. Sua sessão pode ter expirado.", type: 'error' });
+        // Tradução de erros comuns
+        let errorMsg = error.message;
+        if (errorMsg.includes("different from the old")) errorMsg = "A nova senha deve ser diferente da antiga.";
+        if (errorMsg.includes("weak")) errorMsg = "Senha muito fraca.";
+        
+        setMessage({ text: errorMsg, type: 'error' });
     } finally {
         setLoading(false);
     }
@@ -69,6 +71,9 @@ const UpdatePasswordPage: React.FC = () => {
         </div>
       );
   }
+
+  // Se houver mensagem de erro CRÍTICO (link inválido detectado no load), não mostra o form
+  const isCriticalError = message?.text.includes('Link de recuperação inválido');
 
   return (
     <div className="min-h-screen bg-gray-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans text-gray-100 overflow-hidden relative">
@@ -96,53 +101,55 @@ const UpdatePasswordPage: React.FC = () => {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <div className="bg-gray-900/60 backdrop-blur-xl py-8 px-4 shadow-2xl border border-white/10 sm:rounded-2xl sm:px-10">
           
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Nova Senha</label>
-                <div className="relative rounded-md shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Lock className="h-5 w-5 text-gray-500" />
+          {!isCriticalError ? (
+            <form className="space-y-6" onSubmit={handleSubmit}>
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Nova Senha</label>
+                    <div className="relative rounded-md shadow-sm">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Lock className="h-5 w-5 text-gray-500" />
+                        </div>
+                        <input
+                            type="password"
+                            required
+                            minLength={6}
+                            value={password}
+                            onChange={(e) => { setPassword(e.target.value); if(message?.type === 'error') setMessage(null); }}
+                            className="block w-full pl-10 bg-gray-800 border border-gray-700 text-white rounded-lg py-2.5 placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition"
+                            placeholder="Mínimo 6 caracteres"
+                        />
                     </div>
-                    <input
-                        type="password"
-                        required
-                        minLength={6}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="block w-full pl-10 bg-gray-800 border border-gray-700 text-white rounded-lg py-2.5 placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition"
-                        placeholder="Mínimo 6 caracteres"
-                    />
                 </div>
-            </div>
 
-            <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Confirmar Senha</label>
-                <div className="relative rounded-md shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <KeyRound className="h-5 w-5 text-gray-500" />
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Confirmar Senha</label>
+                    <div className="relative rounded-md shadow-sm">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <KeyRound className="h-5 w-5 text-gray-500" />
+                        </div>
+                        <input
+                            type="password"
+                            required
+                            minLength={6}
+                            value={confirmPassword}
+                            onChange={(e) => { setConfirmPassword(e.target.value); if(message?.type === 'error') setMessage(null); }}
+                            className="block w-full pl-10 bg-gray-800 border border-gray-700 text-white rounded-lg py-2.5 placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition"
+                            placeholder="Repita a senha"
+                        />
                     </div>
-                    <input
-                        type="password"
-                        required
-                        minLength={6}
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="block w-full pl-10 bg-gray-800 border border-gray-700 text-white rounded-lg py-2.5 placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition"
-                        placeholder="Repita a senha"
-                    />
                 </div>
-            </div>
 
-            <div>
-              <button
-                type="submit"
-                disabled={loading || !!(message && message.type === 'error' && !message.text.includes('coincidem'))}
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-lg shadow-blue-900/20 text-sm font-bold text-white bg-primary hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:-translate-y-0.5"
-              >
-                {loading ? <Loader2 className="animate-spin" /> : 'Atualizar Senha'}
-              </button>
-            </div>
-          </form>
+                <div>
+                <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-lg shadow-blue-900/20 text-sm font-bold text-white bg-primary hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:-translate-y-0.5"
+                >
+                    {loading ? <Loader2 className="animate-spin" /> : 'Atualizar Senha'}
+                </button>
+                </div>
+            </form>
+          ) : null}
 
           {message && (
             <div className={`mt-4 text-sm text-center font-medium p-3 rounded-lg border flex items-center justify-center gap-2 ${message.type === 'success' ? 'bg-green-900/20 border-green-800 text-green-400' : 'bg-red-900/20 border-red-800 text-red-400'}`}>
@@ -151,7 +158,8 @@ const UpdatePasswordPage: React.FC = () => {
             </div>
           )}
 
-          {message?.type === 'error' && (
+          {/* Mostrar botão de voltar se for erro crítico OU se for sucesso (pra login) */}
+          {(isCriticalError || message?.type === 'success') && (
               <button 
                 onClick={() => navigate('/auth')}
                 className="mt-4 w-full flex items-center justify-center text-sm text-gray-400 hover:text-white transition"
