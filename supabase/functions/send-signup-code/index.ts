@@ -1,0 +1,137 @@
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+
+declare const Deno: {
+  env: {
+    get(key: string): string | undefined;
+  };
+  serve(handler: (req: Request) => Promise<Response>): void;
+};
+
+Deno.serve(async (req) => {
+  // Configuração de CORS
+  const origin = req.headers.get('origin') ?? '';
+  const allowedOrigins = [
+    'http://localhost:5173', 
+    'https://dentihub.com.br', 
+    'https://www.dentihub.com.br',
+    'https://app.dentihub.com.br'
+  ];
+  const corsOrigin = allowedOrigins.includes(origin) ? origin : 'https://dentihub.com.br';
+
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": corsOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  // BLOQUEIO DE SEGURANÇA RIGOROSO
+  if (!origin || !allowedOrigins.includes(origin)) {
+      return new Response(JSON.stringify({ error: "Acesso negado: Origem não autorizada." }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
+
+    if (!supabaseUrl || !serviceRoleKey || !resendApiKey) {
+      throw new Error("Configuração do servidor incompleta.");
+    }
+
+    let body;
+    try {
+        body = await req.json();
+    } catch {
+        throw new Error("Corpo da requisição inválido.");
+    }
+
+    const { email, name } = body;
+
+    if (!email) throw new Error("E-mail é obrigatório.");
+
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+
+    // 1. Verificar se usuário já existe no Auth
+    const { data: profiles } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle();
+
+    if (profiles) {
+        // Retornamos 200 com campo 'error' para que o frontend possa ler a mensagem
+        // em vez de receber uma exceção genérica do cliente Supabase.
+        return new Response(JSON.stringify({ error: "Este e-mail já está cadastrado. Faça login." }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200 
+        });
+    }
+
+    // 2. Gerar Código de 6 dígitos
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
+
+    // 3. Salvar no Banco (Limpa códigos anteriores deste email)
+    await supabaseAdmin.from('verification_codes').delete().eq('email', email);
+    
+    const { error: dbError } = await supabaseAdmin.from('verification_codes').insert({
+        email,
+        code,
+        expires_at: expiresAt.toISOString()
+    });
+
+    if (dbError) throw dbError;
+
+    // 4. Enviar E-mail
+    const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${resendApiKey}`
+        },
+        body: JSON.stringify({
+            from: "DentiHub Segurança <contato@dentihub.com.br>",
+            to: [email],
+            subject: `${code} é seu código de verificação`,
+            html: `
+                <div style="font-family: Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+                    <h2 style="color: #0ea5e9; text-align: center;">Validação de Conta</h2>
+                    <p>Olá, <strong>${name || 'Doutor(a)'}</strong>!</p>
+                    <p>Use o código abaixo para concluir seu cadastro no DentiHub:</p>
+                    <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
+                        <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #1e293b;">${code}</span>
+                    </div>
+                    <p style="text-align: center; color: #64748b; font-size: 12px;">Este código expira em 15 minutos.</p>
+                </div>
+            `
+        })
+    });
+
+    if (!res.ok) {
+        const errData = await res.json();
+        console.error("Resend Error:", errData);
+        throw new Error("Falha ao enviar e-mail de verificação.");
+    }
+
+    return new Response(JSON.stringify({ success: true, message: "Código enviado." }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+    });
+
+  } catch (error: any) {
+    console.error("Erro send-signup-code:", error);
+    // Retornamos 200 aqui também para propagar a mensagem de erro (ex: "E-mail obrigatório") para o UI
+    return new Response(JSON.stringify({ error: error.message || "Erro interno." }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200, 
+    });
+  }
+});

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DentiHub - ERP para Clínicas Odontológicas</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%230ea5e9%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22/><path d=%22M8 14s1.5 2 4 2 4-2 4-2%22/><line x1=%229%22 x2=%229.01%22 y1=%229%22 y2=%229%22/><line x1=%2215%22 x2=%2215.01%22 y1=%229%22 y2=%229%22/></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: '#0ea5e9', // Sky 500
+              secondary: '#64748b', // Slate 500
+              accent: '#f43f5e', // Rose 500
+            }
+          }
+        }
+      }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react/": "https://esm.sh/react@18.2.0/",
+    "react-dom": "https://esm.sh/react-dom@18.2.0",
+    "react-dom/": "https://esm.sh/react-dom@18.2.0/",
+    "lucide-react": "https://esm.sh/lucide-react@0.263.1?external=react",
+    "recharts": "https://esm.sh/recharts@2.7.2?external=react,react-dom",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.31.0",
+    "react-router-dom": "https://esm.sh/react-router-dom@6.14.2?external=react,react-dom",
+    "date-fns": "https://esm.sh/date-fns@2.30.0",
+    "date-fns/": "https://esm.sh/date-fns@2.30.0/",
+    "@stripe/stripe-js": "https://esm.sh/@stripe/stripe-js@4.1.0",
+    "@stripe/react-stripe-js": "https://esm.sh/@stripe/react-stripe-js@2.7.3?external=react,react-dom",
+    "stripe": "https://esm.sh/stripe@^20.1.0",
+    "jspdf": "https://esm.sh/jspdf@2.5.1",
+    "@google/genai": "https://esm.sh/@google/genai@0.2.0",
+    "resend": "https://esm.sh/resend@^6.6.0",
+    "std/": "https://esm.sh/std@^0.1.40/",
+    "xlsx": "https://esm.sh/xlsx@0.18.5"
+  }
+}
+</script>
+</head>
+  <body class="bg-gray-50 text-gray-900 antialiased">
+    <div id="root"></div>
+    <script type="module" src="./index.tsx"></script>
+  </body>
+</html>

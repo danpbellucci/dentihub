@@ -1,0 +1,7 @@
+{
+  "name": "DentiHub",
+  "description": "A modern ERP/CRM for dental clinics with scheduling, financial management, and patient portal capabilities.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
