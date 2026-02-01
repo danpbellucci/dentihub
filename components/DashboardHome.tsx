@@ -6,7 +6,7 @@ import { UserProfile } from '../types';
 import { 
   Building2, UserPlus, Users, Smile, X, CheckCircle2, Lock, ArrowRight, Check, 
   Calendar, DollarSign, Loader2, Link as LinkIcon, Clock, Copy, TrendingUp, TrendingDown,
-  Wallet
+  Wallet, ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
 import { ClinicOnboardingForm, DentistOnboardingForm, ClientOnboardingForm } from './OnboardingForms';
 import Toast, { ToastType } from './Toast';
@@ -211,14 +211,14 @@ const DashboardHome: React.FC = () => {
                 };
             }
 
-            // 4. Recent Appointments
+            // 4. Recent Appointments (Aumentado para 20 para permitir scroll)
             let recentApptsQuery = supabase
                 .from('appointments')
                 .select('*, client:clients(name), dentist:dentists(name, color)')
                 .eq('clinic_id', clinicId)
                 .gte('start_time', new Date().toISOString())
                 .order('start_time', { ascending: true })
-                .limit(5);
+                .limit(20);
 
             if (filterDentistId) {
                 recentApptsQuery = recentApptsQuery.eq('dentist_id', filterDentistId);
@@ -467,97 +467,104 @@ const DashboardHome: React.FC = () => {
                 </div>
             </div>
 
-            {/* Recent Appointments - DARK MODE */}
-            <div className="bg-gray-900/60 backdrop-blur-md rounded-xl shadow-lg border border-white/5 p-6 relative">
-                <h3 className="font-bold text-white mb-6 flex items-center text-lg">
-                    <Clock size={20} className="mr-2 text-primary"/> Próximos Agendamentos
-                </h3>
-                {stats.recentAppointments.length === 0 ? (
-                    <div className="text-gray-500 text-sm text-center py-8 flex flex-col items-center">
-                        <Calendar size={40} className="mb-2 opacity-20"/>
-                        Nenhum agendamento futuro encontrado.
+            {/* MAIN LAYOUT: Split 50/50, Fixed Height */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:h-[520px]">
+                
+                {/* COLUMN 1: Appointments List */}
+                <div className="bg-gray-900/60 backdrop-blur-md rounded-xl shadow-lg border border-white/5 p-4 relative flex flex-col h-full overflow-hidden">
+                    <div className="flex justify-between items-center mb-4 shrink-0">
+                        <h3 className="font-bold text-white flex items-center text-lg">
+                            <Clock size={20} className="mr-2 text-primary"/> Próximos Agendamentos
+                        </h3>
+                        <span className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">Rolar para ver mais</span>
                     </div>
-                ) : (
-                    <div className="space-y-3">
-                        {stats.recentAppointments.map((appt: any) => (
-                            <div key={appt.id} className="flex items-center justify-between p-4 bg-gray-800/50 hover:bg-gray-800/80 transition rounded-xl border border-white/5 group">
-                                <div className="flex items-center gap-4">
-                                    <div className="text-center bg-gray-800 border border-white/10 rounded-lg px-3 py-2 min-w-[60px]">
-                                        <p className="text-xs text-gray-400 font-bold uppercase">{format(parseISO(appt.start_time), 'MMM', { locale: ptBR })}</p>
-                                        <p className="text-xl font-black text-white leading-none mt-0.5">{format(parseISO(appt.start_time), 'dd')}</p>
+                    
+                    <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-2">
+                        {stats.recentAppointments.length === 0 ? (
+                            <div className="text-gray-500 text-sm text-center py-12 flex flex-col items-center justify-center h-full">
+                                <Calendar size={48} className="mb-3 opacity-20"/>
+                                Nenhum agendamento futuro.
+                            </div>
+                        ) : (
+                            stats.recentAppointments.map((appt: any) => (
+                                <div key={appt.id} className="flex items-center justify-between p-2.5 bg-gray-800/40 hover:bg-gray-800/80 transition rounded-lg border border-white/5 group">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="text-center bg-gray-800 border border-white/10 rounded px-2 py-1 min-w-[45px] shrink-0">
+                                            <p className="text-[9px] text-gray-400 font-bold uppercase">{format(parseISO(appt.start_time), 'MMM', { locale: ptBR })}</p>
+                                            <p className="text-base font-black text-white leading-none">{format(parseISO(appt.start_time), 'dd')}</p>
+                                        </div>
+                                        <div className="min-w-0 overflow-hidden">
+                                            <p className="font-bold text-white text-sm group-hover:text-primary transition-colors truncate">{appt.client?.name}</p>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <span className="text-xs font-mono text-gray-300 bg-gray-700/50 px-1.5 rounded">{format(parseISO(appt.start_time), 'HH:mm')}</span>
+                                                <span className="text-xs text-gray-500 truncate">{appt.service_name}</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="font-bold text-white text-base group-hover:text-primary transition-colors">{appt.client?.name}</p>
-                                        <p className="text-sm text-gray-400 flex items-center mt-1">
-                                            <span className="bg-gray-700/50 px-2 py-0.5 rounded text-xs font-mono mr-2 text-gray-300">{format(parseISO(appt.start_time), 'HH:mm')}</span>
-                                            {appt.service_name}
-                                        </p>
+                                    <div className="hidden sm:block shrink-0 ml-2">
+                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: appt.dentist?.color || '#ccc' }} title={appt.dentist?.name}></div>
                                     </div>
                                 </div>
-                                <div className="hidden sm:flex items-center gap-2">
-                                    <span className="text-xs bg-gray-900/80 border border-white/10 px-3 py-1.5 rounded-full text-gray-300 flex items-center font-medium">
-                                        <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: appt.dentist?.color || '#ccc' }}></div>
-                                        {appt.dentist?.name}
-                                    </span>
+                            ))
+                        )}
+                    </div>
+                </div>
+
+                {/* COLUMN 2: Financial Flows (Expanded) */}
+                {stats.weeklyForecast.hasAccess ? (
+                    <div className="flex flex-col gap-6 h-full">
+                        {/* ENTRADAS - Metade da Altura */}
+                        <div className="flex-1 bg-gray-900/60 backdrop-blur-md p-6 rounded-xl shadow-lg border border-white/5 flex flex-col justify-center relative overflow-hidden group">
+                            <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                                <TrendingUp size={80} className="text-green-500"/>
+                            </div>
+                            <h3 className="font-bold text-white flex items-center gap-2 mb-6 text-base relative z-10">
+                                <div className="p-1.5 bg-green-500/20 rounded-lg text-green-400"><ArrowUpRight size={18} /></div>
+                                Entradas (Semana)
+                            </h3>
+                            <div className="grid grid-cols-2 gap-4 relative z-10">
+                                <div className="p-4 bg-green-900/10 rounded-xl border border-green-500/20">
+                                    <p className="text-xs text-green-400 font-bold uppercase mb-1">Realizado</p>
+                                    <p className="text-2xl font-black text-white">R$ {stats.weeklyForecast.incomeRealized.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                </div>
+                                <div className="p-4 bg-gray-800/30 rounded-xl border border-white/5">
+                                    <p className="text-xs text-gray-400 font-bold uppercase mb-1">A Receber</p>
+                                    <p className="text-2xl font-black text-gray-300">R$ {stats.weeklyForecast.incomePending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                                 </div>
                             </div>
-                        ))}
+                        </div>
+
+                        {/* SAÍDAS - Metade da Altura */}
+                        <div className="flex-1 bg-gray-900/60 backdrop-blur-md p-6 rounded-xl shadow-lg border border-white/5 flex flex-col justify-center relative overflow-hidden group">
+                            <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                                <TrendingDown size={80} className="text-red-500"/>
+                            </div>
+                            <h3 className="font-bold text-white flex items-center gap-2 mb-6 text-base relative z-10">
+                                <div className="p-1.5 bg-red-500/20 rounded-lg text-red-400"><ArrowDownRight size={18} /></div>
+                                Saídas (Semana)
+                            </h3>
+                            <div className="grid grid-cols-2 gap-4 relative z-10">
+                                <div className="p-4 bg-red-900/10 rounded-xl border border-red-500/20">
+                                    <p className="text-xs text-red-400 font-bold uppercase mb-1">Pago</p>
+                                    <p className="text-2xl font-black text-white">R$ {stats.weeklyForecast.expenseRealized.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                </div>
+                                <div className="p-4 bg-gray-800/30 rounded-xl border border-white/5">
+                                    <p className="text-xs text-gray-400 font-bold uppercase mb-1">A Pagar</p>
+                                    <p className="text-2xl font-black text-gray-300">R$ {stats.weeklyForecast.expensePending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="bg-gray-900/60 backdrop-blur-md p-6 rounded-xl shadow-lg border border-white/5 flex flex-col items-center justify-center text-center opacity-60 h-full">
+                        <div className="p-4 bg-gray-800 rounded-full mb-4">
+                            <Lock size={32} className="text-gray-500" />
+                        </div>
+                        <p className="text-gray-300 text-lg font-bold">Resumo Financeiro Bloqueado</p>
+                        <p className="text-sm text-gray-500 mt-2">Acesso restrito a administradores.</p>
                     </div>
                 )}
             </div>
-
-            {/* Weekly Forecast (Finance Access Only) - DARK MODE */}
-            {stats.weeklyForecast.hasAccess && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in-up">
-                    {/* ENTRADAS */}
-                    <div className="bg-gray-900/60 backdrop-blur-md p-6 rounded-xl shadow-lg border border-white/5">
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="font-bold text-white flex items-center gap-2 text-lg">
-                                <TrendingUp size={20} className="text-green-500" /> Fluxo Semanal (Entradas)
-                            </h3>
-                            <span className="text-xs font-bold bg-green-500/10 text-green-400 border border-green-500/20 px-3 py-1 rounded-full">Esta Semana</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="p-4 bg-green-900/20 rounded-xl border border-green-500/20">
-                                <p className="text-xs text-green-400 font-bold uppercase mb-1">Realizado</p>
-                                <p className="text-xl font-black text-green-300">
-                                    R$ {stats.weeklyForecast.incomeRealized.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                </p>
-                            </div>
-                            <div className="p-4 bg-gray-800/40 rounded-xl border border-white/5">
-                                <p className="text-xs text-gray-400 font-bold uppercase mb-1">A Receber (Previsto)</p>
-                                <p className="text-xl font-black text-gray-300">
-                                    R$ {stats.weeklyForecast.incomePending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* SAÍDAS */}
-                    <div className="bg-gray-900/60 backdrop-blur-md p-6 rounded-xl shadow-lg border border-white/5">
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="font-bold text-white flex items-center gap-2 text-lg">
-                                <TrendingDown size={20} className="text-red-500" /> Fluxo Semanal (Saídas)
-                            </h3>
-                            <span className="text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20 px-3 py-1 rounded-full">Esta Semana</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="p-4 bg-red-900/20 rounded-xl border border-red-500/20">
-                                <p className="text-xs text-red-400 font-bold uppercase mb-1">Pago (Realizado)</p>
-                                <p className="text-xl font-black text-red-300">
-                                    R$ {stats.weeklyForecast.expenseRealized.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                </p>
-                            </div>
-                            <div className="p-4 bg-gray-800/40 rounded-xl border border-white/5">
-                                <p className="text-xs text-gray-400 font-bold uppercase mb-1">A Pagar (Previsto)</p>
-                                <p className="text-xl font-black text-gray-300">
-                                    R$ {stats.weeklyForecast.expensePending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
