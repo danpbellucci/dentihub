@@ -11,10 +11,11 @@ const UpdatePasswordPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-  const navigate = useNavigate();
+  
+  // Nota: Não usamos useNavigate aqui para sair, pois precisamos forçar um reload
+  // para limpar o estado 'isRecoveryMode' no App.tsx.
 
   useEffect(() => {
-    // Verifica se há uma sessão ativa
     const checkSession = async () => {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session && !window.location.hash.includes('access_token')) {
@@ -25,6 +26,12 @@ const UpdatePasswordPage: React.FC = () => {
     
     setTimeout(checkSession, 500);
   }, []);
+
+  // Função auxiliar para sair do modo de recuperação e ir para outra página
+  const hardNavigate = (path: string) => {
+      window.location.hash = path;
+      window.location.reload();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,13 +53,13 @@ const UpdatePasswordPage: React.FC = () => {
 
         setMessage({ text: "Senha alterada com sucesso! Redirecionando...", type: 'success' });
         
+        // Força reload para o dashboard após sucesso
         setTimeout(() => {
-            navigate('/dashboard');
+            hardNavigate('/dashboard');
         }, 2000);
 
     } catch (error: any) {
         console.error(error);
-        // Tradução de erros comuns
         let errorMsg = error.message;
         if (errorMsg.includes("different from the old")) errorMsg = "A nova senha deve ser diferente da antiga.";
         if (errorMsg.includes("weak")) errorMsg = "Senha muito fraca.";
@@ -72,20 +79,18 @@ const UpdatePasswordPage: React.FC = () => {
       );
   }
 
-  // Se houver mensagem de erro CRÍTICO (link inválido detectado no load), não mostra o form
   const isCriticalError = message?.text.includes('Link de recuperação inválido');
 
   return (
     <div className="min-h-screen bg-gray-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans text-gray-100 overflow-hidden relative">
       
-      {/* BACKGROUND GLOWS */}
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/20 rounded-full blur-[120px]"></div>
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/20 rounded-full blur-[120px]"></div>
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-        <div className="flex justify-center cursor-pointer mb-6" onClick={() => navigate('/')}>
+        <div className="flex justify-center cursor-pointer mb-6" onClick={() => hardNavigate('/')}>
           <div className="bg-gradient-to-tr from-blue-600 to-purple-600 p-3 rounded-2xl shadow-lg shadow-purple-500/20">
             <Logo className="w-10 h-10" />
           </div>
@@ -158,11 +163,11 @@ const UpdatePasswordPage: React.FC = () => {
             </div>
           )}
 
-          {/* Mostrar botão de voltar se for erro crítico OU se for sucesso (pra login) */}
           {(isCriticalError || message?.type === 'success') && (
               <button 
-                onClick={() => navigate('/auth')}
-                className="mt-4 w-full flex items-center justify-center text-sm text-gray-400 hover:text-white transition"
+                type="button"
+                onClick={() => hardNavigate('/auth')}
+                className="mt-4 w-full flex items-center justify-center text-sm text-gray-400 hover:text-white transition cursor-pointer"
               >
                   <ArrowLeft size={14} className="mr-1"/> Voltar para Login
               </button>
