@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../services/supabase';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, addMinutes } from 'date-fns';
 import { Check, X, Clock, AlertTriangle, CalendarCheck, Smartphone, Mail, User, UserCheck, Loader2, HelpCircle, RefreshCw, RefreshCcw } from 'lucide-react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import Toast, { ToastType } from './Toast';
@@ -58,31 +58,86 @@ const RequestsPage: React.FC = () => {
     setProcessing(true);
     try {
         if (action === 'accepted') {
+          // 1. Determinar a duração correta do serviço
+          let duration = 60; // Default fallback
+          
+          if (request.dentist_id) {
+              const { data: dentistData } = await supabase
+                  .from('dentists')
+                  .select('services')
+                  .eq('id', request.dentist_id)
+                  .single();
+
+              if (dentistData?.services && Array.isArray(dentistData.services)) {
+                  // Procura o serviço na lista do dentista
+                  const serviceItem = dentistData.services.find((s: any) => {
+                      let sName = '';
+                      if (typeof s === 'string') {
+                          try { sName = JSON.parse(s).name; } catch { sName = s; }
+                      } else { sName = s.name; }
+                      return sName === request.service_name;
+                  });
+
+                  if (serviceItem) {
+                      if (typeof serviceItem === 'string') {
+                          try { duration = Number(JSON.parse(serviceItem).duration) || 60; } catch { duration = 60; }
+                      } else {
+                          duration = Number(serviceItem.duration) || 60;
+                      }
+                  }
+              }
+          }
+
           const start = parseISO(request.requested_time);
-          const end = new Date(start.getTime() + 60 * 60 * 1000); 
-          const { data: conflicts } = await supabase.from('appointments').select('id').eq('dentist_id', request.dentist_id).neq('status', 'cancelled').lt('start_time', end.toISOString()).gt('end_time', start.toISOString());
-          if (conflicts && conflicts.length > 0) { setWarningMessage("O dentista já possui agendamento neste horário."); setProcessing(false); return; }
+          const end = addMinutes(start, duration);
+          
+          // 2. Verificar conflitos com a duração correta
+          const { data: conflicts } = await supabase
+            .from('appointments')
+            .select('id')
+            .eq('dentist_id', request.dentist_id)
+            .neq('status', 'cancelled')
+            .lt('start_time', end.toISOString())
+            .gt('end_time', start.toISOString());
+          
+          if (conflicts && conflicts.length > 0) { 
+              setWarningMessage(`O dentista já possui agendamento neste horário (Conflito entre ${format(start, 'HH:mm')} e ${format(end, 'HH:mm')}).`); 
+              setProcessing(false); 
+              return; 
+          }
 
           let finalClientId = null;
           let feedbackMessage = "Solicitação aceita!";
 
-          // 1. Verifica se já existe paciente com este CPF na base
+          // 3. Verifica se já existe paciente com este CPF na base
           if (request.patient_cpf) { 
               const { data: existingClient } = await supabase
                   .from('clients')
-                  .select('id, name')
+                  .select('id, name, email, whatsapp, address, birth_date')
                   .eq('clinic_id', request.clinic_id)
                   .eq('cpf', request.patient_cpf)
                   .maybeSingle();
               
               if (existingClient) {
-                  // Se encontrou, usa o ID existente e NÃO atualiza os dados (preserva o nome original "João Paulo" por exemplo)
+                  // Se encontrou, usa o ID existente
                   finalClientId = existingClient.id;
                   feedbackMessage = `Agendamento confirmado para o paciente já cadastrado: ${existingClient.name}`;
+
+                  // Lógica de Atualização: Se o cadastro tiver campos vazios e a solicitação tiver dados, atualiza.
+                  const updates: any = {};
+                  if (request.patient_email && !existingClient.email) updates.email = request.patient_email;
+                  if (request.patient_phone && !existingClient.whatsapp) updates.whatsapp = request.patient_phone;
+                  if (request.patient_address && !existingClient.address) updates.address = request.patient_address;
+                  if (request.patient_birth_date && !existingClient.birth_date) updates.birth_date = request.patient_birth_date;
+
+                  if (Object.keys(updates).length > 0) {
+                      await supabase.from('clients').update(updates).eq('id', existingClient.id);
+                      feedbackMessage += " (Cadastro atualizado com novas informações)";
+                  }
               }
           }
 
-          // 2. Se não encontrou pelo CPF, cria um novo
+          // 4. Se não encontrou pelo CPF, cria um novo
           if (!finalClientId) {
               const { data: newClient, error: clientError } = await supabase.from('clients').insert({ 
                   clinic_id: request.clinic_id, 
@@ -101,18 +156,33 @@ const RequestsPage: React.FC = () => {
               }
           }
 
-          // 3. Cria o agendamento vinculado ao ID final (seja novo ou existente)
+          // 5. Cria o agendamento vinculado ao ID final (seja novo ou existente)
           if (finalClientId) {
-            const { error: apptError } = await supabase.from('appointments').insert({ clinic_id: request.clinic_id, dentist_id: request.dentist_id, client_id: finalClientId, service_name: request.service_name, start_time: start.toISOString(), end_time: end.toISOString(), status: 'scheduled' });
+            const { data: newAppt, error: apptError } = await supabase.from('appointments').insert({ 
+                clinic_id: request.clinic_id, 
+                dentist_id: request.dentist_id, 
+                client_id: finalClientId, 
+                service_name: request.service_name, 
+                start_time: start.toISOString(), 
+                end_time: end.toISOString(), 
+                status: 'scheduled' 
+            }).select().single();
+            
             if (apptError) throw apptError;
             
-            // Envia e-mail de confirmação
-            if (request.patient_email) { 
+            // Envia e-mail de confirmação com o ID CORRETO do agendamento
+            if (request.patient_email && newAppt) { 
                 await supabase.functions.invoke('send-emails', { 
                     body: { 
                         type: 'appointment', 
                         subtype: 'created', 
-                        appointment: { id: 'pending', date: format(start, "dd/MM/yyyy"), time: format(start, "HH:mm"), service_name: request.service_name, dentist_name: request.dentist?.name }, 
+                        appointment: { 
+                            id: newAppt.id, // ID real gerado pelo banco
+                            date: format(start, "dd/MM/yyyy"), 
+                            time: format(start, "HH:mm"), 
+                            service_name: request.service_name, 
+                            dentist_name: request.dentist?.name 
+                        }, 
                         client: { name: request.patient_name, email: request.patient_email }, 
                         origin: window.location.href.split('#')[0].replace(/\/$/, '') 
                     } 

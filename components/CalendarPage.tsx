@@ -60,7 +60,7 @@ const CalendarPage: React.FC = () => {
   const [filterPaymentStatus, setFilterPaymentStatus] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [hideCompletedPaid, setHideCompletedPaid] = useState(false);
-  const [hideCancelled, setHideCancelled] = useState(false);
+  const [hideCancelled, setHideCancelled] = useState(true); // Default true para limpar a visualização
 
   // Modal Principal (Novo/Editar)
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -207,8 +207,6 @@ const CalendarPage: React.FC = () => {
 
   const fetchAppointments = async () => {
     if (!clinicId) return;
-    // Don't set global loading true on subsequent fetches to avoid flicker, maybe specific loading?
-    // For now we keep simple
     
     const start = startOfWeek(startOfMonth(currentMonth)).toISOString();
     const end = endOfWeek(endOfMonth(currentMonth)).toISOString();
@@ -254,7 +252,7 @@ const CalendarPage: React.FC = () => {
       setFilterPaymentStatus('all');
       setFilterStatus('all');
       setHideCompletedPaid(false);
-      setHideCancelled(false);
+      setHideCancelled(true); // Reset to default true
   };
 
   // --- LÓGICA DE HORÁRIOS CORRIGIDA ---

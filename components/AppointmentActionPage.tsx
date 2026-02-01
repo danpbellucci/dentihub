@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import { Logo } from './Logo';
-import { CheckCircle, XCircle, Loader2, Calendar, RefreshCcw, Smile } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, RefreshCcw } from 'lucide-react';
 
 const AppointmentActionPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -22,25 +22,24 @@ const AppointmentActionPage: React.FC = () => {
   const processAction = async () => {
     if (!id || !action) {
       setStatus('error');
-      setMessage('O link que você acessou parece inválido ou incompleto.');
+      setMessage('O link que você acessou parece inválido ou incompleto. Verifique se copiou todo o endereço.');
       setLoading(false);
       return;
     }
 
     try {
       // 1. Buscar detalhes do agendamento via RPC Segura (Bypass RLS)
-      // A tabela appointments é privada, então usamos uma função do banco para ler os dados necessários.
       const { data: appointmentData, error: fetchError } = await supabase
         .rpc('get_appointment_details_for_action', { p_appointment_id: id })
         .maybeSingle();
 
       if (fetchError) {
           console.error("Erro RPC:", fetchError);
-          throw new Error("Erro ao consultar agendamento.");
+          throw new Error("Erro de conexão ao verificar o agendamento.");
       }
 
       if (!appointmentData) {
-          throw new Error("Agendamento não encontrado ou link expirado.");
+          throw new Error("Agendamento não encontrado. O link pode ter expirado ou o agendamento foi removido.");
       }
 
       // Cast to any to access properties returned by the RPC function
@@ -98,7 +97,7 @@ const AppointmentActionPage: React.FC = () => {
     } catch (err: any) {
       console.error(err);
       setStatus('error');
-      setMessage('Ocorreu um erro ao processar sua solicitação. O link pode ter expirado ou o agendamento já foi alterado.');
+      setMessage(err.message || 'Ocorreu um erro ao processar sua solicitação.');
     } finally {
       setLoading(false);
     }
@@ -107,7 +106,7 @@ const AppointmentActionPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
       {/* Header Minimalista */}
-      <div className="absolute top-6 flex items-center text-gray-400 font-bold text-xl gap-2">
+      <div className="absolute top-6 flex items-center text-gray-400 font-bold text-xl gap-2 cursor-pointer" onClick={() => navigate('/')}>
           <Logo className="w-8 h-8" /> DentiHub
       </div>
 
@@ -148,14 +147,12 @@ const AppointmentActionPage: React.FC = () => {
                 {message}
             </p>
 
-            {status === 'error' && (
-                <button 
-                    onClick={() => navigate('/')}
-                    className="px-6 py-3 bg-gray-900 text-white rounded-lg font-bold hover:bg-black transition"
-                >
-                    Ir para o Início
-                </button>
-            )}
+            <button 
+                onClick={() => navigate('/')}
+                className="px-6 py-3 bg-gray-900 text-white rounded-lg font-bold hover:bg-black transition"
+            >
+                Ir para o Início
+            </button>
           </div>
         )}
       </div>
