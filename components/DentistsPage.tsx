@@ -134,6 +134,7 @@ const DentistsPage: React.FC = () => {
       let limit = Infinity;
       if (currentTier === 'free') limit = 1;
       if (currentTier === 'starter') limit = 3;
+      if (currentTier === 'pro') limit = 5;
 
       if (dentists.length >= limit) {
            setToast({ message: `Limite atingido: O plano ${currentTier.toUpperCase()} permite apenas ${limit} dentista(s).`, type: 'warning' });

@@ -43,6 +43,8 @@ Deno.serve(async (req) => {
       })
     }
 
+    const { audio, mimeType, dentistId } = await req.json()
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -62,7 +64,6 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // ... (Lógica de verificação de limites mantida igual) ...
     const { data: profile } = await supabaseClient
         .from('user_profiles')
         .select('clinic_id')
@@ -79,32 +80,45 @@ Deno.serve(async (req) => {
     
     const tier = clinic?.subscription_tier || 'free';
 
-    if (tier !== 'pro') {
-        let isLimitReached = false;
-        let errorMsg = '';
+    // VERIFICAÇÃO DE LIMITES
+    let isLimitReached = false;
+    let errorMsg = '';
 
-        if (tier === 'free') {
-            const { count } = await supabaseClient
-                .from('clinical_records')
-                .select('*', { count: 'exact', head: true })
-                .eq('clinic_id', clinicId);
-            if ((count || 0) >= 3) { isLimitReached = true; errorMsg = 'Limite de 3 usos do plano Gratuito atingido.'; }
-        } else if (tier === 'starter') {
+    if (tier === 'free') {
+        const { count } = await supabaseClient
+            .from('clinical_records')
+            .select('*', { count: 'exact', head: true })
+            .eq('clinic_id', clinicId);
+        if ((count || 0) >= 3) { isLimitReached = true; errorMsg = 'Limite de 3 usos do plano Gratuito atingido.'; }
+    } else {
+        // Planos Pagos: Limite Diário POR DENTISTA
+        if (!dentistId) {
+             // Se não mandou dentistId, bloqueia por segurança
+             isLimitReached = true; 
+             errorMsg = 'Dentista responsável não identificado.'; 
+        } else {
             const today = new Date().toISOString().split('T')[0];
             const { count } = await supabaseClient
                 .from('clinical_records')
                 .select('*', { count: 'exact', head: true })
                 .eq('clinic_id', clinicId)
+                .eq('dentist_id', dentistId)
                 .gte('created_at', today);
-            if ((count || 0) >= 5) { isLimitReached = true; errorMsg = 'Limite diário de 5 usos do plano Starter atingido.'; }
-        }
+            
+            const usage = count || 0;
+            const limit = tier === 'starter' ? 5 : 10; // Starter: 5, Pro: 10
 
-        if (isLimitReached) {
-            return new Response(JSON.stringify({ error: errorMsg, limitReached: true }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+            if (usage >= limit) { 
+                isLimitReached = true; 
+                errorMsg = `Limite diário de ${limit} usos para este dentista atingido.`; 
+            }
         }
     }
 
-    const { audio, mimeType } = await req.json()
+    if (isLimitReached) {
+        return new Response(JSON.stringify({ error: errorMsg, limitReached: true }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     const apiKey = Deno.env.get('API_KEY') || Deno.env.get('GEMINI_API_KEY')
     
     if (!apiKey) throw new Error('Chave da API não configurada.')
@@ -150,7 +164,7 @@ Deno.serve(async (req) => {
     // LOG DE USO
     await supabaseAdmin.from('edge_function_logs').insert({
         function_name: 'process-audio',
-        metadata: { clinic_id: clinicId, user_id: user.id, tier: tier },
+        metadata: { clinic_id: clinicId, user_id: user.id, tier: tier, dentist_id: dentistId },
         status: 'success'
     });
 

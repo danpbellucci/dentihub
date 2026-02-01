@@ -54,7 +54,7 @@ EXECUTE FUNCTION public.check_client_limit();
 
 
 -- ----------------------------------------------------------------------------
--- 2. LIMITES DE DENTISTAS (DENTISTS) - NOVO
+-- 2. LIMITES DE DENTISTAS (DENTISTS) - ATUALIZADO
 -- ----------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION public.check_dentist_limit()
@@ -77,8 +77,10 @@ BEGIN
         v_limit := 1;
     ELSIF v_tier = 'starter' THEN 
         v_limit := 3;
+    ELSIF v_tier = 'pro' THEN
+        v_limit := 5; -- Limite ajustado para Plano Pro
     ELSE 
-        v_limit := 999999; -- Pro (Ilimitado)
+        v_limit := 1; -- Fallback
     END IF;
 
     -- Contar dentistas existentes nesta clínica

@@ -369,7 +369,7 @@ const SettingsPage: React.FC = () => {
                             <ul className="space-y-3 mb-6 flex-1">
                                 <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-blue-500"/> Até 3 Dentistas</li>
                                 <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-blue-500"/> Até 100 Pacientes</li>
-                                <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-blue-500"/> Prontuário IA (5 usos/dia)</li>
+                                <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-blue-500"/> Prontuário IA (5 usos/dia/dentista)</li>
                                 <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-blue-500"/> Lembretes de Urgência</li>
                             </ul>
                             {currentTier === 'starter' ? <button disabled className="w-full py-2 bg-blue-900/30 text-blue-400 rounded font-bold">Plano Atual</button> : <button onClick={() => openPaymentModal('Starter', 'R$ 100,00', 'price_1SlMYr2Obfcu36b5HzK9JQPO')} className="w-full py-2 bg-primary text-white rounded font-bold hover:bg-sky-600 shadow-lg shadow-blue-900/20">Assinar Starter</button>}
@@ -381,9 +381,9 @@ const SettingsPage: React.FC = () => {
                             <h4 className="font-bold text-yellow-400 text-lg flex items-center gap-2"><Zap size={18} fill="currentColor"/> Pro</h4>
                             <div className="my-4"><span className="text-3xl font-black text-white">R$ 300</span><span className="text-sm text-gray-500">/mês</span></div>
                             <ul className="space-y-3 mb-6 flex-1 relative z-10">
-                                <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-yellow-500"/> Dentistas Ilimitados</li>
+                                <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-yellow-500"/> Até 5 Dentistas</li>
                                 <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-yellow-500"/> Pacientes Ilimitados</li>
-                                <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-yellow-500"/> Prontuário IA Ilimitado</li>
+                                <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-yellow-500"/> Prontuário IA (10 usos/dia/dentista)</li>
                                 <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-yellow-500"/> Arquivos (100MB/paciente)</li>
                             </ul>
                             {currentTier === 'pro' ? <button disabled className="w-full py-2 bg-yellow-900/30 text-yellow-400 rounded font-bold">Plano Atual</button> : <button onClick={() => openPaymentModal('Pro', 'R$ 300,00', 'price_1SlEBs2Obfcu36b5HrWAo2Fh')} className="w-full py-2 bg-white text-gray-900 rounded font-bold hover:bg-gray-200 shadow-lg">Assinar Pro</button>}

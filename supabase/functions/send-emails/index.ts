@@ -12,20 +12,26 @@ const generateButton = (text: string, url: string, color: string, textColor: str
   return `<a href="${url}" target="_blank" style="background-color: ${color}; color: ${textColor}; padding: 12px 24px; font-family: Helvetica, Arial, sans-serif; font-size: 14px; font-weight: bold; text-decoration: none; border-radius: 6px; display: inline-block; margin: 10px 5px;">${text}</a>`;
 };
 
-async function sendEmailViaResend(apiKey: string, to: string[], subject: string, html: string, fromName: string, replyTo: string) {
+async function sendEmailViaResend(apiKey: string, to: string[], subject: string, html: string, fromName: string, replyTo: string, attachments: any[] = []) {
+    const payload: any = {
+        from: `${fromName} <contato@dentihub.com.br>`, 
+        to: to,
+        subject: subject,
+        html: html,
+        reply_to: replyTo
+    };
+
+    if (attachments && attachments.length > 0) {
+        payload.attachments = attachments;
+    }
+
     const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${apiKey}`
         },
-        body: JSON.stringify({
-            from: `${fromName} <contato@dentihub.com.br>`, 
-            to: to,
-            subject: subject,
-            html: html,
-            reply_to: replyTo
-        })
+        body: JSON.stringify(payload)
     });
     const data = await res.json();
     if (!res.ok) throw new Error(`Erro Resend: ${data.message || data.name || res.statusText}`);
@@ -33,7 +39,7 @@ async function sendEmailViaResend(apiKey: string, to: string[], subject: string,
 }
 
 Deno.serve(async (req) => {
-  // CORS Permissivo (*) para evitar erros de bloqueio em ambientes de desenvolvimento/preview
+  // CORS Permissivo (*)
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -54,7 +60,7 @@ Deno.serve(async (req) => {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     const body = await req.json();
-    const { type, subtype, recipients, appointment, client, userName, contactEmail, message, subject: reqSubject, htmlContent: reqHtmlContent } = body;
+    const { type, recipients, appointment, client, userName, contactEmail, message, subject: reqSubject, htmlContent: reqHtmlContent, attachments } = body;
     const results = { count: 0 };
 
     const authHeader = req.headers.get('Authorization');
@@ -96,8 +102,6 @@ Deno.serve(async (req) => {
     // 3. CONFIRMAÇÃO DE AGENDAMENTO
     else if (type === 'appointment' && client) {
         const subject = `Agendamento - ${clinicName}`;
-        
-        // Define domínio fixo para garantir que o link funcione no e-mail
         const baseUrl = 'https://dentihub.com.br';
 
         const htmlContent = `
@@ -134,29 +138,17 @@ Deno.serve(async (req) => {
                 const subject = `Convite: Junte-se à equipe da ${clinicName}`;
                 const html = `
                     <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
-                        <!-- Header -->
                         <div style="background-color: #0ea5e9; padding: 30px 20px; text-align: center;">
                            <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold;">${clinicName}</h1>
                         </div>
-
-                        <!-- Body -->
                         <div style="padding: 40px 30px; color: #334155; line-height: 1.6; text-align: center;">
                            <h2 style="color: #0f172a; margin-top: 0;">Você foi convidado(a)!</h2>
-                           
                            <p style="margin-bottom: 20px;">Olá, <strong>${r.name || 'Colega'}</strong>.</p>
-                           
                            <p>A clínica <strong>${clinicName}</strong> convidou você para acessar a plataforma DentiHub com o perfil de <strong>${roleLabel}</strong>.</p>
-                           
                            <p>Para começar, clique no botão abaixo e crie sua conta:</p>
-
                            <div style="margin: 35px 0;">
                               ${generateButton('Crie sua conta', 'https://dentihub.com.br/#/auth?view=forgot', '#0ea5e9')}
                            </div>
-                        </div>
-
-                        <!-- Footer -->
-                        <div style="background-color: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
-                           <p style="margin: 0;">Enviado por DentiHub para ${clinicName}</p>
                         </div>
                     </div>
                 `;
@@ -166,7 +158,21 @@ Deno.serve(async (req) => {
         }
         success = true;
     }
-    // 5. BOAS-VINDAS AO PACIENTE
+    // 5. RECEITA / DOCUMENTO
+    else if (type === 'prescription' && client) {
+        const subject = `Documento de ${clinicName}`;
+        const html = `
+            <div style="font-family: Helvetica, Arial, sans-serif; padding: 20px; color: #333;">
+                <p>Olá <strong>${client.name}</strong>,</p>
+                <p>Segue em anexo a receita/documento gerado em sua consulta na <strong>${clinicName}</strong>.</p>
+                <p>Atenciosamente,<br>${clinicName}</p>
+            </div>
+        `;
+        // Passa os anexos (base64) para o Resend
+        await sendEmailViaResend(resendApiKey, [client.email], subject, html, clinicName, clinicEmail, attachments);
+        success = true;
+    }
+    // 6. BOAS-VINDAS AO PACIENTE
     else if (type === 'welcome') {
         const clinicSlug = clinic.slug || clinic.id;
         const bookingUrl = body.origin ? `${body.origin}/#/${clinicSlug}` : null;
@@ -177,34 +183,22 @@ Deno.serve(async (req) => {
                 const subject = `Bem-vindo(a) à ${clinicName}`;
                 const html = `
                     <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
-                        <!-- Header -->
                         <div style="background-color: #0ea5e9; padding: 30px 20px; text-align: center;">
                            <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold;">${clinicName}</h1>
                         </div>
-
-                        <!-- Body -->
                         <div style="padding: 30px 20px; color: #334155; line-height: 1.6;">
                            <p style="font-size: 18px; margin-bottom: 20px;">Olá, <strong>${r.name}</strong>! 👋</p>
                            <p>Seja muito bem-vindo(a)! É um prazer ter você como paciente.</p>
                            <p>Já realizamos o seu cadastro em nosso sistema para oferecer um atendimento mais ágil e personalizado.</p>
-
                            <div style="background-color: #f8fafc; border-left: 4px solid #0ea5e9; padding: 15px; margin: 25px 0; border-radius: 4px;">
                               <p style="margin: 0; font-size: 14px; color: #475569;">
                                  <strong>Dica:</strong> Você pode agendar suas próximas consultas diretamente pelo nosso link online, sem precisar ligar.
                               </p>
                            </div>
-
-                           <!-- Actions -->
                            <div style="text-align: center; margin-top: 30px;">
                               ${bookingUrl ? generateButton('📅 Agendar Online', bookingUrl, '#0ea5e9') : ''}
                               ${whatsappClean ? generateButton('💬 Conversar no WhatsApp', `https://wa.me/55${whatsappClean}`, '#22c55e') : ''}
                            </div>
-                        </div>
-
-                        <!-- Footer -->
-                        <div style="background-color: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
-                           <p style="margin: 0;">${clinicName}</p>
-                           ${clinic.address ? `<p style="margin: 5px 0 0;">${clinic.address} - ${clinic.city || ''}</p>` : ''}
                         </div>
                     </div>
                 `;
@@ -214,19 +208,16 @@ Deno.serve(async (req) => {
         }
         success = true;
     }
-    // 6. GENÉRICO / CAMPANHA MANUAL (Recall)
+    // 7. GENÉRICO / CAMPANHA MANUAL (Recall)
     else if (type === 'recall' || (recipients && Array.isArray(recipients))) {
         for (const r of recipients) {
             if(r.email) {
-                // Se for recall, usa template de retorno, senão usa o genérico ou o passado via reqHtmlContent
                 let finalSubject = reqSubject || `Mensagem de ${clinicName}`;
                 let finalHtml = reqHtmlContent;
 
                 if (!finalHtml) {
                     if (type === 'recall') {
-                        // Alteração: Link para a página de agendamento online em vez do WhatsApp
                         const bookingUrl = `https://dentihub.com.br/#/${clinic.slug || clinic.id}`;
-                        
                         finalSubject = `Sentimos sua falta na ${clinicName}`;
                         finalHtml = `
                             <div style="font-family: Helvetica, Arial, sans-serif; padding: 20px; color: #333;">
@@ -240,7 +231,6 @@ Deno.serve(async (req) => {
                             </div>
                         `;
                     } else {
-                        // Fallback genérico melhorado
                         finalHtml = `
                             <div style="font-family: Helvetica, Arial, sans-serif; color: #333; padding: 20px;">
                                 <p>Olá <strong>${r.name || ''}</strong>,</p>
@@ -250,7 +240,6 @@ Deno.serve(async (req) => {
                         `;
                     }
                 }
-
                 await sendEmailViaResend(resendApiKey, [r.email], finalSubject, finalHtml, clinicName, clinicEmail);
                 results.count++;
             }
@@ -259,7 +248,6 @@ Deno.serve(async (req) => {
     }
 
     if (success) {
-        // LOG DE USO
         await supabaseAdmin.from('edge_function_logs').insert({
             function_name: 'send-emails',
             metadata: { type, user_id: user.id, count: results.count },

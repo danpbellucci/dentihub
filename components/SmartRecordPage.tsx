@@ -32,7 +32,7 @@ const SmartRecordPage: React.FC = () => {
   const [tier, setTier] = useState<'free' | 'starter' | 'pro'>('free');
   const [canRecord, setCanRecord] = useState(true);
   const [limitMessage, setLimitMessage] = useState('');
-  const [maxTime, setMaxTime] = useState(1800); 
+  const [maxTime, setMaxTime] = useState(600); // Default 10 min
 
   const [showHelp, setShowHelp] = useState(false);
   const timerRef = useRef<any>(null);
@@ -41,6 +41,13 @@ const SmartRecordPage: React.FC = () => {
     initialize();
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
+
+  // Re-verifica limites quando o dentista muda (para planos Starter/Pro que são por dentista)
+  useEffect(() => {
+      if (clinicId) {
+          checkUsageLimits(clinicId, selectedDentistId);
+      }
+  }, [selectedDentistId, clinicId]);
 
   useEffect(() => {
     if (isRecording && recordingTime >= maxTime) {
@@ -56,28 +63,67 @@ const SmartRecordPage: React.FC = () => {
     const { data: profile } = await supabase.from('user_profiles').select('clinic_id').eq('id', user.id).maybeSingle();
     if (profile) targetClinicId = profile.clinic_id;
     setClinicId(targetClinicId);
-    await Promise.all([fetchAuxData(targetClinicId), checkUsageLimits(targetClinicId)]);
+    await Promise.all([fetchAuxData(targetClinicId), checkUsageLimits(targetClinicId, selectedDentistId)]);
   };
 
-  const checkUsageLimits = async (targetId: string) => {
+  const checkUsageLimits = async (targetId: string, dentistId: string) => {
     const { data: clinic } = await supabase.from('clinics').select('subscription_tier').eq('id', targetId).single();
     const currentTier = clinic?.subscription_tier || 'free';
     setTier(currentTier);
-    if (currentTier === 'free') setMaxTime(300); else setMaxTime(1800);
+    
+    // Configuração de Tempo Máximo
+    if (currentTier === 'free') {
+        setMaxTime(300); // 5 minutos para Free
+    } else {
+        setMaxTime(600); // 10 minutos para Starter e Pro
+    }
 
     let count = 0;
     if (currentTier === 'free') {
+        // Limite Global da Clínica (Total)
         const { count: totalCount } = await supabase.from('clinical_records').select('*', { count: 'exact', head: true }).eq('clinic_id', targetId);
         count = totalCount || 0;
         if (count >= 3) { setCanRecord(false); setLimitMessage("Limite de 3 usos do plano Gratuito atingido."); } 
-        else { setLimitMessage(`Restam ${3 - count} usos no plano Gratuito.`); }
-    } else if (currentTier === 'starter') {
+        else { setCanRecord(true); setLimitMessage(`Restam ${3 - count} usos no plano Gratuito.`); }
+    } 
+    else if (currentTier === 'starter') {
+        // Limite Diário POR DENTISTA (5 usos)
+        if (!dentistId) {
+            setCanRecord(true); // Permite selecionar, mas valida no startRecording se não tiver dentista
+            setLimitMessage("Selecione um dentista para verificar cotas.");
+            return;
+        }
         const today = new Date().toISOString().split('T')[0];
-        const { count: dailyCount } = await supabase.from('clinical_records').select('*', { count: 'exact', head: true }).eq('clinic_id', targetId).gte('created_at', today); 
+        const { count: dailyCount } = await supabase
+            .from('clinical_records')
+            .select('*', { count: 'exact', head: true })
+            .eq('clinic_id', targetId)
+            .eq('dentist_id', dentistId)
+            .gte('created_at', today); 
+        
         count = dailyCount || 0;
-        if (count >= 5) { setCanRecord(false); setLimitMessage("Limite diário de 5 usos atingido."); } 
-        else { setLimitMessage(`Uso diário: ${count}/5.`); }
-    } else { setLimitMessage("Uso ilimitado (Plano Pro)."); }
+        if (count >= 5) { setCanRecord(false); setLimitMessage("Limite diário de 5 usos para este dentista atingido."); } 
+        else { setCanRecord(true); setLimitMessage(`Uso diário (Dentista): ${count}/5.`); }
+    } 
+    else if (currentTier === 'pro') {
+        // Limite Diário POR DENTISTA (10 usos)
+        if (!dentistId) {
+            setCanRecord(true); 
+            setLimitMessage("Selecione um dentista para verificar cotas.");
+            return;
+        }
+        const today = new Date().toISOString().split('T')[0];
+        const { count: dailyCount } = await supabase
+            .from('clinical_records')
+            .select('*', { count: 'exact', head: true })
+            .eq('clinic_id', targetId)
+            .eq('dentist_id', dentistId)
+            .gte('created_at', today); 
+        
+        count = dailyCount || 0;
+        if (count >= 10) { setCanRecord(false); setLimitMessage("Limite diário de 10 usos para este dentista atingido."); }
+        else { setCanRecord(true); setLimitMessage(`Uso diário (Dentista): ${count}/10.`); }
+    }
   };
 
   const fetchAuxData = async (targetId: string) => {
@@ -88,7 +134,10 @@ const SmartRecordPage: React.FC = () => {
   };
 
   const startRecording = async () => {
+    if (!selectedDentistId) { alert("Selecione um dentista responsável."); return; }
+    if (!selectedClientId) { alert("Selecione um paciente."); return; }
     if (!canRecord) { alert("Limite de uso atingido."); return; }
+    
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
@@ -132,8 +181,13 @@ const SmartRecordPage: React.FC = () => {
       reader.onloadend = async () => {
         try {
             const base64Audio = (reader.result as string).split(',')[1];
+            // Passa o ID do dentista para validação no backend
             const { data, error } = await supabase.functions.invoke('process-audio', {
-              body: { audio: base64Audio, mimeType: targetBlob.type || 'audio/webm' }
+              body: { 
+                  audio: base64Audio, 
+                  mimeType: targetBlob.type || 'audio/webm',
+                  dentistId: selectedDentistId 
+              }
             });
             if (error) throw error;
             if (data) {
@@ -167,12 +221,13 @@ const SmartRecordPage: React.FC = () => {
      else {
          alert("Salvo com sucesso!");
          setAudioBlob(null); setTranscription(''); setSoapData({ subjective: '', objective: '', assessment: '', plan: '' }); setIsReviewed(false);
-         checkUsageLimits(clinicId);
+         checkUsageLimits(clinicId, selectedDentistId);
      }
   };
 
   return (
     <div className="max-w-4xl mx-auto pb-10">
+      {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-white flex items-center">
             <Mic className="mr-2 text-primary" /> Prontuário Inteligente (IA)
@@ -180,6 +235,7 @@ const SmartRecordPage: React.FC = () => {
         <button onClick={() => setShowHelp(true)} className="text-gray-400 hover:text-primary transition-colors"><HelpCircle size={20} /></button>
       </div>
 
+      {/* Info Banner */}
       <div className={`border-l-4 p-4 mb-6 rounded-r shadow-sm flex justify-between items-center ${canRecord ? 'bg-blue-900/20 border-blue-500' : 'bg-red-900/20 border-red-500'}`}>
         <div className="flex">
           <div className="flex-shrink-0">{canRecord ? <Info size={20} className="text-blue-400" /> : <Lock size={20} className="text-red-400" />}</div>
@@ -190,6 +246,7 @@ const SmartRecordPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Main Recording Area */}
       <div className="bg-gray-900/60 backdrop-blur-md p-6 rounded-xl shadow-lg border border-white/5 mb-6">
          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
              <div>
@@ -230,6 +287,7 @@ const SmartRecordPage: React.FC = () => {
          </div>
       </div>
 
+      {/* Results Area */}
       {transcription && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in-up">
               <div className="bg-gray-900/60 backdrop-blur-md p-6 rounded-xl shadow-lg border border-white/5">

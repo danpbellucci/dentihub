@@ -5,9 +5,10 @@ import { Client, UserProfile } from '../types';
 import { 
   Plus, Edit2, Trash2, Upload, Search, X, Loader2, User, 
   Phone, Mail, MapPin, FileText, Download, HelpCircle, 
-  FileSpreadsheet, ClipboardList, Folder, Calendar
+  ClipboardList, Folder, Calendar, Send, Printer
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { jsPDF } from "jspdf";
 import Toast, { ToastType } from './Toast';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { validateCPF } from '../utils/validators';
@@ -21,7 +22,7 @@ const ClientsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   
-  // Modal State
+  // Modal State - Client
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [formData, setFormData] = useState({
@@ -33,6 +34,16 @@ const ClientsPage: React.FC = () => {
     birth_date: '',
     clinical_notes: ''
   });
+
+  // Modal State - Prescription
+  const [prescriptionModalOpen, setPrescriptionModalOpen] = useState(false);
+  const [selectedClientForPrescription, setSelectedClientForPrescription] = useState<Client | null>(null);
+  const [prescriptionText, setPrescriptionText] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
+
+  // Modal State - Missing Email
+  const [missingEmailModalOpen, setMissingEmailModalOpen] = useState(false);
+  const [newEmailAddress, setNewEmailAddress] = useState('');
 
   // Delete Modal
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -104,10 +115,144 @@ const ClientsPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  // --- PRESCRIPTION LOGIC ---
+
+  const handleOpenPrescription = (client: Client) => {
+      setSelectedClientForPrescription(client);
+      setPrescriptionText("Uso Oral:\n\n1. \n2. ");
+      setPrescriptionModalOpen(true);
+  };
+
+  const generatePDFBase64 = (): string => {
+      if (!selectedClientForPrescription) return '';
+      
+      const doc = new jsPDF();
+      doc.setFontSize(18);
+      doc.setTextColor(40, 40, 40);
+      doc.text("RECEITA / ORIENTAÇÃO", 105, 20, { align: "center" });
+      
+      doc.setFontSize(12);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, 150, 40);
+
+      doc.setLineWidth(0.5);
+      doc.line(20, 50, 190, 50);
+      
+      doc.setFontSize(14);
+      doc.setTextColor(0, 0, 0);
+      doc.text(`Paciente: ${selectedClientForPrescription.name}`, 20, 60);
+      
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
+      
+      const splitText = doc.splitTextToSize(prescriptionText, 170);
+      doc.text(splitText, 20, 80);
+
+      doc.setFontSize(10);
+      doc.setTextColor(150, 150, 150);
+      doc.text("Documento gerado eletronicamente via DentiHub.", 105, 280, { align: "center" });
+
+      return doc.output('datauristring').split(',')[1];
+  };
+
+  const handleDownloadPDF = () => {
+      if (!selectedClientForPrescription) return;
+      const doc = new jsPDF();
+      
+      doc.setFontSize(18);
+      doc.text("RECEITA", 105, 20, { align: "center" });
+      doc.setFontSize(12);
+      doc.text(`Paciente: ${selectedClientForPrescription.name}`, 20, 40);
+      doc.text(doc.splitTextToSize(prescriptionText, 170), 20, 60);
+      
+      doc.save(`Receita_${selectedClientForPrescription.name}.pdf`);
+  };
+
+  const handleSendEmail = async () => {
+      if (!selectedClientForPrescription) return;
+      
+      // Se não tiver email, abre modal para cadastrar
+      if (!selectedClientForPrescription.email) {
+          setNewEmailAddress('');
+          setMissingEmailModalOpen(true);
+          return;
+      }
+
+      setSendingEmail(true);
+      try {
+          const pdfBase64 = generatePDFBase64();
+          
+          const { data, error } = await supabase.functions.invoke('send-emails', {
+              body: {
+                  type: 'prescription',
+                  recipients: [{ name: selectedClientForPrescription.name, email: selectedClientForPrescription.email }],
+                  client: { name: selectedClientForPrescription.name, email: selectedClientForPrescription.email },
+                  attachments: [
+                      {
+                          filename: `Receita_${selectedClientForPrescription.name.replace(/\s+/g, '_')}.pdf`,
+                          content: pdfBase64
+                      }
+                  ]
+              }
+          });
+
+          if (error) throw error;
+          if (data && data.error) throw new Error(data.error);
+
+          setToast({ message: `Receita enviada para ${selectedClientForPrescription.email}`, type: 'success' });
+          setPrescriptionModalOpen(false);
+
+      } catch (err: any) {
+          console.error(err);
+          setToast({ message: "Erro ao enviar: " + err.message, type: 'error' });
+      } finally {
+          setSendingEmail(false);
+      }
+  };
+
+  const handleSaveMissingEmail = async () => {
+      if (!newEmailAddress || !selectedClientForPrescription) return;
+      setProcessing(true);
+      try {
+          const { error } = await supabase.from('clients').update({ email: newEmailAddress }).eq('id', selectedClientForPrescription.id);
+          if (error) throw error;
+          
+          // Atualiza lista local
+          const updatedClient = { ...selectedClientForPrescription, email: newEmailAddress };
+          setClients(prev => prev.map(c => c.id === selectedClientForPrescription.id ? updatedClient : c));
+          setSelectedClientForPrescription(updatedClient);
+          
+          setMissingEmailModalOpen(false);
+          setToast({ message: "E-mail salvo! Enviando receita...", type: 'info' });
+          
+          // Tenta enviar novamente agora que tem email
+          setProcessing(false); // Libera processamento antes de chamar o envio
+          
+          // Pequeno delay para garantir atualização de estado
+          setTimeout(() => handleSendEmail(), 500);
+
+      } catch (err: any) {
+          setToast({ message: "Erro ao salvar email: " + err.message, type: 'error' });
+          setProcessing(false);
+      }
+  };
+
+  // --- END PRESCRIPTION LOGIC ---
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clinicId) return;
     
+    // Validação de campos obrigatórios
+    if (!formData.cpf) {
+        setToast({ message: "O CPF é obrigatório.", type: 'error' });
+        return;
+    }
+    if (!formData.birth_date) {
+        setToast({ message: "A Data de Nascimento é obrigatória.", type: 'error' });
+        return;
+    }
+
     if (formData.cpf && !validateCPF(formData.cpf)) {
         setToast({ message: "CPF inválido.", type: 'error' });
         return;
@@ -163,7 +308,6 @@ const ClientsPage: React.FC = () => {
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-      // (Mantém a lógica de upload existente)
       if (!e.target.files || e.target.files.length === 0) return;
       if (!clinicId) { setToast({message: "Erro de identificação da clínica", type: 'error'}); return; }
 
@@ -353,7 +497,11 @@ const ClientsPage: React.FC = () => {
                         
                         <div className="flex items-center gap-4 text-gray-500 self-end sm:self-center">
                             {/* Actions Group */}
-                            <button className="flex flex-col items-center group" title="Receita">
+                            <button 
+                                className="flex flex-col items-center group" 
+                                title="Receita"
+                                onClick={() => handleOpenPrescription(client)}
+                            >
                                 <div className="p-2 rounded-lg bg-gray-800/50 border border-white/5 group-hover:bg-blue-500/10 text-gray-400 group-hover:text-blue-400 transition">
                                     <FileText size={18} />
                                 </div>
@@ -401,7 +549,7 @@ const ClientsPage: React.FC = () => {
         )}
       </div>
 
-      {/* MODAL FORM */}
+      {/* MODAL FORM (Novo/Editar Paciente) */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
           <div className="bg-gray-900 border border-white/10 p-6 rounded-lg shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-fade-in-up custom-scrollbar">
@@ -426,8 +574,8 @@ const ClientsPage: React.FC = () => {
                         }} maxLength={15} placeholder="(00) 00000-0000" />
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1">CPF</label>
-                        <input className="w-full border border-gray-700 bg-gray-800 text-white rounded p-2 focus:ring-primary outline-none" value={formData.cpf} onChange={e => {
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1">CPF *</label>
+                        <input required className="w-full border border-gray-700 bg-gray-800 text-white rounded p-2 focus:ring-primary outline-none" value={formData.cpf} onChange={e => {
                             let v = e.target.value.replace(/\D/g, '');
                             if (v.length > 11) v = v.slice(0, 11);
                             v = v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
@@ -441,8 +589,8 @@ const ClientsPage: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Data Nascimento</label>
-                        <input type="date" className="w-full border border-gray-700 bg-gray-800 text-white rounded p-2 focus:ring-primary outline-none" value={formData.birth_date} onChange={e => setFormData({...formData, birth_date: e.target.value})} />
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Data Nascimento *</label>
+                        <input required type="date" className="w-full border border-gray-700 bg-gray-800 text-white rounded p-2 focus:ring-primary outline-none" value={formData.birth_date} onChange={e => setFormData({...formData, birth_date: e.target.value})} />
                     </div>
                 </div>
                 <div>
@@ -462,6 +610,80 @@ const ClientsPage: React.FC = () => {
                 </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* MODAL DE RECEITA */}
+      {prescriptionModalOpen && selectedClientForPrescription && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+            <div className="bg-gray-900 border border-white/10 p-6 rounded-lg shadow-2xl w-full max-w-2xl animate-fade-in-up">
+                <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <FileText className="text-primary"/> Nova Receita / Documento
+                    </h2>
+                    <button onClick={() => setPrescriptionModalOpen(false)} className="text-gray-400 hover:text-white"><X size={24}/></button>
+                </div>
+                
+                <div className="mb-4 text-sm text-gray-400">
+                    Paciente: <strong className="text-white">{selectedClientForPrescription.name}</strong>
+                </div>
+
+                <textarea 
+                    className="w-full h-64 bg-gray-800 border border-gray-700 text-white p-4 rounded-lg focus:ring-primary focus:border-primary outline-none resize-none font-mono text-sm leading-relaxed"
+                    value={prescriptionText}
+                    onChange={(e) => setPrescriptionText(e.target.value)}
+                    placeholder="Digite a prescrição ou atestado aqui..."
+                />
+
+                <div className="flex justify-end gap-3 mt-6">
+                    <button onClick={() => setPrescriptionModalOpen(false)} className="px-4 py-2 text-gray-400 hover:text-white font-bold transition">Cancelar</button>
+                    
+                    <button onClick={handleDownloadPDF} className="px-4 py-2 border border-white/10 bg-gray-800 text-white rounded-lg font-bold hover:bg-gray-700 transition flex items-center">
+                        <Printer size={18} className="mr-2"/> Imprimir / PDF
+                    </button>
+                    
+                    <button 
+                        onClick={handleSendEmail} 
+                        disabled={sendingEmail}
+                        className="px-6 py-2 bg-primary text-white rounded-lg font-bold hover:bg-sky-600 transition flex items-center shadow-lg disabled:opacity-50"
+                    >
+                        {sendingEmail ? <Loader2 className="animate-spin mr-2" size={18}/> : <Send size={18} className="mr-2"/>} 
+                        Enviar por E-mail
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* MODAL DE EMAIL FALTANTE */}
+      {missingEmailModalOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+            <div className="bg-gray-900 border border-white/10 p-6 rounded-lg shadow-xl w-full max-w-sm text-center">
+                <div className="bg-yellow-900/20 p-3 rounded-full inline-block mb-4">
+                    <Mail className="text-yellow-500" size={32} />
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2">E-mail não cadastrado</h3>
+                <p className="text-gray-400 mb-6 text-sm">
+                    Para enviar a receita, precisamos do e-mail de <strong>{selectedClientForPrescription?.name}</strong>.
+                </p>
+                <div className="text-left mb-6">
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">E-mail do Paciente</label>
+                    <input 
+                        type="email" 
+                        className="w-full bg-gray-800 border border-gray-700 text-white rounded p-2 focus:ring-primary outline-none"
+                        value={newEmailAddress}
+                        onChange={(e) => setNewEmailAddress(e.target.value)}
+                        autoFocus
+                        placeholder="exemplo@email.com"
+                    />
+                </div>
+                <div className="flex gap-3">
+                    <button onClick={() => setMissingEmailModalOpen(false)} className="flex-1 px-4 py-2 text-gray-400 hover:text-white font-bold transition">Cancelar</button>
+                    <button onClick={handleSaveMissingEmail} disabled={processing} className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-sky-600 font-bold transition shadow-lg flex justify-center items-center">
+                        {processing ? <Loader2 className="animate-spin" size={18}/> : 'Salvar e Enviar'}
+                    </button>
+                </div>
+            </div>
         </div>
       )}
 
@@ -508,6 +730,7 @@ const ClientsPage: React.FC = () => {
                 <p>Aqui você centraliza o cadastro dos seus pacientes.</p>
                 <ul className="list-disc pl-5 space-y-2">
                    <li><strong>Ações Rápidas:</strong> Use os botões ao lado do nome para emitir receitas, ver o prontuário ou acessar arquivos anexos.</li>
+                   <li><strong>Receita Digital:</strong> Clique no ícone de texto para criar uma receita, gerar PDF ou enviar por e-mail direto para o paciente.</li>
                    <li><strong>Importar Excel:</strong> Traga sua base de dados antiga. A planilha deve ter colunas na ordem: Nome, Email, WhatsApp, CPF, Data Nasc (DD/MM/AAAA), Endereço, Obs.</li>
                    <li><strong>Busca:</strong> Localize rapidamente por nome ou CPF.</li>
                 </ul>

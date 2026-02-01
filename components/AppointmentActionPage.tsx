@@ -43,7 +43,8 @@ const AppointmentActionPage: React.FC = () => {
           throw new Error("Agendamento não encontrado ou link expirado.");
       }
 
-      const { clinic_name, clinic_slug, client_id, clinic_id } = appointmentData;
+      // Cast to any to access properties returned by the RPC function
+      const { clinic_name, clinic_slug, client_id, clinic_id } = appointmentData as any;
       const displayClinicName = clinic_name || 'Clínica Odontológica';
 
       // 2. Lógica de Reagendamento (Redirecionamento)
