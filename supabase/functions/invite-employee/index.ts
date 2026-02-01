@@ -69,9 +69,12 @@ Deno.serve(async (req) => {
       throw new Error("Payload inválido.");
     }
 
-    const { email, clinicName, role } = body;
+    const { email: rawEmail, clinicName, role } = body;
 
-    if (!email) throw new Error("Email obrigatório.");
+    if (!rawEmail) throw new Error("Email obrigatório.");
+    
+    // Normalizar email
+    const email = rawEmail.toLowerCase().trim();
 
     const inviteRole = role || 'employee';
 

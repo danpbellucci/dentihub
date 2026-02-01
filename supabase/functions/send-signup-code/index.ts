@@ -36,16 +36,16 @@ Deno.serve(async (req) => {
         throw new Error("Corpo da requisição inválido.");
     }
 
-    const { email, name } = body;
+    const { email: rawEmail, name } = body;
 
-    if (!email) throw new Error("E-mail é obrigatório.");
+    if (!rawEmail) throw new Error("E-mail é obrigatório.");
+    const email = rawEmail.toLowerCase().trim();
 
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-    // NOTA: Removemos a verificação prévia em 'user_profiles' aqui.
-    // Motivo: Usuários convidados (funcionários/dentistas) já possuem registro em 'user_profiles',
-    // mas não possuem conta em 'auth.users'. Bloqueá-los aqui impede que criem sua conta.
-    // A validação real de "Conta Existente" ocorrerá no 'complete-signup' via Supabase Auth.
+    // NOTA: NÃO verificamos se o usuário existe em 'user_profiles' aqui.
+    // Isso permite que usuários convidados (que já têm profile mas não auth) recebam o código.
+    // A validação de conta já existente (Auth) ocorrerá naturalmente no complete-signup.
 
     // 1. Gerar Código de 6 dígitos
     const code = Math.floor(100000 + Math.random() * 900000).toString();

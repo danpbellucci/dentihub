@@ -232,7 +232,7 @@ const SettingsPage: React.FC = () => {
                         <label className="block text-sm font-bold text-gray-400 mb-2">Convidar membro</label>
                         <form onSubmit={handleInvite} className="flex flex-col sm:flex-row gap-3 items-end">
                             <div className="flex-1 w-full"><label className="text-xs text-gray-500 mb-1 block">E-mail</label><input type="email" required className="w-full bg-gray-800 border border-gray-700 rounded p-2.5 text-white focus:border-primary outline-none" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} /></div>
-                            <div className="w-full sm:w-48"><label className="text-xs text-gray-500 mb-1 block">Perfil</label><select className="w-full bg-gray-800 border border-gray-700 rounded p-2.5 text-white" value={inviteRole} onChange={e => setInviteRole(e.target.value)}>{contextProfile?.role === 'administrator' && <option value="administrator">Administrador</option>}{availableRoles.filter(r => r.name !== 'administrator').map(role => <option key={role.name} value={role.name}>{role.label}</option>)}</select></div>
+                            <div className="w-full sm:w-48"><label className="text-xs text-gray-500 mb-1 block">Perfil</label><select className="w-full bg-gray-800 border border-gray-700 rounded p-2.5 text-white" value={inviteRole} onChange={e => setInviteRole(e.target.value)}><option value="administrator">Administrador</option>{availableRoles.filter(r => r.name !== 'administrator').map(role => <option key={role.name} value={role.name}>{role.label}</option>)}</select></div>
                             <button type="submit" disabled={inviting} className="w-full sm:w-auto bg-primary text-white px-6 py-2.5 rounded font-bold hover:bg-sky-600 flex items-center justify-center shadow-md disabled:opacity-50">{inviting ? <Loader2 className="animate-spin mr-2" size={18} /> : <Send className="mr-2" size={18} />} Convidar</button>
                         </form>
                     </div>
@@ -243,11 +243,11 @@ const SettingsPage: React.FC = () => {
                                 <div key={member.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-white/10 rounded-lg hover:bg-gray-800/50 transition bg-gray-800/30 gap-4">
                                     <div className="flex items-center gap-4"><div className="h-10 w-10 rounded-full bg-gray-700 flex items-center justify-center text-gray-400 font-bold">{member.email?.charAt(0).toUpperCase()}</div><div><p className="text-sm font-bold text-white">{member.email}</p></div></div>
                                     <div className="flex items-center gap-3">
-                                        <select className={`bg-gray-900 border border-gray-700 rounded p-1.5 text-sm text-white ${contextProfile?.role !== 'administrator' ? 'opacity-50 cursor-not-allowed' : ''}`} value={member.role} disabled={member.id === contextProfile?.id || contextProfile?.role !== 'administrator'} onChange={(e) => handleChangeMemberRole(member.id, e.target.value)}>
+                                        <select className="bg-gray-900 border border-gray-700 rounded p-1.5 text-sm text-white" value={member.role} disabled={member.id === contextProfile?.id} onChange={(e) => handleChangeMemberRole(member.id, e.target.value)}>
                                             <option value="administrator">Administrador</option>
                                             {availableRoles.filter(r => r.name !== 'administrator').map(r => <option key={r.name} value={r.name}>{r.label}</option>)}
                                         </select>
-                                        {contextProfile?.id !== member.id && contextProfile?.role === 'administrator' && <button onClick={() => setMemberToDelete(member)} className="text-gray-500 hover:text-red-500 transition p-2 bg-gray-800 rounded-full"><Trash2 size={16} /></button>}
+                                        {contextProfile?.id !== member.id && <button onClick={() => setMemberToDelete(member)} className="text-gray-500 hover:text-red-500 transition p-2 bg-gray-800 rounded-full"><Trash2 size={16} /></button>}
                                     </div>
                                 </div>
                             ))}
@@ -321,15 +321,14 @@ const SettingsPage: React.FC = () => {
                             <div><button type="submit" disabled={saving} className="bg-primary text-white px-6 py-2.5 rounded font-bold hover:bg-sky-600 transition flex items-center shadow-md disabled:opacity-50">{saving ? <Loader2 className="animate-spin mr-2" size={18} /> : <CheckCircle className="mr-2" size={18} />}Atualizar Senha</button></div>
                         </form>
                     </div>
-                    {contextProfile?.role === 'administrator' && (
-                        <div className="border-t border-white/10 pt-8">
-                            <h3 className="text-lg font-bold text-red-500 mb-4 flex items-center"><AlertTriangle className="mr-2" size={20}/> Zona de Perigo</h3>
-                            <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                <div><h4 className="font-bold text-red-400">Excluir Conta</h4><p className="text-sm text-red-300 mt-1 max-w-lg">Essa ação é irreversível.</p></div>
-                                <button onClick={() => { setDeleteConfirmed(false); setShowDeleteAccountModal(true); }} className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 transition">Excluir Conta</button>
-                            </div>
+                    
+                    <div className="border-t border-white/10 pt-8">
+                        <h3 className="text-lg font-bold text-red-500 mb-4 flex items-center"><AlertTriangle className="mr-2" size={20}/> Zona de Perigo</h3>
+                        <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <div><h4 className="font-bold text-red-400">Excluir Conta</h4><p className="text-sm text-red-300 mt-1 max-w-lg">Essa ação é irreversível.</p></div>
+                            <button onClick={() => { setDeleteConfirmed(false); setShowDeleteAccountModal(true); }} className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 transition">Excluir Conta</button>
                         </div>
-                    )}
+                    </div>
                 </div>
             )}
 

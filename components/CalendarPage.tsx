@@ -102,7 +102,7 @@ const CalendarPage: React.FC = () => {
   const [showFinanceAutoModal, setShowFinanceAutoModal] = useState(false);
 
   // Permissions
-  const [canDelete, setCanDelete] = useState(true);
+  const [canDelete, setCanDelete] = useState(true); // Default true: quem acessa a página, pode deletar.
   const [isDentistUser, setIsDentistUser] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
 
@@ -138,12 +138,15 @@ const CalendarPage: React.FC = () => {
     
     if (profile) {
         targetClinicId = profile.clinic_id;
-        if (profile.role === 'employee') {
-            setCanDelete(false);
-        }
+        
+        // Se o usuário está aqui, ele tem acesso ao módulo 'calendar' (validado no Layout).
+        // Portanto, ele tem permissão total de CRUD.
+        setCanDelete(true); 
+        
+        // Mantemos apenas a lógica de filtro automático se o papel for explicitamente 'dentist',
+        // para facilitar a UX deles verem apenas a própria agenda por padrão.
         if (profile.role === 'dentist') {
             setIsDentistUser(true);
-            // Buscar o ID do dentista na tabela 'dentists' correspondente ao email do usuário logado
             const { data: myDentistRecord } = await supabase
                 .from('dentists')
                 .select('id')

@@ -14,7 +14,7 @@ const FinancePage: React.FC = () => {
   const [currentTier, setCurrentTier] = useState<string>('free');
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
-  const [canDelete, setCanDelete] = useState(true);
+  const [canDelete, setCanDelete] = useState(true); // Default true: Acesso ao módulo = Permissão total
   const [showHelp, setShowHelp] = useState(false);
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
@@ -46,7 +46,9 @@ const FinancePage: React.FC = () => {
     const { data: profile } = await supabase.from('user_profiles').select('clinic_id, role').eq('id', user.id).maybeSingle();
     if (profile) {
         targetClinicId = profile.clinic_id;
-        if (profile.role === 'employee') setCanDelete(false);
+        // Se o usuário está aqui, ele tem acesso ao módulo 'finance'.
+        // Portanto, ele tem permissão total de CRUD.
+        setCanDelete(true);
     }
     setClinicId(targetClinicId);
     await Promise.all([fetchTransactions(targetClinicId), checkSubscription(targetClinicId)]);
