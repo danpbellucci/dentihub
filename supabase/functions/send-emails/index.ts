@@ -111,8 +111,8 @@ Deno.serve(async (req) => {
                 
                 ${appointment.id && appointment.id !== 'pending' ? `
                 <div style="margin-top: 20px;">
-                    <a href="${body.origin}/appointment-action?id=${appointment.id}&action=confirm" style="background-color: #22c55e; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-right: 10px;">Confirmar Presença</a>
-                    <a href="${body.origin}/appointment-action?id=${appointment.id}&action=cancel" style="background-color: #ef4444; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Cancelar</a>
+                    <a href="${body.origin}/#/appointment-action?id=${appointment.id}&action=confirm" style="background-color: #22c55e; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-right: 10px;">Confirmar Presença</a>
+                    <a href="${body.origin}/#/appointment-action?id=${appointment.id}&action=cancel" style="background-color: #ef4444; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Cancelar</a>
                 </div>
                 ` : ''}
             </div>
@@ -123,21 +123,37 @@ Deno.serve(async (req) => {
     // 4. CONVITE DE DENTISTA / FUNCIONÁRIO
     else if (type === 'invite_dentist' || type === 'invite_employee') {
         const isDentist = type === 'invite_dentist';
-        const roleLabel = isDentist ? 'Dentista' : 'Membro da Equipe';
+        const roleLabel = isDentist ? 'Dentista' : (body.roleLabel || 'Funcionário');
         
         for (const r of recipients) {
             if (r.email) {
-                const subject = `Convite: Junte-se à ${clinicName}`;
+                const subject = `Convite: Junte-se à equipe da ${clinicName}`;
                 const html = `
-                    <div style="font-family: Helvetica, Arial, sans-serif; padding: 20px; color: #333; border: 1px solid #eee; border-radius: 8px;">
-                        <h2 style="color: #0ea5e9; text-align: center;">Bem-vindo ao Time!</h2>
-                        <p>Olá, <strong>${r.name || 'Colega'}</strong>.</p>
-                        <p>Você foi convidado(a) para acessar o sistema da <strong>${clinicName}</strong> como ${roleLabel}.</p>
-                        <p>Para começar, acesse o link abaixo e crie sua senha:</p>
-                        <div style="text-align: center; margin: 30px 0;">
-                            ${generateButton('Acessar Sistema', 'https://dentihub.com.br/#/auth?view=forgot', '#0ea5e9')}
+                    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+                        <!-- Header -->
+                        <div style="background-color: #0ea5e9; padding: 30px 20px; text-align: center;">
+                           <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold;">${clinicName}</h1>
                         </div>
-                        <p style="font-size: 12px; color: #666; text-align: center;">Dica: Use a opção "Esqueceu a senha" para definir sua primeira senha.</p>
+
+                        <!-- Body -->
+                        <div style="padding: 40px 30px; color: #334155; line-height: 1.6; text-align: center;">
+                           <h2 style="color: #0f172a; margin-top: 0;">Você foi convidado(a)!</h2>
+                           
+                           <p style="margin-bottom: 20px;">Olá, <strong>${r.name || 'Colega'}</strong>.</p>
+                           
+                           <p>A clínica <strong>${clinicName}</strong> convidou você para acessar a plataforma DentiHub com o perfil de <strong>${roleLabel}</strong>.</p>
+                           
+                           <p>Para começar, clique no botão abaixo e crie sua conta:</p>
+
+                           <div style="margin: 35px 0;">
+                              ${generateButton('Crie sua conta', 'https://dentihub.com.br/#/auth?view=forgot', '#0ea5e9')}
+                           </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div style="background-color: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+                           <p style="margin: 0;">Enviado por DentiHub para ${clinicName}</p>
+                        </div>
                     </div>
                 `;
                 await sendEmailViaResend(resendApiKey, [r.email], subject, html, clinicName, clinicEmail);

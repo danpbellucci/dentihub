@@ -9,7 +9,7 @@ declare const Deno: {
 };
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': 'https://dentihub.com.br', // Cron jobs não tem origin browser, mas definimos o padrão
+  'Access-Control-Allow-Origin': 'https://dentihub.com.br',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
@@ -64,6 +64,8 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const now = new Date();
+    // Define o intervalo para buscar agendamentos de amanhã (entre 23h e 48h a partir de agora, ajustável conforme lógica de negócio)
+    // Aqui assumimos que o job roda 1x por hora e pega o que está para acontecer em ~24h
     const rangeStart = new Date(now.getTime() + (23 * 60 * 60 * 1000));
     const rangeEnd = new Date(now.getTime() + (24 * 60 * 60 * 1000));
 
@@ -98,6 +100,7 @@ Deno.serve(async (req) => {
                 continue;
             }
 
+            // Verifica se já enviou lembrete para este agendamento
             const { data: existingComm } = await supabase
                 .from('communications')
                 .select('id')
@@ -111,11 +114,16 @@ Deno.serve(async (req) => {
             }
 
             const clinicName = appt.clinic?.name || "Clínica Odontológica";
-            const clinicWhatsapp = appt.clinic?.whatsapp || "";
             const patientName = appt.client.name.split(' ')[0];
             const time = formatTime(appt.start_time);
             const date = formatDate(appt.start_time);
             const dentistName = appt.dentist?.name || "Dentista";
+
+            // CORREÇÃO: Usa domínio explícito com HashRouter para evitar 404
+            const domain = 'https://dentihub.com.br';
+            const confirmLink = `${domain}/#/appointment-action?id=${appt.id}&action=confirm`;
+            const cancelLink = `${domain}/#/appointment-action?id=${appt.id}&action=cancel`;
+            const rescheduleLink = `${domain}/#/appointment-action?id=${appt.id}&action=reschedule`;
 
             const htmlContent = `
                 <div style="font-family: Helvetica, Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 8px; overflow: hidden;">
@@ -131,8 +139,27 @@ Deno.serve(async (req) => {
                             <p style="margin: 5px 0;"><strong>👨‍⚕️ Profissional:</strong> ${dentistName}</p>
                             <p style="margin: 5px 0;"><strong>🦷 Procedimento:</strong> ${appt.service_name}</p>
                         </div>
-                        <p>Caso não possa comparecer, por favor, avise-nos com antecedência.</p>
-                        ${clinicWhatsapp ? `<p style="text-align: center; margin-top: 30px;"><a href="https://wa.me/55${clinicWhatsapp.replace(/\D/g,'')}" style="background-color: #22c55e; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Confirmar no WhatsApp</a></p>` : ''}
+                        
+                        <p style="margin-bottom: 15px; text-align: center;">Por favor, selecione uma opção abaixo:</p>
+                        
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="${confirmLink}" target="_blank" style="background-color: #22c55e; color: white; padding: 14px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block; margin-bottom: 15px;">
+                                ✅ Confirmar Presença
+                            </a>
+                            <div style="margin-top: 10px;">
+                                <a href="${rescheduleLink}" target="_blank" style="background-color: #3b82f6; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 5px; display: inline-block; font-size: 14px;">
+                                    🔄 Reagendar
+                                </a>
+                                <a href="${cancelLink}" target="_blank" style="background-color: #ef4444; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 5px; display: inline-block; font-size: 14px;">
+                                    ❌ Cancelar
+                                </a>
+                            </div>
+                        </div>
+
+                        <p style="font-size: 12px; color: #666; text-align: center; margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
+                            ${appt.clinic?.address || ''}<br/>
+                            <a href="${domain}" style="color: #999; text-decoration: none;">Gestão via DentiHub</a>
+                        </p>
                     </div>
                 </div>
             `;
@@ -151,6 +178,7 @@ Deno.serve(async (req) => {
                 sentCount++;
             } catch (err) {
                 errorsCount++;
+                console.error("Erro ao enviar email individual:", err);
             }
         }
     }
@@ -168,6 +196,7 @@ Deno.serve(async (req) => {
     });
 
   } catch (error: any) {
+    console.error("Erro geral na função:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,

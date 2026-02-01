@@ -135,7 +135,19 @@ Deno.serve(async (req) => {
         throw new Error("Erro ao registrar no banco.");
     }
 
-    // Envio de Email
+    // Tradução amigável da role
+    let roleDisplay = 'Funcionário';
+    if (inviteRole === 'dentist') roleDisplay = 'Dentista';
+    if (inviteRole === 'administrator') roleDisplay = 'Administrador';
+
+    // Tenta buscar label personalizado se não for padrão
+    if (!['dentist', 'administrator', 'employee'].includes(inviteRole)) {
+         const { data: roleData } = await supabaseAdmin.from('clinic_roles').select('label').eq('name', inviteRole).eq('clinic_id', clinicId).maybeSingle();
+         if (roleData) roleDisplay = roleData.label;
+         else roleDisplay = inviteRole; 
+    }
+
+    // Envio de Email com Layout Novo
     const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -145,11 +157,36 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
             from: `${finalClinicName} <contato@dentihub.com.br>`,
             to: [email],
-            subject: `Convite: ${finalClinicName}`,
+            subject: `Convite: Junte-se à equipe da ${finalClinicName}`,
             html: `
-                <p>Olá,</p>
-                <p>Você foi convidado para a equipe de <strong>${finalClinicName}</strong>.</p>
-                <p><a href="https://dentihub.com.br/#/auth">Clique aqui para acessar ou criar sua conta</a></p>
+                <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+                    <!-- Header -->
+                    <div style="background-color: #0ea5e9; padding: 30px 20px; text-align: center;">
+                       <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold;">${finalClinicName}</h1>
+                    </div>
+
+                    <!-- Body -->
+                    <div style="padding: 40px 30px; color: #334155; line-height: 1.6; text-align: center;">
+                       <h2 style="color: #0f172a; margin-top: 0;">Você foi convidado(a)!</h2>
+                       
+                       <p style="margin-bottom: 20px;">Olá!</p>
+                       
+                       <p>A clínica <strong>${finalClinicName}</strong> convidou você para acessar a plataforma DentiHub com o perfil de <strong>${roleDisplay}</strong>.</p>
+                       
+                       <p>Para começar, clique no botão abaixo e crie sua conta:</p>
+
+                       <div style="margin: 35px 0;">
+                          <a href="https://dentihub.com.br/#/auth?view=forgot" target="_blank" style="background-color: #0ea5e9; color: #ffffff; padding: 12px 24px; font-family: Helvetica, Arial, sans-serif; font-size: 14px; font-weight: bold; text-decoration: none; border-radius: 6px; display: inline-block;">
+                            Crie sua conta
+                          </a>
+                       </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div style="background-color: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+                       <p style="margin: 0;">Enviado por DentiHub para ${finalClinicName}</p>
+                    </div>
+                </div>
             `,
             reply_to: 'contato@dentihub.com.br'
         })

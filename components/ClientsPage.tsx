@@ -6,9 +6,9 @@ import * as XLSX from 'xlsx';
 import { 
   Plus, Search, Edit2, Trash2, Upload, Loader2, X, User, 
   HelpCircle, ClipboardList, ScrollText, Calendar, Download, 
-  FileText, Save, AlertTriangle
+  FileText, Save, AlertTriangle, FolderOpen, File as FileIcon, Image as ImageIcon, Lock
 } from 'lucide-react';
-import { format, isAfter, parseISO, isValid } from 'date-fns';
+import { format, isAfter, parseISO } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import Toast, { ToastType } from './Toast';
 import { validateCPF } from '../utils/validators';
@@ -17,6 +17,23 @@ import { useLocation, useNavigate } from 'react-router-dom';
 interface ExtendedClient extends Client {
   next_return_date?: string | null;
   appointments?: { return_date: string | null }[];
+}
+
+interface StorageFile {
+  name: string;
+  id: string;
+  updated_at: string;
+  created_at: string;
+  last_accessed_at: string;
+  metadata: {
+    eTag: string;
+    size: number;
+    mimetype: string;
+    cacheControl: string;
+    lastModified: string;
+    contentLength: number;
+    httpStatusCode: number;
+  };
 }
 
 const ClientsPage: React.FC = () => {
@@ -57,7 +74,14 @@ const ClientsPage: React.FC = () => {
   const [prescriptionText, setPrescriptionText] = useState('');
   const [selectedDentistForPrescription, setSelectedDentistForPrescription] = useState('');
 
+  // Files Modal State
+  const [isFilesModalOpen, setIsFilesModalOpen] = useState(false);
+  const [selectedClientForFiles, setSelectedClientForFiles] = useState<Client | null>(null);
+  const [clientFiles, setClientFiles] = useState<StorageFile[]>([]);
+  const [uploadingFile, setUploadingFile] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const clientFileInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -102,6 +126,7 @@ const ClientsPage: React.FC = () => {
   };
 
   const fetchClients = async (id: string) => {
+    // Busca clientes e appointments para calcular data de retorno
     const { data } = await supabase.from('clients').select('*, appointments(return_date)').eq('clinic_id', id).order('name');
     
     if (data) {
@@ -156,6 +181,110 @@ const ClientsPage: React.FC = () => {
      } catch (err: any) {
          setToast({ message: "Erro ao salvar: " + err.message, type: 'error' });
      } finally { setSaving(false); }
+  };
+
+  // --- FILES LOGIC ---
+  const fetchFiles = async (clientId: string) => {
+      if (!clinicId) return;
+      const { data, error } = await supabase.storage.from('patient-files').list(`${clinicId}/${clientId}`);
+      if (error) {
+          console.error("Erro ao listar arquivos:", error);
+          setToast({ message: "Erro ao carregar arquivos.", type: 'error' });
+      } else {
+          setClientFiles(data as StorageFile[]);
+      }
+  };
+
+  const handleOpenFilesModal = (client: Client) => {
+      setSelectedClientForFiles(client);
+      setClientFiles([]);
+      setIsFilesModalOpen(true);
+      fetchFiles(client.id);
+  };
+
+  const handleClientFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!e.target.files || e.target.files.length === 0 || !selectedClientForFiles || !clinicId) return;
+      
+      // 1. Verificação de Plano PRO
+      if (currentTier !== 'pro') {
+          setToast({ message: "O upload de arquivos é exclusivo do plano Pro. Faça upgrade para desbloquear.", type: 'warning' });
+          if (clientFileInputRef.current) clientFileInputRef.current.value = '';
+          return;
+      }
+
+      const file = e.target.files[0];
+      const fileSizeLimit = 100 * 1024 * 1024; // 100MB Total Limit Check Logic Below
+      
+      // 2. Calcular uso atual deste paciente
+      const currentUsage = clientFiles.reduce((acc, f) => acc + (f.metadata?.size || 0), 0);
+      const newTotal = currentUsage + file.size;
+
+      if (newTotal > fileSizeLimit) {
+          setToast({ 
+              message: `Limite de armazenamento excedido para este paciente (Máx: 100MB). Uso atual: ${(currentUsage/1024/1024).toFixed(1)}MB`, 
+              type: 'warning' 
+          });
+          if (clientFileInputRef.current) clientFileInputRef.current.value = '';
+          return;
+      }
+
+      setUploadingFile(true);
+      try {
+          const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+          const filePath = `${clinicId}/${selectedClientForFiles.id}/${Date.now()}_${sanitizedName}`;
+          
+          const { error } = await supabase.storage.from('patient-files').upload(filePath, file);
+          if (error) throw error;
+          
+          setToast({ message: "Arquivo enviado com sucesso!", type: 'success' });
+          fetchFiles(selectedClientForFiles.id);
+      } catch (err: any) {
+          console.error("Erro upload:", err);
+          setToast({ message: "Erro no upload: " + err.message, type: 'error' });
+      } finally {
+          setUploadingFile(false);
+          if (clientFileInputRef.current) clientFileInputRef.current.value = '';
+      }
+  };
+
+  const handleDownloadFile = async (fileName: string) => {
+      if (!clinicId || !selectedClientForFiles) return;
+      const path = `${clinicId}/${selectedClientForFiles.id}/${fileName}`;
+      
+      try {
+          const { data, error } = await supabase.storage.from('patient-files').download(path);
+          if (error) throw error;
+          
+          if (data) {
+              const url = window.URL.createObjectURL(data);
+              const a = document.createElement('a');
+              a.href = url;
+              const cleanName = fileName.replace(/^\d+_/, '');
+              a.download = cleanName;
+              document.body.appendChild(a);
+              a.click();
+              window.URL.revokeObjectURL(url);
+              document.body.removeChild(a);
+          }
+      } catch (err: any) {
+          console.error("Erro download:", err);
+          setToast({ message: "Erro ao baixar arquivo.", type: 'error' });
+      }
+  };
+
+  const handleDeleteFile = async (fileName: string) => {
+      if (!clinicId || !selectedClientForFiles) return;
+      if (!window.confirm("Tem certeza que deseja excluir este arquivo?")) return;
+
+      const path = `${clinicId}/${selectedClientForFiles.id}/${fileName}`;
+      try {
+          const { error } = await supabase.storage.from('patient-files').remove([path]);
+          if (error) throw error;
+          setToast({ message: "Arquivo excluído.", type: 'success' });
+          setClientFiles(prev => prev.filter(f => f.name !== fileName));
+      } catch (err: any) {
+          setToast({ message: "Erro ao excluir: " + err.message, type: 'error' });
+      }
   };
 
   // --- PRESCRIPTION LOGIC ---
@@ -232,7 +361,6 @@ const ClientsPage: React.FC = () => {
 
           setLoading(true);
 
-          // Filtra linhas válidas (que possuem nome)
           const rows = data.slice(1).filter(r => r[0]);
           const newEntriesCount = rows.length;
 
@@ -241,7 +369,6 @@ const ClientsPage: React.FC = () => {
           if (currentTier === 'free') limit = 30;
           if (currentTier === 'starter') limit = 100;
 
-          // Buscar contagem atual no banco para garantir precisão
           const { count: currentCount } = await supabase
               .from('clients')
               .select('*', { count: 'exact', head: true })
@@ -265,7 +392,6 @@ const ClientsPage: React.FC = () => {
           for (const row of rows) {
               let birthDate = null;
               const rawDate = row[4];
-              
               if (rawDate) {
                   if (rawDate instanceof Date) {
                       birthDate = rawDate.toISOString().split('T')[0];
@@ -295,7 +421,6 @@ const ClientsPage: React.FC = () => {
                   if (error) throw error;
                   successCount++;
               } catch (err) {
-                  console.error("Erro importação:", err);
                   errors++;
               }
           }
@@ -337,7 +462,6 @@ const ClientsPage: React.FC = () => {
     e.preventDefault();
     if (!clinicId) return;
 
-    // Validação obrigatória de CPF
     if (!formData.cpf) {
         setToast({ message: "O CPF é obrigatório.", type: 'error' });
         return;
@@ -349,8 +473,6 @@ const ClientsPage: React.FC = () => {
 
     setSaving(true);
     try {
-      // Explicitamente construir o payload apenas com os campos que existem na tabela 'clients'
-      // Isso remove propriedades extras como 'appointments' ou 'next_return_date' que podem vir do objeto de edição.
       const payload = { 
           clinic_id: clinicId,
           name: formData.name,
@@ -372,10 +494,8 @@ const ClientsPage: React.FC = () => {
         
         setToast({ message: "Paciente cadastrado com sucesso!", type: 'success' });
 
-        // Enviar e-mail de boas-vindas se houver e-mail cadastrado
         if (newClient && newClient.email) {
             try {
-                // Tenta enviar o e-mail em background
                 await supabase.functions.invoke('send-emails', {
                     body: {
                         type: 'welcome',
@@ -384,14 +504,11 @@ const ClientsPage: React.FC = () => {
                             name: newClient.name, 
                             email: newClient.email 
                         }],
-                        // CRITICAL: Incluir a origem para que o link "Agendar Online" funcione no e-mail
                         origin: window.location.origin 
                     }
                 });
-                console.log("E-mail de boas-vindas enviado com sucesso.");
             } catch (mailErr) {
                 console.error("Erro ao enviar e-mail de boas-vindas:", mailErr);
-                // Não exibir erro ao usuário se o cadastro funcionou, mas o e-mail falhou
             }
         }
       }
@@ -399,7 +516,6 @@ const ClientsPage: React.FC = () => {
       setIsModalOpen(false);
       fetchClients(clinicId);
 
-      // Return to onboarding if applicable
       if (location.state?.returnToOnboarding) {
           navigate('/dashboard', { state: { showOnboarding: true } });
       }
@@ -479,7 +595,7 @@ const ClientsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Advanced Filter Bar */}
+      {/* Filter Bar */}
       <div className="bg-white p-4 rounded-lg shadow mb-6 flex flex-col md:flex-row gap-4 items-center">
         <div className="relative flex-1 w-full">
           <Search className="absolute left-3 top-3 text-gray-400" size={20} />
@@ -496,7 +612,7 @@ const ClientsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Client List (Original Style) */}
+      {/* Client List */}
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
           <ul className="divide-y divide-gray-200">
             {processedList
@@ -511,11 +627,23 @@ const ClientsPage: React.FC = () => {
                   <p className="text-sm text-gray-500">{client.whatsapp || 'Sem telefone'} {client.cpf && `| ${client.cpf}`}</p>
                 </div>
                 <div className="flex items-center space-x-1">
-                  <button onClick={() => handleOpenPrescriptionModal(client)} className="p-2 text-gray-400 hover:text-green-600" title="Receita"><ScrollText size={18}/></button>
-                  <button onClick={() => handleOpenRecordModal(client)} className="p-2 text-gray-400 hover:text-indigo-600" title="Prontuário"><ClipboardList size={18}/></button>
-                  <div className="w-px h-6 bg-gray-200 mx-2"></div>
-                  <button onClick={(e) => { e.stopPropagation(); openModal(client); }} className="p-2 text-gray-400 hover:text-blue-600"><Edit2 size={18}/></button>
-                  <button onClick={(e) => { e.stopPropagation(); setDeleteId(client.id); }} className="p-2 text-gray-400 hover:text-red-600"><Trash2 size={18}/></button>
+                  <button onClick={() => handleOpenPrescriptionModal(client)} className="flex flex-col items-center justify-center p-2 text-gray-400 hover:text-green-600 transition-colors" title="Receita">
+                      <ScrollText size={20}/>
+                      <span className="text-[10px] font-medium mt-0.5">Receita</span>
+                  </button>
+                  <button onClick={() => handleOpenRecordModal(client)} className="flex flex-col items-center justify-center p-2 text-gray-400 hover:text-indigo-600 transition-colors" title="Prontuário">
+                      <ClipboardList size={20}/>
+                      <span className="text-[10px] font-medium mt-0.5">Prontuário</span>
+                  </button>
+                  <button onClick={() => handleOpenFilesModal(client)} className="flex flex-col items-center justify-center p-2 text-gray-400 hover:text-yellow-600 transition-colors" title="Arquivos">
+                      <FolderOpen size={20}/>
+                      <span className="text-[10px] font-medium mt-0.5">Arquivos</span>
+                  </button>
+                  
+                  <div className="w-px h-8 bg-gray-200 mx-2"></div>
+                  
+                  <button onClick={(e) => { e.stopPropagation(); openModal(client); }} className="p-2 text-gray-400 hover:text-blue-600" title="Editar"><Edit2 size={18}/></button>
+                  <button onClick={(e) => { e.stopPropagation(); setDeleteId(client.id); }} className="p-2 text-gray-400 hover:text-red-600" title="Excluir"><Trash2 size={18}/></button>
                 </div>
               </li>
             ))}
@@ -792,6 +920,104 @@ const ClientsPage: React.FC = () => {
         </div>
       )}
 
+      {/* Files Modal */}
+      {isFilesModalOpen && selectedClientForFiles && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 backdrop-blur-sm">
+          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-xl max-h-[85vh] flex flex-col animate-fade-in-up">
+             <div className="flex justify-between items-center mb-4 border-b pb-4">
+                <div className="flex items-center gap-2">
+                    <FolderOpen className="text-yellow-500" />
+                    <div>
+                        <h2 className="text-lg font-bold text-gray-800">Arquivos do Paciente</h2>
+                        <p className="text-xs text-gray-500">{selectedClientForFiles.name}</p>
+                    </div>
+                </div>
+                <button onClick={() => setIsFilesModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={24}/></button>
+            </div>
+
+            {currentTier === 'pro' ? (
+                <div className="mb-4 bg-blue-50 p-4 rounded-lg border border-blue-100 flex items-center gap-3">
+                    <div className="p-2 bg-white rounded-full text-primary shadow-sm">
+                        <Upload size={20} />
+                    </div>
+                    <div className="flex-1">
+                        <label className="block text-sm font-bold text-gray-800 cursor-pointer hover:underline" onClick={() => clientFileInputRef.current?.click()}>
+                            Clique para enviar arquivo
+                        </label>
+                        <p className="text-xs text-gray-500">PDFs e Imagens (Max 100MB/paciente)</p>
+                        <input 
+                            type="file" 
+                            ref={clientFileInputRef} 
+                            className="hidden" 
+                            accept="image/*,application/pdf"
+                            onChange={handleClientFileUpload}
+                            disabled={uploadingFile}
+                        />
+                    </div>
+                    {uploadingFile && <Loader2 className="animate-spin text-primary" />}
+                </div>
+            ) : (
+                <div className="mb-4 bg-gray-50 p-4 rounded-lg border border-gray-200 flex items-center gap-3">
+                    <div className="p-2 bg-white rounded-full text-gray-400 shadow-sm">
+                        <Lock size={20} />
+                    </div>
+                    <div className="flex-1">
+                        <p className="text-sm font-bold text-gray-700">Upload Bloqueado</p>
+                        <p className="text-xs text-gray-500">O armazenamento de arquivos é exclusivo do plano Pro.</p>
+                    </div>
+                </div>
+            )}
+
+            <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
+                <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">Arquivos Salvos ({clientFiles.length})</h3>
+                <div className="space-y-2">
+                    {clientFiles.length === 0 ? (
+                        <p className="text-center text-gray-400 text-sm py-8 border border-dashed rounded-lg">
+                            Nenhum arquivo encontrado.
+                        </p>
+                    ) : (
+                        clientFiles.map(file => (
+                            <div key={file.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition border border-gray-200">
+                                <div className="flex items-center gap-3 overflow-hidden">
+                                    {file.metadata?.mimetype?.includes('image') ? (
+                                        <ImageIcon size={20} className="text-purple-500 flex-shrink-0" />
+                                    ) : (
+                                        <FileIcon size={20} className="text-blue-500 flex-shrink-0" />
+                                    )}
+                                    <div className="truncate">
+                                        <p className="text-sm font-medium text-gray-800 truncate" title={file.name}>
+                                            {file.name.replace(/^\d+_/, '')}
+                                        </p>
+                                        <p className="text-[10px] text-gray-500">
+                                            {new Date(file.created_at).toLocaleDateString()} • {(file.metadata?.size / 1024).toFixed(1)} KB
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <button 
+                                        onClick={() => handleDownloadFile(file.name)} 
+                                        className="p-1.5 text-gray-500 hover:text-primary hover:bg-white rounded transition"
+                                        title="Baixar / Visualizar"
+                                    >
+                                        <Download size={16} />
+                                    </button>
+                                    <button 
+                                        onClick={() => handleDeleteFile(file.name)} 
+                                        className="p-1.5 text-gray-500 hover:text-red-500 hover:bg-white rounded transition"
+                                        title="Excluir"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Help Modal */}
       {showHelp && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black bg-opacity-50 p-4 backdrop-blur-sm">
@@ -805,7 +1031,7 @@ const ClientsPage: React.FC = () => {
                 <ul className="list-disc pl-5 space-y-2">
                    <li><strong>Novo:</strong> Adicione novos pacientes.</li>
                    <li><strong>Importar Excel:</strong> Cadastre múltiplos pacientes de uma vez via planilha.</li>
-                   <li><strong>Ações:</strong> Use os ícones à direita para emitir receitas, ver prontuário, editar ou excluir.</li>
+                   <li><strong>Ações:</strong> Use os ícones à direita para emitir receitas, ver prontuário, gerenciar arquivos (exames/raio-x), editar ou excluir.</li>
                    <li><strong>Busca:</strong> Pesquise por nome ou CPF na barra superior.</li>
                    <li><strong>Retorno:</strong> Filtre pacientes que têm data de retorno agendada.</li>
                 </ul>

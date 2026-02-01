@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
@@ -7,7 +6,7 @@ import {
   BookOpen, Smartphone, Tablet, Monitor, LayoutDashboard, Bell, 
   UserCheck, MessageSquare, Settings, Trash2, Mail, Gift, CreditCard, Menu, X, Check, Loader2,
   TrendingUp, TrendingDown, Filter, ChevronLeft, ChevronRight, Plus, Download, Upload,
-  Edit2, FileText, Activity, Clock, BellRing, Lock, Send
+  Edit2, FileText, Activity, Clock, BellRing, Lock, Send, Folder
 } from 'lucide-react';
 
 const LandingPage: React.FC = () => {
@@ -534,6 +533,7 @@ const LandingPage: React.FC = () => {
                 <li className="flex items-center text-gray-300"><CheckCircle size={18} className="text-green-400 mr-2" /> Dentistas Ilimitados</li>
                 <li className="flex items-center text-gray-300"><CheckCircle size={18} className="text-green-400 mr-2" /> Pacientes Ilimitados</li>
                 <li className="flex items-center text-gray-300"><CheckCircle size={18} className="text-green-400 mr-2" /> Prontuário IA Ilimitado</li>
+                <li className="flex items-center text-gray-300"><Folder size={18} className="text-green-400 mr-2" /> Arquivos (100MB/paciente)</li>
               </ul>
               <button onClick={() => goToAuth('signup')} className="w-full py-3 rounded-lg bg-white text-gray-900 font-bold hover:bg-gray-100 transition">Assinar Pro</button>
             </div>
