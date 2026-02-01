@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 import AuthPage from './components/AuthPage';
@@ -22,6 +22,8 @@ import AppointmentActionPage from './components/AppointmentActionPage';
 import LearnMorePage from './components/LearnMorePage';
 import SuperAdminPage from './components/SuperAdminPage';
 import SuperAdminCampaigns from './components/SuperAdminCampaigns';
+import SuperAdminLeads from './components/SuperAdminLeads';
+import UpdatePasswordPage from './components/UpdatePasswordPage';
 import { Loader2 } from 'lucide-react';
 
 const PrivateRoute = ({ children }: { children?: React.ReactNode }) => {
@@ -81,17 +83,60 @@ const PrivateRoute = ({ children }: { children?: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Componente Wrapper para detectar eventos de auth
+const AuthListener = () => {
+    const navigate = useNavigate();
+    
+    useEffect(() => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'PASSWORD_RECOVERY') {
+                // Se o Supabase detectar recuperação, força a navegação
+                navigate('/update-password');
+            }
+        });
+        return () => subscription.unsubscribe();
+    }, [navigate]);
+
+    return null;
+}
+
 const App: React.FC = () => {
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+
+  useEffect(() => {
+      // VERIFICAÇÃO FORÇADA DE URL
+      // Se a URL contiver o hash de recuperação do Supabase, ativamos o modo de recuperação
+      // antes mesmo do roteador tentar processar.
+      const hash = window.location.hash;
+      if (hash && hash.includes('type=recovery') && hash.includes('access_token')) {
+          setIsRecoveryMode(true);
+      }
+  }, []);
+
+  // Se estiver em modo de recuperação (link do email), exibe APENAS a página de senha
+  if (isRecoveryMode) {
+      return (
+          <HashRouter>
+              <UpdatePasswordPage />
+          </HashRouter>
+      );
+  }
+
   return (
     <HashRouter>
+      <AuthListener />
       <Routes>
         {/* Landing Page (Public Root) */}
         <Route path="/" element={<LandingPage />} />
 
-        {/* Specific Public Routes (Must come before /:slug) */}
+        {/* Specific Public Routes */}
         <Route path="/encontrar-clinica" element={<FindClinicPage />} />
         <Route path="/entenda" element={<LearnMorePage />} />
         <Route path="/auth" element={<AuthPage />} />
+        
+        {/* Rota de senha acessível diretamente */}
+        <Route path="/update-password" element={<UpdatePasswordPage />} />
+        
         <Route path="/appointment-action" element={<AppointmentActionPage />} />
 
         {/* Private Dashboard Routes */}
@@ -111,8 +156,12 @@ const App: React.FC = () => {
         {/* Super Admin Routes */}
         <Route path="/super-admin" element={<PrivateRoute><SuperAdminPage /></PrivateRoute>} />
         <Route path="/super-admin/campaigns" element={<PrivateRoute><SuperAdminCampaigns /></PrivateRoute>} />
+        <Route path="/super-admin/leads" element={<PrivateRoute><SuperAdminLeads /></PrivateRoute>} />
 
-        {/* Public Booking Page (Dynamic Slug at Root) */}
+        {/* 
+           Public Booking Page (Dynamic Slug at Root) 
+           IMPORTANTE: Esta rota deve ser a ÚLTIMA.
+        */}
         <Route path="/:slug" element={<PublicBookingPage />} />
       </Routes>
     </HashRouter>

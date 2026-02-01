@@ -665,41 +665,41 @@ const CalendarPage: React.FC = () => {
         />
       )}
 
-      {/* ... (Header and Filters unchanged) ... */}
+      {/* Header and Filters */}
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold text-gray-800">Agenda</h1>
+          <h1 className="text-2xl font-bold text-white">Agenda</h1>
           <button onClick={() => setShowHelp(true)} className="text-gray-400 hover:text-primary transition-colors">
             <HelpCircle size={20} />
           </button>
         </div>
         
-        <div className="flex items-center space-x-2 bg-white p-1 rounded-lg shadow-sm border">
-          <button onClick={handlePreviousMonth} className="p-1.5 hover:bg-gray-100 rounded-md text-gray-500"><ChevronLeft size={20}/></button>
-          <span className="text-lg font-bold text-gray-700 min-w-[140px] text-center capitalize px-2">
+        <div className="flex items-center space-x-2 bg-gray-900 border border-white/10 p-1 rounded-lg shadow-sm">
+          <button onClick={handlePreviousMonth} className="p-1.5 hover:bg-white/10 rounded-md text-gray-400 hover:text-white transition"><ChevronLeft size={20}/></button>
+          <span className="text-lg font-bold text-white min-w-[140px] text-center capitalize px-2">
             {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
           </span>
-          <button onClick={handleNextMonth} className="p-1.5 hover:bg-gray-100 rounded-md text-gray-500"><ChevronRight size={20}/></button>
+          <button onClick={handleNextMonth} className="p-1.5 hover:bg-white/10 rounded-md text-gray-400 hover:text-white transition"><ChevronRight size={20}/></button>
           
-          <div className="w-px h-6 bg-gray-200 mx-1"></div>
+          <div className="w-px h-6 bg-white/10 mx-1"></div>
           
-          <button onClick={handleToday} className="text-xs font-bold text-gray-600 hover:bg-gray-100 px-3 py-1.5 rounded-md transition-colors">
+          <button onClick={handleToday} className="text-xs font-bold text-gray-400 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded-md transition-colors">
             Hoje
           </button>
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-            <div className="bg-white p-1 rounded-lg border shadow-sm flex items-center">
+            <div className="bg-gray-900 p-1 rounded-lg border border-white/10 shadow-sm flex items-center">
                 <button 
                     onClick={() => setViewMode('month')} 
-                    className={`p-1.5 rounded-md transition-colors ${viewMode === 'month' ? 'bg-primary text-white shadow-sm' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
+                    className={`p-1.5 rounded-md transition-colors ${viewMode === 'month' ? 'bg-primary text-white shadow-sm' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
                     title="Visualização Mensal"
                 >
                     <LayoutGrid size={18} />
                 </button>
                 <button 
                     onClick={() => setViewMode('list')} 
-                    className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-primary text-white shadow-sm' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
+                    className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-primary text-white shadow-sm' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
                     title="Visualização em Lista"
                 >
                     <ListIcon size={18} />
@@ -717,9 +717,9 @@ const CalendarPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Grid Filters */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-4">
-        <div className="flex items-center text-gray-500 text-sm font-bold mb-3">
+      {/* Grid Filters - DARK MODE */}
+      <div className="bg-gray-900/60 backdrop-blur-md p-4 rounded-lg shadow-lg border border-white/5 mb-4">
+        <div className="flex items-center text-gray-400 text-sm font-bold mb-3">
           <Filter size={16} className="mr-2" /> Filtros Avançados:
         </div>
         
@@ -727,12 +727,12 @@ const CalendarPage: React.FC = () => {
             {/* 1. Paciente */}
             <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-2 sm:pl-3 flex items-center pointer-events-none">
-                    <User size={16} className="text-gray-400" />
+                    <User size={16} className="text-gray-500" />
                 </div>
                 <select 
                   value={filterClientId} 
                   onChange={e => setFilterClientId(e.target.value)}
-                  className="border rounded-md pl-8 sm:pl-10 pr-2 sm:pr-3 py-2 text-xs sm:text-sm bg-gray-50 outline-none focus:border-primary w-full appearance-none cursor-pointer"
+                  className="border border-white/10 rounded-md pl-8 sm:pl-10 pr-2 sm:pr-3 py-2 text-xs sm:text-sm bg-gray-800 text-gray-200 outline-none focus:border-primary w-full appearance-none cursor-pointer hover:bg-gray-700/50 transition"
                 >
                   <option value="">Todos Pacientes</option>
                   {clients.map(c => (
@@ -744,13 +744,13 @@ const CalendarPage: React.FC = () => {
             {/* 2. Dentista */}
             <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-2 sm:pl-3 flex items-center pointer-events-none">
-                    <UserCheck size={16} className="text-gray-400" />
+                    <UserCheck size={16} className="text-gray-500" />
                 </div>
                 <select 
                   value={filterDentistId} 
                   onChange={e => setFilterDentistId(e.target.value)}
                   disabled={isDentistUser}
-                  className={`border rounded-md pl-8 sm:pl-10 pr-2 sm:pr-3 py-2 text-xs sm:text-sm bg-gray-50 outline-none focus:border-primary w-full appearance-none ${isDentistUser ? 'cursor-not-allowed bg-gray-100 text-gray-500' : 'cursor-pointer'}`}
+                  className={`border border-white/10 rounded-md pl-8 sm:pl-10 pr-2 sm:pr-3 py-2 text-xs sm:text-sm bg-gray-800 text-gray-200 outline-none focus:border-primary w-full appearance-none ${isDentistUser ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-gray-700/50'} transition`}
                 >
                   <option value="">Todos Dentistas</option>
                   {dentists.map(d => (
@@ -762,12 +762,12 @@ const CalendarPage: React.FC = () => {
             {/* 3. Status Pagamento */}
             <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-2 sm:pl-3 flex items-center pointer-events-none">
-                    <DollarSign size={16} className="text-gray-400" />
+                    <DollarSign size={16} className="text-gray-500" />
                 </div>
                 <select 
                   value={filterPaymentStatus} 
                   onChange={e => setFilterPaymentStatus(e.target.value)}
-                  className="border rounded-md pl-8 sm:pl-10 pr-2 sm:pr-3 py-2 text-xs sm:text-sm bg-gray-50 outline-none focus:border-primary w-full appearance-none cursor-pointer"
+                  className="border border-white/10 rounded-md pl-8 sm:pl-10 pr-2 sm:pr-3 py-2 text-xs sm:text-sm bg-gray-800 text-gray-200 outline-none focus:border-primary w-full appearance-none cursor-pointer hover:bg-gray-700/50 transition"
                 >
                   <option value="all">Financeiro (Todos)</option>
                   <option value="pending">Pendente</option>
@@ -778,12 +778,12 @@ const CalendarPage: React.FC = () => {
             {/* 4. Status Agendamento */}
             <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-2 sm:pl-3 flex items-center pointer-events-none">
-                    <Activity size={16} className="text-gray-400" />
+                    <Activity size={16} className="text-gray-500" />
                 </div>
                 <select 
                   value={filterStatus} 
                   onChange={e => setFilterStatus(e.target.value)}
-                  className="border rounded-md pl-8 sm:pl-10 pr-2 sm:pr-3 py-2 text-xs sm:text-sm bg-gray-50 outline-none focus:border-primary w-full appearance-none cursor-pointer"
+                  className="border border-white/10 rounded-md pl-8 sm:pl-10 pr-2 sm:pr-3 py-2 text-xs sm:text-sm bg-gray-800 text-gray-200 outline-none focus:border-primary w-full appearance-none cursor-pointer hover:bg-gray-700/50 transition"
                 >
                   <option value="all">Status (Todos)</option>
                   <option value="scheduled">Agendados</option>
@@ -794,49 +794,49 @@ const CalendarPage: React.FC = () => {
             </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between mt-4 pt-3 border-t border-gray-100">
+        <div className="flex flex-wrap items-center justify-between mt-4 pt-3 border-t border-white/5">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-2 sm:mb-0">
-                <label className="flex items-center text-sm text-gray-600 cursor-pointer hover:text-gray-900 transition-colors">
+                <label className="flex items-center text-sm text-gray-400 cursor-pointer hover:text-white transition-colors">
                     <input 
                         type="checkbox" 
                         checked={hideCompletedPaid} 
                         onChange={e => setHideCompletedPaid(e.target.checked)} 
-                        className="mr-2 h-4 w-4 rounded text-primary focus:ring-primary border-gray-300" 
+                        className="mr-2 h-4 w-4 rounded bg-gray-800 border-gray-600 text-primary focus:ring-primary focus:ring-offset-gray-900" 
                     />
                     Esconder concluídos e pagos
                 </label>
-                <label className="flex items-center text-sm text-gray-600 cursor-pointer hover:text-gray-900 transition-colors">
+                <label className="flex items-center text-sm text-gray-400 cursor-pointer hover:text-white transition-colors">
                     <input 
                         type="checkbox" 
                         checked={hideCancelled} 
                         onChange={e => setHideCancelled(e.target.checked)} 
-                        className="mr-2 h-4 w-4 rounded text-primary focus:ring-primary border-gray-300" 
+                        className="mr-2 h-4 w-4 rounded bg-gray-800 border-gray-600 text-primary focus:ring-primary focus:ring-offset-gray-900" 
                     />
                     Esconder cancelados
                 </label>
             </div>
             <button 
                 onClick={clearFilters} 
-                className="text-xs sm:text-sm text-red-500 hover:text-red-700 font-bold flex items-center bg-red-50 px-3 py-1.5 rounded transition-colors"
+                className="text-xs sm:text-sm text-red-400 hover:text-red-300 font-bold flex items-center bg-red-500/10 px-3 py-1.5 rounded transition-colors border border-red-500/20 hover:bg-red-500/20"
             >
                 <X size={14} className="mr-1"/> Limpar Filtros
             </button>
         </div>
       </div>
 
-      {/* VIEW CONTENT */}
+      {/* VIEW CONTENT - DARK MODE */}
       {viewMode === 'month' ? (
           /* Grid View */
-          <div className="flex-1 bg-white rounded-lg shadow border border-gray-200 overflow-hidden flex flex-col">
-            <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
+          <div className="flex-1 bg-gray-900 rounded-lg shadow-lg border border-white/5 overflow-hidden flex flex-col">
+            <div className="grid grid-cols-7 border-b border-white/5 bg-gray-800/50">
               {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-                <div key={day} className="py-2 text-center text-xs font-bold text-gray-500 uppercase tracking-wide">
+                <div key={day} className="py-2 text-center text-xs font-bold text-gray-400 uppercase tracking-wide">
                   {day}
                 </div>
               ))}
             </div>
 
-            <div className="grid grid-cols-7 flex-1 auto-rows-fr overflow-y-auto">
+            <div className="grid grid-cols-7 flex-1 auto-rows-fr overflow-y-auto custom-scrollbar">
                 {days.map((day, idx) => {
                   const dayAppts = getDayAppointments(day);
                   const isCurrentMonth = isSameMonth(day, currentMonth);
@@ -845,14 +845,14 @@ const CalendarPage: React.FC = () => {
                   return (
                     <div 
                       key={day.toISOString()} 
-                      className={`min-h-[100px] border-b border-r p-2 transition-colors relative group ${!isCurrentMonth ? 'bg-gray-50 text-gray-400' : 'bg-white'} ${isTodayDate ? 'bg-blue-50/30' : ''}`}
+                      className={`min-h-[100px] border-b border-r border-white/5 p-2 transition-colors relative group ${!isCurrentMonth ? 'bg-gray-950/50 text-gray-600' : 'bg-gray-900'} ${isTodayDate ? 'bg-blue-900/10' : ''} hover:bg-gray-800/50`}
                       onClick={() => handleOpenModal(day)}
                     >
                       <div className="flex justify-between items-start mb-1">
-                        <span className={`text-sm font-bold ${isTodayDate ? 'bg-primary text-white w-6 h-6 rounded-full flex items-center justify-center' : ''}`}>
+                        <span className={`text-sm font-bold ${isTodayDate ? 'bg-primary text-white w-6 h-6 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/20' : 'text-gray-300'}`}>
                           {format(day, 'd')}
                         </span>
-                        <button className="opacity-0 group-hover:opacity-100 p-1 text-primary hover:bg-blue-100 rounded-full transition-opacity">
+                        <button className="opacity-0 group-hover:opacity-100 p-1 text-primary hover:bg-blue-500/20 rounded-full transition-opacity">
                           <Plus size={12} />
                         </button>
                       </div>
@@ -862,17 +862,17 @@ const CalendarPage: React.FC = () => {
                           <div 
                             key={appt.id}
                             onClick={(e) => { e.stopPropagation(); handleOpenModal(undefined, appt); }}
-                            className={`text-[10px] p-1 rounded border-l-2 cursor-pointer hover:brightness-95 transition-all truncate shadow-sm flex items-center ${
-                              appt.status === 'cancelled' ? 'bg-red-50 border-red-400 text-red-700 line-through opacity-60' :
-                              appt.status === 'completed' ? 'bg-green-50 border-green-500 text-green-700' :
-                              appt.status === 'confirmed' ? 'bg-teal-50 border-teal-500 text-teal-700 font-bold' :
-                              'bg-white border-l-4 text-gray-700 border-gray-300'
+                            className={`text-[10px] p-1 rounded border-l-2 cursor-pointer hover:brightness-110 transition-all truncate shadow-sm flex items-center ${
+                              appt.status === 'cancelled' ? 'bg-red-900/20 border-red-500 text-red-300 line-through opacity-60' :
+                              appt.status === 'completed' ? 'bg-green-900/20 border-green-500 text-green-300' :
+                              appt.status === 'confirmed' ? 'bg-teal-900/20 border-teal-500 text-teal-300 font-bold' :
+                              'bg-gray-800 border-gray-600 text-gray-300'
                             }`}
                             style={appt.status === 'scheduled' ? { borderLeftColor: (appt.dentist as any)?.color || '#ccc' } : {}}
                           >
-                            <span className="font-bold mr-1">{format(parseISO(appt.start_time), 'HH:mm')}</span>
+                            <span className="font-bold mr-1 text-gray-400">{format(parseISO(appt.start_time), 'HH:mm')}</span>
                             {(appt.client as any)?.name}
-                            {appt.status === 'confirmed' && <CheckCircle size={10} className="ml-1 text-teal-600 inline" />}
+                            {appt.status === 'confirmed' && <CheckCircle size={10} className="ml-1 text-teal-400 inline" />}
                           </div>
                         ))}
                       </div>
@@ -883,27 +883,27 @@ const CalendarPage: React.FC = () => {
           </div>
       ) : (
           /* Table View */
-          <div className="flex-1 bg-white rounded-lg shadow border border-gray-200 overflow-hidden flex flex-col">
-             <div className="overflow-auto flex-1">
+          <div className="flex-1 bg-gray-900 rounded-lg shadow-lg border border-white/5 overflow-hidden flex flex-col">
+             <div className="overflow-auto flex-1 custom-scrollbar">
                 {appointments.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center p-12 h-full text-gray-400">
+                    <div className="flex flex-col items-center justify-center p-12 h-full text-gray-500">
                         <Calendar size={48} className="mb-4 opacity-20"/>
                         <p>Nenhum agendamento encontrado para este período.</p>
                     </div>
                 ) : (
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                    <table className="min-w-full divide-y divide-white/5">
+                        <thead className="bg-gray-800/50">
                             <tr>
-                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Data</th>
-                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Horário</th>
-                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Paciente</th>
-                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Dentista</th>
-                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Pagamento</th>
-                                <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Valor (R$)</th>
+                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Data</th>
+                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Horário</th>
+                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Paciente</th>
+                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Dentista</th>
+                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                                <th className="px-4 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Pagamento</th>
+                                <th className="px-4 py-3 text-right text-xs font-bold text-gray-400 uppercase tracking-wider">Valor (R$)</th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-transparent divide-y divide-white/5">
                             {appointments.map((appt) => {
                                 const startTime = parseISO(appt.start_time);
                                 const endTime = parseISO(appt.end_time);
@@ -911,20 +911,20 @@ const CalendarPage: React.FC = () => {
                                 return (
                                     <tr 
                                         key={appt.id} 
-                                        className="hover:bg-gray-50 transition-colors cursor-pointer"
+                                        className="hover:bg-gray-800/50 transition-colors cursor-pointer"
                                         onClick={() => handleOpenModal(undefined, appt)}
                                     >
-                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 font-medium">
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-200 font-medium">
                                             {format(startTime, 'dd/MM')}
                                         </td>
-                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-400">
                                             {format(startTime, 'HH:mm')} - {format(endTime, 'HH:mm')}
                                         </td>
-                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-200">
                                             <div className="font-bold">{(appt.client as any)?.name}</div>
                                             <div className="text-xs text-gray-500">{appt.service_name}</div>
                                         </td>
-                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-400">
                                             <div className="flex items-center">
                                                 <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: (appt.dentist as any)?.color || '#ccc' }} />
                                                 {(appt.dentist as any)?.name}
@@ -934,30 +934,30 @@ const CalendarPage: React.FC = () => {
                                             <select 
                                                 value={appt.status}
                                                 onChange={(e) => handleQuickUpdate(appt.id, 'status', e.target.value)}
-                                                className={`text-xs font-bold uppercase px-2 py-1 rounded border outline-none cursor-pointer appearance-none w-full ${
-                                                    appt.status === 'completed' ? 'bg-green-50 text-green-700 border-green-200' :
-                                                    appt.status === 'cancelled' ? 'bg-red-50 text-red-700 border-red-200' :
-                                                    appt.status === 'confirmed' ? 'bg-teal-50 text-teal-700 border-teal-200' :
-                                                    'bg-blue-50 text-blue-700 border-blue-200'
+                                                className={`text-xs font-bold uppercase px-2 py-1 rounded border outline-none cursor-pointer appearance-none w-full bg-transparent ${
+                                                    appt.status === 'completed' ? 'text-green-400 border-green-500/30 bg-green-500/10' :
+                                                    appt.status === 'cancelled' ? 'text-red-400 border-red-500/30 bg-red-500/10' :
+                                                    appt.status === 'confirmed' ? 'text-teal-400 border-teal-500/30 bg-teal-500/10' :
+                                                    'text-blue-400 border-blue-500/30 bg-blue-500/10'
                                                 }`}
                                             >
-                                                <option value="scheduled">Agendado</option>
-                                                <option value="confirmed">Confirmado (Paciente)</option>
-                                                <option value="completed">Concluído</option>
-                                                <option value="cancelled">Cancelado</option>
+                                                <option value="scheduled" className="bg-gray-800 text-white">Agendado</option>
+                                                <option value="confirmed" className="bg-gray-800 text-white">Confirmado (Paciente)</option>
+                                                <option value="completed" className="bg-gray-800 text-white">Concluído</option>
+                                                <option value="cancelled" className="bg-gray-800 text-white">Cancelado</option>
                                             </select>
                                         </td>
                                         <td className="px-4 py-3 whitespace-nowrap" onClick={e => e.stopPropagation()}>
                                             <select 
                                                 value={appt.payment_status || 'pending'}
                                                 onChange={(e) => handleQuickUpdate(appt.id, 'payment_status', e.target.value)}
-                                                className={`text-xs font-bold uppercase px-2 py-1 rounded border outline-none cursor-pointer appearance-none w-full ${
-                                                    appt.payment_status === 'paid' ? 'bg-green-100 text-green-800 border-green-300' :
-                                                    'bg-yellow-50 text-yellow-700 border-yellow-200'
+                                                className={`text-xs font-bold uppercase px-2 py-1 rounded border outline-none cursor-pointer appearance-none w-full bg-transparent ${
+                                                    appt.payment_status === 'paid' ? 'text-green-400 border-green-500/30 bg-green-500/10' :
+                                                    'text-yellow-400 border-yellow-500/30 bg-yellow-500/10'
                                                 }`}
                                             >
-                                                <option value="pending">Pendente</option>
-                                                <option value="paid">Pago</option>
+                                                <option value="pending" className="bg-gray-800 text-white">Pendente</option>
+                                                <option value="paid" className="bg-gray-800 text-white">Pago</option>
                                             </select>
                                         </td>
                                         <td className="px-4 py-3 whitespace-nowrap text-right" onClick={e => e.stopPropagation()}>
@@ -966,7 +966,7 @@ const CalendarPage: React.FC = () => {
                                                 step="0.01"
                                                 defaultValue={appt.amount || 0}
                                                 onBlur={(e) => handleQuickUpdate(appt.id, 'amount', parseFloat(e.target.value))}
-                                                className="w-20 text-sm text-gray-700 border border-transparent hover:border-gray-300 focus:border-primary rounded px-1 py-0.5 outline-none bg-transparent text-right font-medium"
+                                                className="w-20 text-sm text-gray-300 border border-transparent hover:border-gray-600 focus:border-primary rounded px-1 py-0.5 outline-none bg-transparent text-right font-medium"
                                             />
                                         </td>
                                     </tr>
@@ -979,25 +979,25 @@ const CalendarPage: React.FC = () => {
           </div>
       )}
 
-      {/* ... Modals ... */}
+      {/* ... Modals (Updated for Dark Mode) ... */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6 border-b pb-4">
-              <h2 className="text-xl font-bold text-gray-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-white/10 p-6 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+              <h2 className="text-xl font-bold text-white">
                 {editingAppointment ? 'Editar Agendamento' : 'Novo Agendamento'}
               </h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={24}/></button>
+              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-white"><X size={24}/></button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Client Selection */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Paciente</label>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Paciente</label>
                 <div className="relative">
                   <select 
                     required 
-                    className="w-full border p-2.5 rounded-lg bg-white outline-none focus:ring-2 focus:ring-primary appearance-none"
+                    className="w-full border border-gray-700 bg-gray-800 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-primary appearance-none hover:bg-gray-750 transition"
                     value={formData.client_id}
                     onChange={e => setFormData({...formData, client_id: e.target.value})}
                   >
@@ -1006,17 +1006,17 @@ const CalendarPage: React.FC = () => {
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
-                  <User className="absolute right-3 top-3 text-gray-400 pointer-events-none" size={16} />
+                  <User className="absolute right-3 top-3 text-gray-500 pointer-events-none" size={16} />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 {/* Dentist Selection */}
                 <div className="col-span-2">
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Dentista</label>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Dentista</label>
                   <select 
                     required 
-                    className={`w-full border p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-primary ${isDentistUser ? 'bg-gray-100 cursor-not-allowed text-gray-600' : 'bg-white'}`}
+                    className={`w-full border border-gray-700 p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-primary ${isDentistUser ? 'bg-gray-800/50 cursor-not-allowed text-gray-500' : 'bg-gray-800 text-white hover:bg-gray-750'}`}
                     value={formData.dentist_id}
                     disabled={isDentistUser}
                     onChange={e => setFormData({...formData, dentist_id: e.target.value})}
@@ -1030,9 +1030,9 @@ const CalendarPage: React.FC = () => {
                 
                 {/* Service Selection */}
                 <div className="col-span-2">
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Serviço</label>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Serviço</label>
                   <select 
-                    className="w-full border p-2.5 rounded-lg bg-white outline-none focus:ring-2 focus:ring-primary mb-2"
+                    className="w-full border border-gray-700 bg-gray-800 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-primary mb-2 hover:bg-gray-750"
                     value={isCustomService ? 'custom_option_other' : formData.service_name}
                     onChange={handleServiceChange}
                     disabled={!formData.dentist_id}
@@ -1047,7 +1047,7 @@ const CalendarPage: React.FC = () => {
                   {isCustomService && (
                       <input 
                         type="text" required
-                        className="w-full border p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-primary animate-fade-in-up"
+                        className="w-full border border-gray-700 bg-gray-800 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-primary animate-fade-in-up"
                         placeholder="Digite o nome do serviço..."
                         value={formData.service_name}
                         onChange={e => setFormData({...formData, service_name: e.target.value})}
@@ -1059,19 +1059,19 @@ const CalendarPage: React.FC = () => {
 
               <div className="grid grid-cols-3 gap-4">
                 <div className="col-span-2">
-                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Data</label>
+                   <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Data</label>
                    <input 
                     type="date" required
-                    className="w-full border p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full border border-gray-700 bg-gray-800 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-primary"
                     value={formData.date}
                     onChange={e => setFormData({...formData, date: e.target.value, time: ''})}
                    />
                 </div>
                 <div className="col-span-1">
-                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Duração (min)</label>
+                   <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Duração (min)</label>
                    <input 
                     type="number" required step="15" min="15"
-                    className="w-full border p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full border border-gray-700 bg-gray-800 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-primary"
                     value={formData.duration}
                     onChange={e => setFormData({...formData, duration: parseInt(e.target.value)})}
                    />
@@ -1079,8 +1079,8 @@ const CalendarPage: React.FC = () => {
                 
                 {/* Time Selection Grid */}
                 <div className="col-span-3">
-                   <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Horário Disponível</label>
-                   <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto pr-1">
+                   <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Horário Disponível</label>
+                   <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
                        {availableTimes.length > 0 ? (
                            availableTimes.map(time => (
                                <button 
@@ -1089,15 +1089,15 @@ const CalendarPage: React.FC = () => {
                                   onClick={() => setFormData({...formData, time})}
                                   className={`border rounded-lg py-2 text-sm font-medium transition-colors ${
                                       formData.time === time 
-                                      ? 'bg-primary text-white border-primary' 
-                                      : 'bg-white text-gray-700 hover:border-primary hover:text-primary'
+                                      ? 'bg-primary text-white border-primary shadow-lg shadow-blue-500/30' 
+                                      : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-primary hover:text-white hover:bg-gray-700'
                                   }`}
                                >
                                    {time}
                                </button>
                            ))
                        ) : (
-                           <div className="col-span-4 text-center text-gray-400 text-sm py-4 italic border rounded-lg border-dashed">
+                           <div className="col-span-4 text-center text-gray-500 text-sm py-4 italic border border-gray-700 border-dashed rounded-lg">
                                {(!formData.dentist_id || !formData.date) 
                                 ? "Selecione dentista e data." 
                                 : "Nenhum horário disponível para esta duração."}
@@ -1107,11 +1107,11 @@ const CalendarPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 bg-gray-50 p-3 rounded-lg border border-gray-100">
+              <div className="grid grid-cols-2 gap-4 bg-gray-800/50 p-3 rounded-lg border border-white/5">
                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Status</label>
+                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Status</label>
                     <select 
-                      className="w-full border p-2 rounded bg-white text-sm"
+                      className="w-full border border-gray-700 bg-gray-900 text-white p-2 rounded text-sm outline-none focus:border-primary"
                       value={formData.status}
                       onChange={e => setFormData({...formData, status: e.target.value})}
                     >
@@ -1122,9 +1122,9 @@ const CalendarPage: React.FC = () => {
                     </select>
                  </div>
                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Pagamento</label>
+                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Pagamento</label>
                     <select 
-                      className="w-full border p-2 rounded bg-white text-sm"
+                      className="w-full border border-gray-700 bg-gray-900 text-white p-2 rounded text-sm outline-none focus:border-primary"
                       value={formData.payment_status}
                       onChange={e => setFormData({...formData, payment_status: e.target.value})}
                     >
@@ -1133,33 +1133,33 @@ const CalendarPage: React.FC = () => {
                     </select>
                  </div>
                  <div className="col-span-2">
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Valor (R$)</label>
+                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Valor (R$)</label>
                     <input 
                       type="number" step="0.01"
-                      className="w-full border p-2 rounded bg-white text-sm"
+                      className="w-full border border-gray-700 bg-gray-900 text-white p-2 rounded text-sm outline-none focus:border-primary"
                       value={formData.amount}
                       onChange={e => setFormData({...formData, amount: parseFloat(e.target.value)})}
                     />
                  </div>
               </div>
 
-              <div className="flex justify-between items-center pt-4 border-t mt-2">
+              <div className="flex justify-between items-center pt-4 border-t border-white/10 mt-2">
                 {editingAppointment && canDelete ? (
                   <button 
                     type="button"
                     onClick={() => setDeleteId(editingAppointment.id)}
-                    className="text-red-500 hover:text-red-700 text-sm font-bold flex items-center px-2 py-1 rounded hover:bg-red-50 transition"
+                    className="text-red-400 hover:text-red-300 text-sm font-bold flex items-center px-2 py-1 rounded hover:bg-red-500/10 transition"
                   >
                     <Trash2 size={16} className="mr-1" /> Excluir
                   </button>
                 ) : <div></div>}
                 
                 <div className="flex space-x-2">
-                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded font-medium">Cancelar</button>
+                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-400 hover:text-white hover:bg-white/5 rounded font-medium transition">Cancelar</button>
                   <button 
                     type="submit" 
                     disabled={processing}
-                    className="px-6 py-2 bg-primary text-white rounded hover:bg-sky-600 font-bold shadow-md disabled:opacity-50"
+                    className="px-6 py-2 bg-primary text-white rounded hover:bg-sky-600 font-bold shadow-lg shadow-blue-500/20 disabled:opacity-50 transition"
                   >
                     {processing ? 'Salvando...' : 'Confirmar'}
                   </button>
@@ -1172,7 +1172,7 @@ const CalendarPage: React.FC = () => {
 
       {/* Payment Confirmation Modal */}
       {paymentModalOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black bg-opacity-50 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
           <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm animate-fade-in-up">
              <div className="flex justify-between items-center mb-4 border-b pb-2">
                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
@@ -1187,7 +1187,7 @@ const CalendarPage: React.FC = () => {
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Valor Recebido (R$)</label>
                     <input 
                         type="number" step="0.01" min="0"
-                        className="w-full border p-2 rounded text-lg font-bold text-gray-800"
+                        className="w-full border p-2 rounded text-lg font-bold text-gray-800 bg-white"
                         value={paymentAmount}
                         onChange={(e) => setPaymentAmount(parseFloat(e.target.value))}
                     />
@@ -1196,7 +1196,7 @@ const CalendarPage: React.FC = () => {
                  <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Forma de Pagamento</label>
                     <select 
-                        className="w-full border p-2 rounded bg-white"
+                        className="w-full border p-2 rounded bg-white text-gray-800"
                         value={paymentMethod}
                         onChange={(e) => setPaymentMethod(e.target.value)}
                     >
@@ -1226,9 +1226,9 @@ const CalendarPage: React.FC = () => {
         </div>
       )}
 
-      {/* Delete Confirmation */}
+      {/* Delete Confirmation (Mantido estilo Light para contraste de alerta) */}
       {deleteId && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
           <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm text-center">
              <div className="bg-red-100 p-3 rounded-full inline-block mb-4">
                 <AlertTriangle className="text-red-600" size={32} />
@@ -1259,7 +1259,7 @@ const CalendarPage: React.FC = () => {
 
       {/* Modal de Agendamento de Retorno */}
       {returnModalOpen && apptForReturn && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
           <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm text-center">
              <div className="bg-indigo-100 p-3 rounded-full inline-block mb-4">
                 <CalendarCheck className="text-indigo-600" size={32} />
@@ -1288,7 +1288,7 @@ const CalendarPage: React.FC = () => {
 
       {/* Time Selection Warning Modal */}
       {showTimeWarning && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
           <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm text-center animate-fade-in-up">
              <div className="bg-yellow-100 p-3 rounded-full inline-block mb-4">
                 <Clock className="text-yellow-600" size={32} />
@@ -1309,7 +1309,7 @@ const CalendarPage: React.FC = () => {
 
       {/* Finance Auto Modal */}
       {showFinanceAutoModal && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black bg-opacity-50 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
             <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm text-center animate-fade-in-up">
                 <div className="bg-green-100 p-3 rounded-full inline-block mb-4">
                     <DollarSign className="text-green-600" size={32} />
@@ -1330,13 +1330,13 @@ const CalendarPage: React.FC = () => {
 
       {/* Help Modal */}
       {showHelp && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black bg-opacity-50 p-4 backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg">
-             <div className="flex justify-between items-center mb-4 border-b pb-2">
-                <h3 className="text-xl font-bold flex items-center text-gray-800 gap-2"><HelpCircle className="text-primary"/> Como usar a Agenda</h3>
-                <button onClick={() => setShowHelp(false)} className="text-gray-400 hover:text-gray-600"><X size={20}/></button>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-white/10 p-6 rounded-lg shadow-xl w-full max-w-lg">
+             <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
+                <h3 className="text-xl font-bold flex items-center text-white gap-2"><HelpCircle className="text-primary"/> Como usar a Agenda</h3>
+                <button onClick={() => setShowHelp(false)} className="text-gray-400 hover:text-white"><X size={20}/></button>
              </div>
-             <div className="space-y-4 text-sm text-gray-600">
+             <div className="space-y-4 text-sm text-gray-400">
                 <p>Gerencie seus compromissos com facilidade:</p>
                 <ul className="list-disc pl-5 space-y-2">
                    <li><strong>Visualização:</strong> Alterne entre Grade (Mensal) e Lista usando os ícones no topo.</li>

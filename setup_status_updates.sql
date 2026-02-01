@@ -1,5 +1,9 @@
 
--- Tabela para armazenar as interações dos pacientes com o e-mail de lembrete
+-- ============================================================================
+-- TABELA DE ATUALIZAÇÃO DE STATUS (INTERAÇÃO POR EMAIL)
+-- ============================================================================
+
+-- 1. Criar a tabela
 CREATE TABLE IF NOT EXISTS public.appointment_status_updates (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     appointment_id UUID NOT NULL REFERENCES public.appointments(id) ON DELETE CASCADE,
@@ -9,21 +13,26 @@ CREATE TABLE IF NOT EXISTS public.appointment_status_updates (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Habilitar RLS
+-- 2. Habilitar Segurança (RLS)
 ALTER TABLE public.appointment_status_updates ENABLE ROW LEVEL SECURITY;
 
--- 1. Permitir inserção pública (Pacientes clicam no link sem estar logados)
+-- 3. Política: Permitir inserção PÚBLICA
+-- Necessário para que o paciente, ao clicar no link do email (sem estar logado),
+-- consiga registrar sua resposta.
 DROP POLICY IF EXISTS "Public insert status updates" ON public.appointment_status_updates;
 CREATE POLICY "Public insert status updates" ON public.appointment_status_updates
     FOR INSERT
     WITH CHECK (true);
 
--- 2. Permitir leitura/gerenciamento apenas para membros da clínica (via função segura ou direta)
+-- 4. Política: Permitir leitura/gerenciamento apenas para membros da CLÍNICA
+-- Garante que uma clínica não veja as notificações de outra.
 DROP POLICY IF EXISTS "Clinic manage status updates" ON public.appointment_status_updates;
 CREATE POLICY "Clinic manage status updates" ON public.appointment_status_updates
     FOR ALL
     USING (
+      -- Usuário logado pertence à mesma clínica do registro
       clinic_id = (SELECT clinic_id FROM public.user_profiles WHERE id = auth.uid() LIMIT 1)
       OR 
-      (SELECT auth.jwt() ->> 'email' = 'danilobellucci@gmail.com') -- Super Admin Bypass
+      -- Super Admin Bypass (opcional, útil para suporte)
+      (SELECT auth.jwt() ->> 'email' = 'danilobellucci@gmail.com')
     );

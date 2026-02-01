@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
+import { Logo } from './Logo';
 import { CheckCircle, XCircle, Loader2, Calendar, RefreshCcw, Smile } from 'lucide-react';
 
 const AppointmentActionPage: React.FC = () => {
@@ -27,40 +28,40 @@ const AppointmentActionPage: React.FC = () => {
     }
 
     try {
-      // 1. Buscar detalhes do agendamento
-      const { data: appointment, error: fetchError } = await supabase
-        .from('appointments')
-        .select(`
-            *,
-            client_id,
-            clinic_id,
-            clinic:clinics(slug, name)
-        `)
-        .eq('id', id)
-        .single();
+      // 1. Buscar detalhes do agendamento via RPC Segura (Bypass RLS)
+      // A tabela appointments é privada, então usamos uma função do banco para ler os dados necessários.
+      const { data: appointmentData, error: fetchError } = await supabase
+        .rpc('get_appointment_details_for_action', { p_appointment_id: id })
+        .maybeSingle();
 
-      if (fetchError || !appointment) {
-          throw new Error("Agendamento não encontrado.");
+      if (fetchError) {
+          console.error("Erro RPC:", fetchError);
+          throw new Error("Erro ao consultar agendamento.");
       }
 
-      const clinicName = (appointment.clinic as any)?.name || 'Clínica Odontológica';
+      if (!appointmentData) {
+          throw new Error("Agendamento não encontrado ou link expirado.");
+      }
+
+      const { clinic_name, clinic_slug, client_id, clinic_id } = appointmentData;
+      const displayClinicName = clinic_name || 'Clínica Odontológica';
 
       // 2. Lógica de Reagendamento (Redirecionamento)
       if (action === 'reschedule') {
           // Grava a intenção de reagendar antes de redirecionar
           await supabase.from('appointment_status_updates').insert({
               appointment_id: id,
-              client_id: appointment.client_id,
-              clinic_id: appointment.clinic_id,
+              client_id: client_id,
+              clinic_id: clinic_id,
               status: 'reschedule'
           });
 
           setStatus('reschedule');
           setMessage('Redirecionando para a página de agendamento...');
           
-          const clinicSlug = (appointment.clinic as any)?.slug || appointment.clinic_id;
+          const targetSlug = clinic_slug || clinic_id;
           setTimeout(() => {
-              navigate(`/${clinicSlug}`);
+              navigate(`/${targetSlug}`);
           }, 1500);
           
           setLoading(false);
@@ -73,17 +74,17 @@ const AppointmentActionPage: React.FC = () => {
 
       if (action === 'confirm') {
           dbStatus = 'confirmed';
-          displayMessage = `Obrigado! Sua presença foi confirmada na ${clinicName}.`;
+          displayMessage = `Obrigado! Sua presença foi confirmada na ${displayClinicName}.`;
       }
       if (action === 'cancel') {
           dbStatus = 'cancelled';
-          displayMessage = `Sua solicitação de cancelamento foi recebida. A ${clinicName} foi notificada.`;
+          displayMessage = `Sua solicitação de cancelamento foi recebida. A ${displayClinicName} foi notificada.`;
       }
 
       const { error: insertError } = await supabase.from('appointment_status_updates').insert({
           appointment_id: id,
-          client_id: appointment.client_id,
-          clinic_id: appointment.clinic_id,
+          client_id: client_id,
+          clinic_id: clinic_id,
           status: dbStatus
       });
 
@@ -106,7 +107,7 @@ const AppointmentActionPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
       {/* Header Minimalista */}
       <div className="absolute top-6 flex items-center text-gray-400 font-bold text-xl gap-2">
-          <Smile size={24} className="text-primary"/> DentiHub
+          <Logo className="w-8 h-8" /> DentiHub
       </div>
 
       <div className="bg-white p-10 rounded-2xl shadow-xl max-w-md w-full text-center animate-fade-in-up border border-gray-100">
@@ -132,34 +133,31 @@ const AppointmentActionPage: React.FC = () => {
                    <RefreshCcw className="h-12 w-12 text-blue-600" />
                 </div>
             ) : (
-              <div className="bg-gray-100 p-6 rounded-full mb-6">
-                 <Calendar className="h-12 w-12 text-gray-500" />
-              </div>
+                <div className="bg-gray-100 p-6 rounded-full mb-6">
+                   <XCircle className="h-12 w-12 text-gray-400" />
+                </div>
             )}
             
-            <h2 className="text-2xl font-black text-gray-900 mb-3">
-              {status === 'success' 
-                ? (action === 'cancel' ? 'Cancelamento Recebido' : 'Tudo Certo!') 
-                : status === 'reschedule' ? 'Reagendando...'
-                : 'Ops! Algo deu errado'}
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                {status === 'success' ? (action === 'confirm' ? 'Confirmado!' : 'Cancelado') : 
+                 status === 'reschedule' ? 'Reagendando...' : 'Ops!'}
             </h2>
             
-            <p className="text-gray-600 mb-8 leading-relaxed text-lg">
-              {message}
+            <p className="text-gray-600 mb-8 leading-relaxed">
+                {message}
             </p>
 
-            {status !== 'reschedule' && (
+            {status === 'error' && (
                 <button 
-                onClick={() => navigate('/')}
-                className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-black transition shadow-lg flex items-center justify-center"
+                    onClick={() => navigate('/')}
+                    className="px-6 py-3 bg-gray-900 text-white rounded-lg font-bold hover:bg-black transition"
                 >
-                Ir para Início
+                    Ir para o Início
                 </button>
             )}
           </div>
         )}
       </div>
-      <p className="mt-8 text-gray-400 text-sm">© {new Date().getFullYear()} DentiHub - Gestão Inteligente</p>
     </div>
   );
 };

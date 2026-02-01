@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useNavigate } from 'react-router-dom';
+import { Logo } from './Logo';
 import { Search, MapPin, Smile, Phone, ArrowRight, Home, Filter, Loader2 } from 'lucide-react';
 
 const BRAZIL_STATES = [
@@ -125,7 +126,7 @@ const FindClinicPage: React.FC = () => {
       <header className="bg-white shadow-sm py-4 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <div className="flex items-center gap-2 text-primary font-bold text-xl cursor-pointer" onClick={() => navigate('/')}>
-            <Smile size={28} />
+            <Logo className="w-8 h-8" />
             <span>DentiHub</span>
           </div>
           <button 
@@ -222,9 +223,7 @@ const FindClinicPage: React.FC = () => {
                                 {clinic.logo_url ? (
                                     <img src={clinic.logo_url} alt={clinic.name} className="h-16 w-16 object-contain rounded-lg border bg-gray-50" />
                                 ) : (
-                                    <div className="h-16 w-16 bg-blue-50 rounded-lg flex items-center justify-center text-primary">
-                                        <Smile size={32} />
-                                    </div>
+                                    <Logo className="h-16 w-16" />
                                 )}
                                 <div className="ml-4 flex-1 min-w-0">
                                     <h3 className="font-bold text-lg text-gray-900 leading-tight truncate" title={clinic.name}>{clinic.name}</h3>

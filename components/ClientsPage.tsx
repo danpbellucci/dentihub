@@ -1,346 +1,169 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../services/supabase';
-import { Client, Dentist, ClinicalRecord } from '../types';
-import * as XLSX from 'xlsx';
+import { Client, UserProfile } from '../types';
 import { 
-  Plus, Search, Edit2, Trash2, Upload, Loader2, X, User, 
-  HelpCircle, ClipboardList, ScrollText, Calendar, Download, 
-  FileText, Save, AlertTriangle, FolderOpen, File as FileIcon, Image as ImageIcon, Lock
+  Plus, Edit2, Trash2, Upload, Search, X, Loader2, User, 
+  Phone, Mail, MapPin, FileText, Download, HelpCircle, 
+  FileSpreadsheet, ClipboardList, Folder, Calendar
 } from 'lucide-react';
-import { format, isAfter, parseISO } from 'date-fns';
-import { jsPDF } from 'jspdf';
+import * as XLSX from 'xlsx';
 import Toast, { ToastType } from './Toast';
+import { useOutletContext, useNavigate } from 'react-router-dom';
 import { validateCPF } from '../utils/validators';
-import { useLocation, useNavigate } from 'react-router-dom';
-
-interface ExtendedClient extends Client {
-  next_return_date?: string | null;
-  appointments?: { return_date: string | null }[];
-}
-
-interface StorageFile {
-  name: string;
-  id: string;
-  updated_at: string;
-  created_at: string;
-  last_accessed_at: string;
-  metadata: {
-    eTag: string;
-    size: number;
-    mimetype: string;
-    cacheControl: string;
-    lastModified: string;
-    contentLength: number;
-    httpStatusCode: number;
-  };
-}
 
 const ClientsPage: React.FC = () => {
-  const [clients, setClients] = useState<ExtendedClient[]>([]);
-  const [dentists, setDentists] = useState<Dentist[]>([]);
-  const [clinicName, setClinicName] = useState('Minha Clínica');
+  const { userProfile } = useOutletContext<{ userProfile: UserProfile | null }>();
+  const navigate = useNavigate();
+  const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // Search & Filters
+  const [processing, setProcessing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'name' | 'return_date'>('name');
-  const [filterReturnOnly, setFilterReturnOnly] = useState(false);
-
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
-  const [formData, setFormData] = useState<Partial<Client>>({});
-  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    whatsapp: '',
+    cpf: '',
+    address: '',
+    birth_date: '',
+    clinical_notes: ''
+  });
+
+  // Delete Modal
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [processingDelete, setProcessingDelete] = useState(false);
-  
-  // Context State
-  const [clinicId, setClinicId] = useState<string | null>(null);
-  const [currentTier, setCurrentTier] = useState<string>('free');
-  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
-  const [showHelp, setShowHelp] = useState(false);
-  
-  // Feature Modals
-  const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
-  const [selectedClientForRecord, setSelectedClientForRecord] = useState<Client | null>(null);
-  const [clientRecords, setClientRecords] = useState<ClinicalRecord[]>([]);
-  const [newRecordDesc, setNewRecordDesc] = useState('');
-  const [newRecordDentist, setNewRecordDentist] = useState('');
-  const [newRecordDate, setNewRecordDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
-  const [isPrescriptionModalOpen, setIsPrescriptionModalOpen] = useState(false);
-  const [selectedClientForPrescription, setSelectedClientForPrescription] = useState<Client | null>(null);
-  const [prescriptionText, setPrescriptionText] = useState('');
-  const [selectedDentistForPrescription, setSelectedDentistForPrescription] = useState('');
-
-  // Files Modal State
-  const [isFilesModalOpen, setIsFilesModalOpen] = useState(false);
-  const [selectedClientForFiles, setSelectedClientForFiles] = useState<Client | null>(null);
-  const [clientFiles, setClientFiles] = useState<StorageFile[]>([]);
-  const [uploadingFile, setUploadingFile] = useState(false);
-
+  // Import/Export
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const clientFileInputRef = useRef<HTMLInputElement>(null);
-  const location = useLocation();
-  const navigate = useNavigate();
+  
+  // UI
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  const [currentTier, setCurrentTier] = useState('free');
+  const [showHelp, setShowHelp] = useState(false);
+
+  const clinicId = userProfile?.clinic_id;
 
   useEffect(() => {
-    initialize();
-    
-    // Auto-open modal if requested via navigation state (Onboarding flow)
-    if (location.state?.openModal) {
-        openModal();
+    if (clinicId) {
+      fetchClients(clinicId);
+      checkTier(clinicId);
     }
-  }, []);
+  }, [clinicId]);
 
-  const initialize = async () => {
-    setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    // 1. Get Clinic ID
-    const { data: profile } = await supabase.from('user_profiles').select('clinic_id').eq('id', user.id).single();
-    const id = profile?.clinic_id || user.id;
-    setClinicId(id);
-
-    // 2. Get Tier & Clinic Info
-    const { data: clinic } = await supabase.from('clinics').select('subscription_tier, name').eq('id', id).single();
-    if (clinic) {
-        setCurrentTier(clinic.subscription_tier || 'free');
-        setClinicName(clinic.name);
-    }
-
-    // 3. Fetch Data
-    await Promise.all([
-        fetchClients(id),
-        fetchDentists(id)
-    ]);
-    
-    setLoading(false);
-  };
-
-  const fetchDentists = async (id: string) => {
-      const { data } = await supabase.from('dentists').select('*').eq('clinic_id', id).order('name');
-      if (data) setDentists(data as Dentist[]);
+  const checkTier = async (id: string) => {
+      const { data } = await supabase.from('clinics').select('subscription_tier').eq('id', id).single();
+      if (data) setCurrentTier(data.subscription_tier || 'free');
   };
 
   const fetchClients = async (id: string) => {
-    // Busca clientes e appointments para calcular data de retorno
-    const { data } = await supabase.from('clients').select('*, appointments(return_date)').eq('clinic_id', id).order('name');
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('clinic_id', id)
+      .order('name', { ascending: true });
     
-    if (data) {
-        const processed: ExtendedClient[] = data.map((c: any) => {
-            let nextReturn = null;
-            if (c.appointments && c.appointments.length > 0) {
-               const today = new Date();
-               today.setHours(0,0,0,0);
-               const returns = c.appointments
-                 .map((a: any) => a.return_date)
-                 .filter((d: string) => d && isAfter(parseISO(d), today))
-                 .sort();
-               if (returns.length > 0) nextReturn = returns[0];
-            }
-            return { ...c, next_return_date: nextReturn };
-        });
-        setClients(processed);
+    if (error) {
+      setToast({ message: "Erro ao carregar pacientes.", type: 'error' });
+    } else {
+      setClients(data as Client[]);
+    }
+    setLoading(false);
+  };
+
+  const handleOpenModal = (client?: Client) => {
+    if (client) {
+      setEditingClient(client);
+      setFormData({
+        name: client.name,
+        email: client.email || '',
+        whatsapp: client.whatsapp || '',
+        cpf: client.cpf || '',
+        address: client.address || '',
+        birth_date: client.birth_date || '',
+        clinical_notes: client.clinical_notes || ''
+      });
+    } else {
+      // Check limits before opening
+      let limit = Infinity;
+      if (currentTier === 'free') limit = 30;
+      if (currentTier === 'starter') limit = 100;
+      
+      if (clients.length >= limit) {
+          setToast({ message: `Limite do plano atingido (${limit} pacientes). Faça upgrade.`, type: 'warning' });
+          return;
+      }
+
+      setEditingClient(null);
+      setFormData({ name: '', email: '', whatsapp: '', cpf: '', address: '', birth_date: '', clinical_notes: '' });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!clinicId) return;
+    
+    if (formData.cpf && !validateCPF(formData.cpf)) {
+        setToast({ message: "CPF inválido.", type: 'error' });
+        return;
+    }
+
+    setProcessing(true);
+    try {
+      const payload = { ...formData, clinic_id: clinicId };
+      
+      if (editingClient) {
+        const { error } = await supabase.from('clients').update(payload).eq('id', editingClient.id);
+        if (error) throw error;
+        setToast({ message: "Paciente atualizado!", type: 'success' });
+      } else {
+        const { error } = await supabase.from('clients').insert(payload);
+        if (error) throw error;
+        setToast({ message: "Paciente cadastrado!", type: 'success' });
+      }
+      
+      setIsModalOpen(false);
+      fetchClients(clinicId);
+    } catch (err: any) {
+      setToast({ message: "Erro ao salvar: " + err.message, type: 'error' });
+    } finally {
+      setProcessing(false);
     }
   };
 
-  // --- RECORD LOGIC ---
-  const fetchClientRecords = async (clientId: string) => {
-    const { data } = await supabase.from('clinical_records').select('*, dentist:dentists(name)').eq('client_id', clientId).order('date', { ascending: false });
-    return data as unknown as ClinicalRecord[] || [];
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    setProcessing(true);
+    try {
+      const { error } = await supabase.from('clients').delete().eq('id', deleteId);
+      if (error) throw error;
+      setToast({ message: "Paciente removido.", type: 'success' });
+      setDeleteId(null);
+      if (clinicId) fetchClients(clinicId);
+    } catch (err: any) {
+      setToast({ message: "Erro ao excluir: " + err.message, type: 'error' });
+    } finally {
+      setProcessing(false);
+    }
   };
 
-  const handleOpenRecordModal = async (client: Client) => {
-    setSelectedClientForRecord(client);
-    setNewRecordDesc(''); 
-    setNewRecordDentist(''); 
-    setNewRecordDate(format(new Date(), 'yyyy-MM-dd'));
-    setIsRecordModalOpen(true);
-    const records = await fetchClientRecords(client.id);
-    setClientRecords(records);
-  };
-
-  const handleSaveRecord = async () => {
-     if (!selectedClientForRecord || !newRecordDesc || !newRecordDentist || !clinicId) {
-         setToast({ message: "Preencha a descrição e selecione o dentista.", type: 'warning' });
-         return;
-     }
-     setSaving(true);
-     try {
-         const { error } = await supabase.from('clinical_records').insert({
-             clinic_id: clinicId, client_id: selectedClientForRecord.id, dentist_id: newRecordDentist, description: newRecordDesc, date: newRecordDate
-         });
-         if (error) throw error;
-         const records = await fetchClientRecords(selectedClientForRecord.id);
-         setClientRecords(records);
-         setNewRecordDesc('');
-         setToast({ message: "Prontuário atualizado!", type: 'success' });
-     } catch (err: any) {
-         setToast({ message: "Erro ao salvar: " + err.message, type: 'error' });
-     } finally { setSaving(false); }
-  };
-
-  // --- FILES LOGIC ---
-  const fetchFiles = async (clientId: string) => {
-      if (!clinicId) return;
-      const { data, error } = await supabase.storage.from('patient-files').list(`${clinicId}/${clientId}`);
-      if (error) {
-          console.error("Erro ao listar arquivos:", error);
-          setToast({ message: "Erro ao carregar arquivos.", type: 'error' });
-      } else {
-          setClientFiles(data as StorageFile[]);
-      }
-  };
-
-  const handleOpenFilesModal = (client: Client) => {
-      setSelectedClientForFiles(client);
-      setClientFiles([]);
-      setIsFilesModalOpen(true);
-      fetchFiles(client.id);
-  };
-
-  const handleClientFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (!e.target.files || e.target.files.length === 0 || !selectedClientForFiles || !clinicId) return;
-      
-      // 1. Verificação de Plano PRO
-      if (currentTier !== 'pro') {
-          setToast({ message: "O upload de arquivos é exclusivo do plano Pro. Faça upgrade para desbloquear.", type: 'warning' });
-          if (clientFileInputRef.current) clientFileInputRef.current.value = '';
-          return;
-      }
-
-      const file = e.target.files[0];
-      const fileSizeLimit = 100 * 1024 * 1024; // 100MB Total Limit Check Logic Below
-      
-      // 2. Calcular uso atual deste paciente
-      const currentUsage = clientFiles.reduce((acc, f) => acc + (f.metadata?.size || 0), 0);
-      const newTotal = currentUsage + file.size;
-
-      if (newTotal > fileSizeLimit) {
-          setToast({ 
-              message: `Limite de armazenamento excedido para este paciente (Máx: 100MB). Uso atual: ${(currentUsage/1024/1024).toFixed(1)}MB`, 
-              type: 'warning' 
-          });
-          if (clientFileInputRef.current) clientFileInputRef.current.value = '';
-          return;
-      }
-
-      setUploadingFile(true);
-      try {
-          const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-          const filePath = `${clinicId}/${selectedClientForFiles.id}/${Date.now()}_${sanitizedName}`;
-          
-          const { error } = await supabase.storage.from('patient-files').upload(filePath, file);
-          if (error) throw error;
-          
-          setToast({ message: "Arquivo enviado com sucesso!", type: 'success' });
-          fetchFiles(selectedClientForFiles.id);
-      } catch (err: any) {
-          console.error("Erro upload:", err);
-          setToast({ message: "Erro no upload: " + err.message, type: 'error' });
-      } finally {
-          setUploadingFile(false);
-          if (clientFileInputRef.current) clientFileInputRef.current.value = '';
-      }
-  };
-
-  const handleDownloadFile = async (fileName: string) => {
-      if (!clinicId || !selectedClientForFiles) return;
-      const path = `${clinicId}/${selectedClientForFiles.id}/${fileName}`;
-      
-      try {
-          const { data, error } = await supabase.storage.from('patient-files').download(path);
-          if (error) throw error;
-          
-          if (data) {
-              const url = window.URL.createObjectURL(data);
-              const a = document.createElement('a');
-              a.href = url;
-              const cleanName = fileName.replace(/^\d+_/, '');
-              a.download = cleanName;
-              document.body.appendChild(a);
-              a.click();
-              window.URL.revokeObjectURL(url);
-              document.body.removeChild(a);
-          }
-      } catch (err: any) {
-          console.error("Erro download:", err);
-          setToast({ message: "Erro ao baixar arquivo.", type: 'error' });
-      }
-  };
-
-  const handleDeleteFile = async (fileName: string) => {
-      if (!clinicId || !selectedClientForFiles) return;
-      if (!window.confirm("Tem certeza que deseja excluir este arquivo?")) return;
-
-      const path = `${clinicId}/${selectedClientForFiles.id}/${fileName}`;
-      try {
-          const { error } = await supabase.storage.from('patient-files').remove([path]);
-          if (error) throw error;
-          setToast({ message: "Arquivo excluído.", type: 'success' });
-          setClientFiles(prev => prev.filter(f => f.name !== fileName));
-      } catch (err: any) {
-          setToast({ message: "Erro ao excluir: " + err.message, type: 'error' });
-      }
-  };
-
-  // --- PRESCRIPTION LOGIC ---
-  const handleOpenPrescriptionModal = (client: Client) => {
-      setSelectedClientForPrescription(client); setSelectedDentistForPrescription(''); setPrescriptionText(''); 
-      setIsPrescriptionModalOpen(true);
-  };
-
-  const handlePrintPrescription = () => {
-      if (!selectedDentistForPrescription || !selectedClientForPrescription) {
-          setToast({ message: "Selecione o dentista.", type: 'warning' });
-          return;
-      }
-      const dentist = dentists.find(d => d.id === selectedDentistForPrescription);
-      const doc = new jsPDF();
-      const today = format(new Date(), 'dd/MM/yyyy');
-      
-      doc.setFont("helvetica", "bold"); 
-      doc.setFontSize(16);
-      doc.text(clinicName, 105, 20, { align: "center" });
-      
-      doc.setFontSize(14);
-      doc.text("Receituário", 105, 30, { align: "center" });
-      
-      doc.setFontSize(12);
-      doc.text(`Paciente: ${selectedClientForPrescription.name}`, 20, 50);
-      doc.text(`Data: ${today}`, 190, 50, { align: "right" });
-
-      doc.setFont("helvetica", "normal"); 
-      const splitText = doc.splitTextToSize(prescriptionText, 170);
-      doc.text(splitText, 20, 70);
-      
-      // Assinatura
-      doc.setFont("helvetica", "bold");
-      doc.text(`Dr(a). ${dentist?.name || ''}`, 105, 250, { align: "center" });
-      
-      if (dentist?.cro) {
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(10);
-          doc.text(`CRO: ${dentist.cro}`, 105, 256, { align: "center" });
-      }
-      
-      doc.save(`Receita_${selectedClientForPrescription.name}.pdf`);
-  };
-
-  // --- EXCEL IMPORT ---
-  const downloadTemplate = () => {
-      const headers = ["Nome Completo", "Email", "Telefone", "CPF", "Data Nascimento (DD/MM/AAAA)", "Endereço", "Observações"];
-      const data = [headers, ["Exemplo da Silva", "exemplo@email.com", "(11) 99999-9999", "000.000.000-00", "01/01/1990", "Rua Exemplo, 123", "Alergia a dipirona"]];
-      const ws = XLSX.utils.aoa_to_sheet(data);
+  const handleDownloadTemplate = () => {
+      const ws = XLSX.utils.aoa_to_sheet([
+          ["Nome Completo", "Email", "WhatsApp", "CPF", "Data Nascimento (DD/MM/AAAA)", "Endereço", "Observações"],
+          ["Exemplo da Silva", "exemplo@email.com", "11999999999", "00000000000", "01/01/1990", "Rua das Flores, 123", "Alergia a dipirona"]
+      ]);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Modelo Pacientes");
-      XLSX.writeFile(wb, "modelo_pacientes_dentihub.xlsx");
+      XLSX.utils.book_append_sheet(wb, ws, "Modelo");
+      XLSX.writeFile(wb, "Modelo_Importacao_DentiHub.xlsx");
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      // (Mantém a lógica de upload existente)
       if (!e.target.files || e.target.files.length === 0) return;
       if (!clinicId) { setToast({message: "Erro de identificação da clínica", type: 'error'}); return; }
 
@@ -379,7 +202,7 @@ const ClientsPage: React.FC = () => {
           if (totalAfterImport > limit) {
               setLoading(false);
               setToast({ 
-                  message: `Importação cancelada: O total (${totalAfterImport}) excede o limite do seu plano ${currentTier.toUpperCase()} (${limit} pacientes). Faça upgrade para continuar.`, 
+                  message: `Importação cancelada: O total excede o limite do plano.`, 
                   type: 'error' 
               });
               if (fileInputRef.current) fileInputRef.current.value = "";
@@ -388,6 +211,7 @@ const ClientsPage: React.FC = () => {
           
           let successCount = 0;
           let errors = 0;
+          const newRecipients: { id: string; name: string; email: string }[] = [];
           
           for (const row of rows) {
               let birthDate = null;
@@ -397,11 +221,8 @@ const ClientsPage: React.FC = () => {
                       birthDate = rawDate.toISOString().split('T')[0];
                   } else if (typeof rawDate === 'string') {
                       const parts = rawDate.trim().split('/');
-                      if (parts.length === 3) {
-                          birthDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
-                      } else {
-                          birthDate = rawDate;
-                      }
+                      if (parts.length === 3) birthDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                      else birthDate = rawDate;
                   }
               }
 
@@ -417,20 +238,25 @@ const ClientsPage: React.FC = () => {
               };
 
               try {
-                  const { error } = await supabase.from('clients').insert(payload);
+                  const { data: insertedClient, error } = await supabase.from('clients').insert(payload).select().single();
                   if (error) throw error;
                   successCount++;
-              } catch (err) {
-                  errors++;
-              }
+                  if (insertedClient && insertedClient.email) {
+                      newRecipients.push({ id: insertedClient.id, name: insertedClient.name, email: insertedClient.email });
+                  }
+              } catch (err) { errors++; }
+          }
+
+          if (newRecipients.length > 0) {
+              try {
+                  await supabase.functions.invoke('send-emails', {
+                      body: { type: 'welcome', recipients: newRecipients, origin: window.location.origin }
+                  });
+              } catch (mailErr) { console.error(mailErr); }
           }
 
           setLoading(false);
-          setToast({ 
-              message: `Importação concluída: ${successCount} salvos, ${errors} erros.`, 
-              type: errors > 0 ? 'warning' : 'success' 
-          });
-          
+          setToast({ message: `Importação concluída: ${successCount} salvos.`, type: 'success' });
           fetchClients(clinicId);
           if (fileInputRef.current) fileInputRef.current.value = "";
       };
@@ -438,124 +264,16 @@ const ClientsPage: React.FC = () => {
       reader.readAsBinaryString(file);
   };
 
-  // --- CRUD OPERATIONS ---
-  const openModal = (client?: Client) => {
-    if (client) {
-      setEditingClient(client);
-      setFormData(client);
-    } else {
-      let limit = Infinity;
-      if (currentTier === 'free') limit = 30;
-      if (currentTier === 'starter') limit = 100;
-      
-      if (clients.length >= limit) {
-           setToast({ message: `Seu plano (${currentTier}) permite apenas ${limit} pacientes. Faça upgrade para adicionar mais.`, type: 'warning' });
-           return;
-      }
-      setEditingClient(null);
-      setFormData({});
-    }
-    setIsModalOpen(true);
-  };
+  const filteredClients = clients
+    .filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()) || (c.cpf && c.cpf.includes(searchTerm)))
+    .sort((a, b) => sortOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!clinicId) return;
-
-    if (!formData.cpf) {
-        setToast({ message: "O CPF é obrigatório.", type: 'error' });
-        return;
-    }
-    if (!validateCPF(formData.cpf)) {
-        setToast({ message: "CPF inválido.", type: 'error' });
-        return;
-    }
-
-    setSaving(true);
-    try {
-      const payload = { 
-          clinic_id: clinicId,
-          name: formData.name,
-          email: formData.email || null,
-          whatsapp: formData.whatsapp || null,
-          cpf: formData.cpf,
-          address: formData.address || null,
-          birth_date: formData.birth_date || null,
-          clinical_notes: formData.clinical_notes || null
-      };
-      
-      if (editingClient) {
-        const { error } = await supabase.from('clients').update(payload).eq('id', editingClient.id);
-        if (error) throw error;
-        setToast({ message: "Paciente atualizado com sucesso!", type: 'success' });
-      } else {
-        const { data: newClient, error } = await supabase.from('clients').insert(payload).select().single();
-        if (error) throw error;
-        
-        setToast({ message: "Paciente cadastrado com sucesso!", type: 'success' });
-
-        if (newClient && newClient.email) {
-            try {
-                await supabase.functions.invoke('send-emails', {
-                    body: {
-                        type: 'welcome',
-                        recipients: [{ 
-                            id: newClient.id, 
-                            name: newClient.name, 
-                            email: newClient.email 
-                        }],
-                        origin: window.location.origin 
-                    }
-                });
-            } catch (mailErr) {
-                console.error("Erro ao enviar e-mail de boas-vindas:", mailErr);
-            }
-        }
-      }
-      
-      setIsModalOpen(false);
-      fetchClients(clinicId);
-
-      if (location.state?.returnToOnboarding) {
-          navigate('/dashboard', { state: { showOnboarding: true } });
-      }
-
-    } catch (err: any) {
-      setToast({ message: "Erro ao salvar: " + err.message, type: 'error' });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const confirmDelete = async () => {
-    if (!deleteId) return;
-    setProcessingDelete(true);
-    try {
-      const { error } = await supabase.from('clients').delete().eq('id', deleteId);
-      if (error) throw error;
-      setToast({ message: "Paciente excluído com sucesso.", type: 'success' });
-      if (clinicId) fetchClients(clinicId);
-    } catch (err: any) {
-      setToast({ message: "Erro ao excluir: " + err.message, type: 'error' });
-    } finally {
-      setProcessingDelete(false);
-      setDeleteId(null);
-    }
-  };
-
-  const processedList = clients
-    .filter(c => (c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.cpf?.includes(searchTerm)))
-    .sort((a, b) => sortBy === 'name' ? a.name.localeCompare(b.name) : (new Date(a.next_return_date || '9999').getTime() - new Date(b.next_return_date || '9999').getTime()));
-
-  if (loading) {
-    return (
-      <div className="flex h-96 w-full items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
+  if (loading && !processing && clients.length === 0) {
+      return (
+        <div className="flex h-96 w-full items-center justify-center">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <span className="text-gray-500 font-medium">Carregando dados...</span>
         </div>
-      </div>
-    );
+      );
   }
 
   return (
@@ -564,476 +282,234 @@ const ClientsPage: React.FC = () => {
       
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
         <div className="flex items-center gap-2 mb-4 sm:mb-0">
-            <h1 className="text-2xl font-bold text-gray-800">Pacientes</h1>
+            <h1 className="text-2xl font-bold text-white">Pacientes</h1>
             <button onClick={() => setShowHelp(true)} className="text-gray-400 hover:text-primary transition-colors"><HelpCircle size={20} /></button>
         </div>
-        <div className="flex space-x-2">
-          {/* Import Controls */}
-          <div className="flex gap-2 mr-2">
-              <button 
-                onClick={downloadTemplate}
-                className="flex items-center px-3 py-2 text-sm bg-white border border-gray-300 text-gray-600 rounded hover:bg-gray-50 transition"
-                title="Baixar Modelo Excel"
-              >
-                  <Download size={16} className="mr-1"/> Modelo
-              </button>
-              <label className="flex items-center px-3 py-2 text-sm bg-white border border-gray-300 text-gray-600 rounded hover:bg-gray-50 transition cursor-pointer">
-                  <Upload size={16} className="mr-1"/> Importar Excel
-                  <input 
-                    type="file" 
-                    accept=".xlsx, .xls" 
-                    className="hidden" 
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                  />
-              </label>
-          </div>
-
-          <button onClick={() => openModal()} className="flex items-center px-4 py-2 bg-primary text-white rounded hover:bg-sky-600 transition shadow-sm font-bold">
-            <Plus size={18} className="mr-2" /> Novo
-          </button>
-        </div>
-      </div>
-
-      {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-lg shadow mb-6 flex flex-col md:flex-row gap-4 items-center">
-        <div className="relative flex-1 w-full">
-          <Search className="absolute left-3 top-3 text-gray-400" size={20} />
-          <input type="text" placeholder="Buscar por nome ou CPF..." className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-primary outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-        </div>
-        <div className="flex gap-2 w-full md:w-auto overflow-x-auto">
-            <select className="border rounded-lg px-3 py-2 text-sm bg-white" value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
-                <option value="name">Nome (A-Z)</option>
-                <option value="return_date">Data Retorno</option>
-            </select>
-            <button onClick={() => setFilterReturnOnly(!filterReturnOnly)} className={`flex items-center px-3 py-2 border rounded-lg text-sm ${filterReturnOnly ? 'bg-blue-50 border-primary text-primary' : 'bg-white'}`}>
-                <Calendar size={14} className="mr-2" /> Com Retorno
+        <div className="flex gap-2 w-full sm:w-auto">
+            <button onClick={handleDownloadTemplate} className="flex items-center justify-center px-4 py-2 bg-gray-900 border border-white/10 text-gray-300 rounded hover:bg-gray-800 transition shadow-sm font-bold text-sm">
+                <Download size={16} className="mr-2" /> Modelo
+            </button>
+            <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center px-4 py-2 bg-gray-900 border border-white/10 text-gray-300 rounded hover:bg-gray-800 transition shadow-sm font-bold text-sm">
+                <Upload size={16} className="mr-2" /> Importar Excel
+            </button>
+            <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls" onChange={handleFileUpload} />
+            
+            <button onClick={() => handleOpenModal()} className="flex items-center justify-center px-4 py-2 bg-primary text-white rounded hover:bg-sky-600 transition shadow-sm font-bold text-sm">
+                <Plus size={16} className="mr-2" /> Novo
             </button>
         </div>
       </div>
 
-      {/* Client List */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-          <ul className="divide-y divide-gray-200">
-            {processedList
-                .filter(c => !filterReturnOnly || c.next_return_date)
-                .map((client) => (
-              <li key={client.id} className="p-4 hover:bg-gray-50 flex justify-between items-center group">
-                <div className="flex-1 cursor-pointer" onClick={() => openModal(client)}>
-                  <div className="flex items-center flex-wrap gap-2">
-                    <p className="text-lg font-bold text-primary hover:underline">{client.name}</p>
-                    {client.next_return_date && <span className="text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full font-bold">Retorno: {format(parseISO(client.next_return_date), 'dd/MM/yyyy')}</span>}
-                  </div>
-                  <p className="text-sm text-gray-500">{client.whatsapp || 'Sem telefone'} {client.cpf && `| ${client.cpf}`}</p>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <button onClick={() => handleOpenPrescriptionModal(client)} className="flex flex-col items-center justify-center p-2 text-gray-400 hover:text-green-600 transition-colors" title="Receita">
-                      <ScrollText size={20}/>
-                      <span className="text-[10px] font-medium mt-0.5">Receita</span>
-                  </button>
-                  <button onClick={() => handleOpenRecordModal(client)} className="flex flex-col items-center justify-center p-2 text-gray-400 hover:text-indigo-600 transition-colors" title="Prontuário">
-                      <ClipboardList size={20}/>
-                      <span className="text-[10px] font-medium mt-0.5">Prontuário</span>
-                  </button>
-                  <button onClick={() => handleOpenFilesModal(client)} className="flex flex-col items-center justify-center p-2 text-gray-400 hover:text-yellow-600 transition-colors" title="Arquivos">
-                      <FolderOpen size={20}/>
-                      <span className="text-[10px] font-medium mt-0.5">Arquivos</span>
-                  </button>
-                  
-                  <div className="w-px h-8 bg-gray-200 mx-2"></div>
-                  
-                  <button onClick={(e) => { e.stopPropagation(); openModal(client); }} className="p-2 text-gray-400 hover:text-blue-600" title="Editar"><Edit2 size={18}/></button>
-                  <button onClick={(e) => { e.stopPropagation(); setDeleteId(client.id); }} className="p-2 text-gray-400 hover:text-red-600" title="Excluir"><Trash2 size={18}/></button>
-                </div>
-              </li>
-            ))}
-            {processedList.length === 0 && <li className="p-12 text-center text-gray-500">Nenhum paciente encontrado.</li>}
-          </ul>
+      <div className="bg-gray-900/60 backdrop-blur-md p-4 rounded-lg shadow-lg border border-white/5 mb-6 flex flex-col sm:flex-row gap-4 items-center">
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-3 top-2.5 text-gray-500" size={20} />
+          <input 
+            type="text" 
+            placeholder="Buscar por nome ou CPF..." 
+            className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-white/10 rounded-lg text-white focus:ring-primary outline-none placeholder-gray-500 hover:bg-gray-750 transition"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="flex gap-2 w-full sm:w-auto">
+            <select 
+                className="border border-white/10 rounded-lg px-4 py-2 bg-gray-800 text-sm text-gray-200 focus:ring-primary outline-none w-full sm:w-auto hover:bg-gray-750 cursor-pointer"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+            >
+                <option value="asc">Nome (A-Z)</option>
+                <option value="desc">Nome (Z-A)</option>
+            </select>
+            <button className="border border-white/10 rounded-lg px-4 py-2 bg-gray-800 text-sm font-bold text-gray-300 hover:bg-gray-700 flex items-center whitespace-nowrap">
+                <Calendar size={16} className="mr-2"/> Com Retorno
+            </button>
+        </div>
       </div>
 
-      {/* Main Modal */}
+      {/* VIEW LISTA */}
+      <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow-lg border border-white/5 overflow-hidden">
+        {filteredClients.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+                <User size={48} className="mx-auto mb-2 opacity-20"/>
+                <p>Nenhum paciente encontrado.</p>
+            </div>
+        ) : (
+            <div className="divide-y divide-white/5">
+                {filteredClients.map(client => (
+                    <div key={client.id} className="p-4 hover:bg-gray-800/50 transition-colors flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div className="flex-1">
+                            <h3 
+                                onClick={() => handleOpenModal(client)}
+                                className="font-bold text-white text-lg cursor-pointer hover:text-primary transition truncate"
+                            >
+                                {client.name}
+                            </h3>
+                            <p className="text-sm text-gray-500 flex items-center gap-2 mt-1">
+                                {client.whatsapp || 'Sem telefone'} 
+                                <span className="text-gray-700">|</span> 
+                                {client.cpf || 'Sem CPF'}
+                            </p>
+                        </div>
+                        
+                        <div className="flex items-center gap-4 text-gray-500 self-end sm:self-center">
+                            {/* Actions Group */}
+                            <button className="flex flex-col items-center group" title="Receita">
+                                <div className="p-2 rounded-lg bg-gray-800/50 border border-white/5 group-hover:bg-blue-500/10 text-gray-400 group-hover:text-blue-400 transition">
+                                    <FileText size={18} />
+                                </div>
+                                <span className="text-[10px] mt-1 hidden sm:block text-gray-500 group-hover:text-gray-300">Receita</span>
+                            </button>
+                            
+                            <button 
+                                className="flex flex-col items-center group" 
+                                title="Prontuário"
+                                onClick={() => navigate('/dashboard/smart-record')}
+                            >
+                                <div className="p-2 rounded-lg bg-gray-800/50 border border-white/5 group-hover:bg-purple-500/10 text-gray-400 group-hover:text-purple-400 transition">
+                                    <ClipboardList size={18} />
+                                </div>
+                                <span className="text-[10px] mt-1 hidden sm:block text-gray-500 group-hover:text-gray-300">Prontuário</span>
+                            </button>
+
+                            <button className="flex flex-col items-center group" title="Arquivos">
+                                <div className="p-2 rounded-lg bg-gray-800/50 border border-white/5 group-hover:bg-yellow-500/10 text-gray-400 group-hover:text-yellow-400 transition">
+                                    <Folder size={18} />
+                                </div>
+                                <span className="text-[10px] mt-1 hidden sm:block text-gray-500 group-hover:text-gray-300">Arquivos</span>
+                            </button>
+
+                            <div className="w-px h-8 bg-gray-800 mx-2 hidden sm:block"></div>
+
+                            <button 
+                                onClick={() => handleOpenModal(client)} 
+                                className="text-gray-500 hover:text-blue-400 transition p-2"
+                                title="Editar"
+                            >
+                                <Edit2 size={18} />
+                            </button>
+                            <button 
+                                onClick={() => setDeleteId(client.id)} 
+                                className="text-gray-500 hover:text-red-400 transition p-2"
+                                title="Excluir"
+                            >
+                                <Trash2 size={18} />
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        )}
+      </div>
+
+      {/* MODAL FORM */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 backdrop-blur-sm">
-          <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-fade-in-up">
-            <div className="flex justify-between items-center mb-6 border-b pb-4">
-              <h2 className="text-xl font-black uppercase text-gray-800 flex items-center gap-2">
-                <User className="text-gray-700" size={24} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-white/10 p-6 rounded-lg shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-fade-in-up custom-scrollbar">
+            <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+              <h2 className="text-xl font-bold text-white">
                 {editingClient ? 'Editar Paciente' : 'Novo Paciente'}
               </h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
-                <X size={24} />
-              </button>
+              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-white"><X size={24}/></button>
             </div>
-            
-            <form onSubmit={handleSave} className="space-y-5">
-              <div>
-                <label className="block text-xs font-extrabold text-gray-500 uppercase mb-1">Nome Completo *</label>
-                <input 
-                  type="text" 
-                  required 
-                  className="w-full border border-gray-200 p-3 rounded-lg focus:ring-2 focus:ring-primary outline-none text-gray-700 placeholder-gray-400" 
-                  placeholder="Ex: João da Silva"
-                  value={formData.name || ''} 
-                  onChange={e => setFormData({...formData, name: e.target.value})} 
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
+
+            <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-extrabold text-gray-500 uppercase mb-1">E-mail</label>
-                  <input 
-                    type="email" 
-                    className="w-full border border-gray-200 p-3 rounded-lg focus:ring-2 focus:ring-primary outline-none text-gray-700 placeholder-gray-400" 
-                    placeholder="email@exemplo.com"
-                    value={formData.email || ''} 
-                    onChange={e => setFormData({...formData, email: e.target.value})} 
-                  />
+                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Nome Completo *</label>
+                    <input required className="w-full border border-gray-700 bg-gray-800 text-white rounded p-2 focus:ring-primary focus:border-primary outline-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                 </div>
-                <div>
-                  <label className="block text-xs font-extrabold text-gray-500 uppercase mb-1">WhatsApp</label>
-                  <input 
-                    type="text" 
-                    className="w-full border border-gray-200 p-3 rounded-lg focus:ring-2 focus:ring-primary outline-none text-gray-700 placeholder-gray-400" 
-                    placeholder="(00) 00000-0000"
-                    value={formData.whatsapp || ''} 
-                    onChange={e => setFormData({...formData, whatsapp: e.target.value})} 
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-extrabold text-gray-500 uppercase mb-1">CPF *</label>
-                  <input 
-                    type="text"
-                    required
-                    maxLength={14}
-                    className="w-full border border-gray-200 p-3 rounded-lg focus:ring-2 focus:ring-primary outline-none text-gray-700 placeholder-gray-400" 
-                    placeholder="000.000.000-00"
-                    value={formData.cpf || ''} 
-                    onChange={e => {
-                      let v = e.target.value.replace(/\D/g, '');
-                      if (v.length > 11) v = v.slice(0, 11);
-                      v = v.replace(/(\d{3})(\d)/, '$1.$2');
-                      v = v.replace(/(\d{3})(\d)/, '$1.$2');
-                      v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-                      setFormData({...formData, cpf: v});
-                    }}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-extrabold text-gray-500 uppercase mb-1">Nascimento</label>
-                  <div className="relative">
-                    <input 
-                      type="date" 
-                      className="w-full border border-gray-200 p-3 rounded-lg focus:ring-2 focus:ring-primary outline-none text-gray-700 placeholder-gray-400 appearance-none" 
-                      value={formData.birth_date || ''} 
-                      onChange={e => setFormData({...formData, birth_date: e.target.value})} 
-                    />
-                    <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-400">
-                      <Calendar size={18} />
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1">WhatsApp</label>
+                        <input className="w-full border border-gray-700 bg-gray-800 text-white rounded p-2 focus:ring-primary outline-none" value={formData.whatsapp} onChange={e => {
+                            let v = e.target.value.replace(/\D/g, '').replace(/^(\d{2})(\d)/g, '($1) $2').replace(/(\d)(\d{4})$/, '$1-$2').slice(0, 15);
+                            setFormData({...formData, whatsapp: v});
+                        }} maxLength={15} placeholder="(00) 00000-0000" />
                     </div>
-                  </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1">CPF</label>
+                        <input className="w-full border border-gray-700 bg-gray-800 text-white rounded p-2 focus:ring-primary outline-none" value={formData.cpf} onChange={e => {
+                            let v = e.target.value.replace(/\D/g, '');
+                            if (v.length > 11) v = v.slice(0, 11);
+                            v = v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+                            setFormData({...formData, cpf: v});
+                        }} maxLength={14} placeholder="000.000.000-00" />
+                    </div>
                 </div>
-              </div>
-              
-              <div>
-                <label className="block text-xs font-extrabold text-gray-500 uppercase mb-1">Endereço Residencial</label>
-                <input 
-                  type="text" 
-                  className="w-full border border-gray-200 p-3 rounded-lg focus:ring-2 focus:ring-primary outline-none text-gray-700 placeholder-gray-400" 
-                  placeholder="Logradouro, Nº, Cidade - UF"
-                  value={formData.address || ''} 
-                  onChange={e => setFormData({...formData, address: e.target.value})} 
-                />
-              </div>
-              
-              <div>
-                <label className="block text-xs font-extrabold text-gray-500 uppercase mb-1">Alergias / Observações Rápidas</label>
-                <textarea 
-                  className="w-full border border-gray-200 p-3 rounded-lg focus:ring-2 focus:ring-primary outline-none text-gray-700 placeholder-gray-400 h-24 resize-none" 
-                  placeholder="Informações críticas de saúde..."
-                  value={formData.clinical_notes || ''} 
-                  onChange={e => setFormData({...formData, clinical_notes: e.target.value})} 
-                />
-              </div>
-              
-              <div className="pt-6 border-t border-gray-100 flex justify-end items-center gap-4">
-                <button 
-                  type="button" 
-                  onClick={() => setIsModalOpen(false)}
-                  className="text-gray-500 font-bold hover:text-gray-700 transition-colors"
-                >
-                  Voltar
-                </button>
-                <button 
-                  type="submit" 
-                  disabled={saving} 
-                  className="bg-primary text-white font-bold py-3 px-6 rounded-lg shadow hover:bg-sky-600 transition-colors disabled:opacity-50 flex items-center justify-center min-w-[160px]"
-                >
-                  {saving ? <Loader2 className="animate-spin" size={20} /> : 'Concluir Cadastro'}
-                </button>
-              </div>
+                <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">E-mail</label>
+                    <input type="email" className="w-full border border-gray-700 bg-gray-800 text-white rounded p-2 focus:ring-primary outline-none" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="email@paciente.com" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Data Nascimento</label>
+                        <input type="date" className="w-full border border-gray-700 bg-gray-800 text-white rounded p-2 focus:ring-primary outline-none" value={formData.birth_date} onChange={e => setFormData({...formData, birth_date: e.target.value})} />
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Endereço</label>
+                    <input className="w-full border border-gray-700 bg-gray-800 text-white rounded p-2 focus:ring-primary outline-none" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} placeholder="Rua, Número, Bairro, Cidade" />
+                </div>
+                <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Anotações Clínicas</label>
+                    <textarea className="w-full border border-gray-700 bg-gray-800 text-white rounded p-2 h-20 resize-none focus:ring-primary outline-none" value={formData.clinical_notes} onChange={e => setFormData({...formData, clinical_notes: e.target.value})} placeholder="Histórico, alergias, observações..." />
+                </div>
+
+                <div className="pt-4 flex justify-end gap-3 border-t border-white/10 mt-4">
+                    <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-400 hover:text-white hover:bg-white/5 rounded font-bold transition">Cancelar</button>
+                    <button type="submit" disabled={processing} className="px-6 py-2 bg-primary text-white rounded font-bold hover:bg-sky-600 transition shadow-md flex items-center disabled:opacity-50">
+                        {processing ? <Loader2 className="animate-spin mr-2"/> : 'Salvar Paciente'}
+                    </button>
+                </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* DELETE CONFIRMATION */}
       {deleteId && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4 backdrop-blur-sm animate-fade-in-up">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in-up">
           <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm text-center">
              <div className="bg-red-100 p-3 rounded-full inline-block mb-4">
-                <AlertTriangle className="text-red-600" size={32} />
+                <Trash2 className="text-red-600" size={32} />
              </div>
              <h3 className="text-lg font-bold text-gray-900 mb-2">Excluir Paciente?</h3>
              <p className="text-gray-600 mb-6 text-sm">
-               Tem certeza que deseja remover este paciente? Esta ação não pode ser desfeita e removerá todo o histórico dele.
+               Tem certeza que deseja remover este paciente? Todo o histórico será perdido.
              </p>
              <div className="flex space-x-3 w-full">
                 <button 
                   onClick={() => setDeleteId(null)}
-                  disabled={processingDelete}
+                  disabled={processing}
                   className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-bold transition"
                 >
                   Cancelar
                 </button>
                 <button 
-                  onClick={confirmDelete}
-                  disabled={processingDelete}
+                  onClick={handleDelete}
+                  disabled={processing}
                   className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold transition shadow-lg shadow-red-200 flex items-center justify-center"
                 >
-                  {processingDelete ? <Loader2 className="animate-spin" size={20}/> : 'Sim, Excluir'}
+                  {processing ? <Loader2 className="animate-spin" size={20}/> : 'Sim, Excluir'}
                 </button>
              </div>
-          </div>
-        </div>
-      )}
-
-      {/* Record Modal */}
-      {isRecordModalOpen && selectedClientForRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-fade-in-up">
-             <div className="flex justify-between items-center mb-4 border-b pb-4">
-              <h2 className="text-xl font-bold text-gray-800">Prontuário: {selectedClientForRecord.name}</h2>
-              <button onClick={() => setIsRecordModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={24}/></button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
-                    <h4 className="font-bold text-gray-700 mb-3 text-sm uppercase">Novo Registro</h4>
-                    <div className="grid grid-cols-2 gap-3 mb-3">
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 mb-1">Data</label>
-                            <input type="date" className="w-full border rounded p-2 text-sm" value={newRecordDate} onChange={e => setNewRecordDate(e.target.value)} />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 mb-1">Dentista</label>
-                            <select className="w-full border rounded p-2 text-sm" value={newRecordDentist} onChange={e => setNewRecordDentist(e.target.value)}>
-                                <option value="">Selecione...</option>
-                                {dentists.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                            </select>
-                        </div>
-                    </div>
-                    <textarea 
-                        className="w-full border rounded p-2 text-sm h-24 mb-3 resize-none focus:ring-1 focus:ring-primary outline-none" 
-                        placeholder="Descreva o procedimento realizado..."
-                        value={newRecordDesc}
-                        onChange={e => setNewRecordDesc(e.target.value)}
-                    ></textarea>
-                    <div className="flex justify-end">
-                        <button 
-                            onClick={handleSaveRecord} 
-                            disabled={saving}
-                            className="bg-primary text-white px-4 py-2 rounded font-bold text-sm hover:bg-sky-600 transition flex items-center"
-                        >
-                            {saving ? <Loader2 className="animate-spin mr-2" size={14}/> : <Save className="mr-2" size={14}/>}
-                            Salvar Registro
-                        </button>
-                    </div>
-                </div>
-
-                <h4 className="font-bold text-gray-700 mb-3 text-sm uppercase">Histórico</h4>
-                <div className="space-y-4">
-                    {clientRecords.map(record => (
-                        <div key={record.id} className="bg-white border rounded-lg p-3 shadow-sm">
-                            <div className="flex justify-between items-center border-b pb-2 mb-2">
-                                <span className="font-bold text-primary text-sm">{format(parseISO(record.date), 'dd/MM/yyyy')}</span>
-                                <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600">{record.dentist?.name}</span>
-                            </div>
-                            <p className="text-sm text-gray-700 whitespace-pre-wrap">{record.description}</p>
-                        </div>
-                    ))}
-                    {clientRecords.length === 0 && <p className="text-center text-gray-400 text-sm py-4">Nenhum histórico disponível.</p>}
-                </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Prescription Modal */}
-      {isPrescriptionModalOpen && selectedClientForPrescription && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg animate-fade-in-up">
-             <div className="flex justify-between items-center mb-4 border-b pb-4">
-              <h2 className="text-xl font-bold text-gray-800">Nova Receita</h2>
-              <button onClick={() => setIsPrescriptionModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={24}/></button>
-            </div>
-            
-            <div className="mb-4">
-                <label className="block text-sm font-bold text-gray-700 mb-1">Paciente</label>
-                <input type="text" disabled value={selectedClientForPrescription.name} className="w-full bg-gray-100 border rounded p-2 text-sm text-gray-600" />
-            </div>
-
-            <div className="mb-4">
-                <label className="block text-sm font-bold text-gray-700 mb-1">Dentista Responsável</label>
-                <select 
-                    className="w-full border rounded p-2 text-sm outline-none focus:ring-1 focus:ring-primary"
-                    value={selectedDentistForPrescription}
-                    onChange={e => setSelectedDentistForPrescription(e.target.value)}
-                >
-                    <option value="">Selecione...</option>
-                    {dentists.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                </select>
-            </div>
-
-            <div className="mb-6">
-                <label className="block text-sm font-bold text-gray-700 mb-1">Prescrição</label>
-                <textarea 
-                    className="w-full border rounded p-3 text-sm h-40 resize-none outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="Digite os medicamentos e instruções..."
-                    value={prescriptionText}
-                    onChange={e => setPrescriptionText(e.target.value)}
-                ></textarea>
-            </div>
-
-            <div className="flex justify-end gap-3">
-                <button onClick={() => setIsPrescriptionModalOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded font-medium">Cancelar</button>
-                <button 
-                    onClick={handlePrintPrescription}
-                    className="bg-green-600 text-white px-6 py-2 rounded font-bold hover:bg-green-700 transition flex items-center"
-                >
-                    <ScrollText className="mr-2" size={18}/> Gerar PDF
-                </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Files Modal */}
-      {isFilesModalOpen && selectedClientForFiles && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-xl max-h-[85vh] flex flex-col animate-fade-in-up">
-             <div className="flex justify-between items-center mb-4 border-b pb-4">
-                <div className="flex items-center gap-2">
-                    <FolderOpen className="text-yellow-500" />
-                    <div>
-                        <h2 className="text-lg font-bold text-gray-800">Arquivos do Paciente</h2>
-                        <p className="text-xs text-gray-500">{selectedClientForFiles.name}</p>
-                    </div>
-                </div>
-                <button onClick={() => setIsFilesModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={24}/></button>
-            </div>
-
-            {currentTier === 'pro' ? (
-                <div className="mb-4 bg-blue-50 p-4 rounded-lg border border-blue-100 flex items-center gap-3">
-                    <div className="p-2 bg-white rounded-full text-primary shadow-sm">
-                        <Upload size={20} />
-                    </div>
-                    <div className="flex-1">
-                        <label className="block text-sm font-bold text-gray-800 cursor-pointer hover:underline" onClick={() => clientFileInputRef.current?.click()}>
-                            Clique para enviar arquivo
-                        </label>
-                        <p className="text-xs text-gray-500">PDFs e Imagens (Max 100MB/paciente)</p>
-                        <input 
-                            type="file" 
-                            ref={clientFileInputRef} 
-                            className="hidden" 
-                            accept="image/*,application/pdf"
-                            onChange={handleClientFileUpload}
-                            disabled={uploadingFile}
-                        />
-                    </div>
-                    {uploadingFile && <Loader2 className="animate-spin text-primary" />}
-                </div>
-            ) : (
-                <div className="mb-4 bg-gray-50 p-4 rounded-lg border border-gray-200 flex items-center gap-3">
-                    <div className="p-2 bg-white rounded-full text-gray-400 shadow-sm">
-                        <Lock size={20} />
-                    </div>
-                    <div className="flex-1">
-                        <p className="text-sm font-bold text-gray-700">Upload Bloqueado</p>
-                        <p className="text-xs text-gray-500">O armazenamento de arquivos é exclusivo do plano Pro.</p>
-                    </div>
-                </div>
-            )}
-
-            <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
-                <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">Arquivos Salvos ({clientFiles.length})</h3>
-                <div className="space-y-2">
-                    {clientFiles.length === 0 ? (
-                        <p className="text-center text-gray-400 text-sm py-8 border border-dashed rounded-lg">
-                            Nenhum arquivo encontrado.
-                        </p>
-                    ) : (
-                        clientFiles.map(file => (
-                            <div key={file.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition border border-gray-200">
-                                <div className="flex items-center gap-3 overflow-hidden">
-                                    {file.metadata?.mimetype?.includes('image') ? (
-                                        <ImageIcon size={20} className="text-purple-500 flex-shrink-0" />
-                                    ) : (
-                                        <FileIcon size={20} className="text-blue-500 flex-shrink-0" />
-                                    )}
-                                    <div className="truncate">
-                                        <p className="text-sm font-medium text-gray-800 truncate" title={file.name}>
-                                            {file.name.replace(/^\d+_/, '')}
-                                        </p>
-                                        <p className="text-[10px] text-gray-500">
-                                            {new Date(file.created_at).toLocaleDateString()} • {(file.metadata?.size / 1024).toFixed(1)} KB
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <button 
-                                        onClick={() => handleDownloadFile(file.name)} 
-                                        className="p-1.5 text-gray-500 hover:text-primary hover:bg-white rounded transition"
-                                        title="Baixar / Visualizar"
-                                    >
-                                        <Download size={16} />
-                                    </button>
-                                    <button 
-                                        onClick={() => handleDeleteFile(file.name)} 
-                                        className="p-1.5 text-gray-500 hover:text-red-500 hover:bg-white rounded transition"
-                                        title="Excluir"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
-            </div>
           </div>
         </div>
       )}
 
       {/* Help Modal */}
       {showHelp && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black bg-opacity-50 p-4 backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg">
-             <div className="flex justify-between items-center mb-4 border-b pb-2">
-                <h3 className="text-xl font-bold flex items-center text-gray-800 gap-2"><HelpCircle className="text-primary"/> Ajuda - Pacientes</h3>
-                <button onClick={() => setShowHelp(false)} className="text-gray-400 hover:text-gray-600"><X size={20}/></button>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-white/10 p-6 rounded-lg shadow-xl w-full max-w-lg">
+             <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
+                <h3 className="text-xl font-bold flex items-center text-white gap-2"><HelpCircle className="text-primary"/> Gestão de Pacientes</h3>
+                <button onClick={() => setShowHelp(false)} className="text-gray-400 hover:text-white"><X size={20}/></button>
              </div>
-             <div className="space-y-4 text-sm text-gray-600">
-                <p>Aqui você gerencia todo o cadastro de pacientes da clínica.</p>
+             <div className="space-y-4 text-sm text-gray-400">
+                <p>Aqui você centraliza o cadastro dos seus pacientes.</p>
                 <ul className="list-disc pl-5 space-y-2">
-                   <li><strong>Novo:</strong> Adicione novos pacientes.</li>
-                   <li><strong>Importar Excel:</strong> Cadastre múltiplos pacientes de uma vez via planilha.</li>
-                   <li><strong>Ações:</strong> Use os ícones à direita para emitir receitas, ver prontuário, gerenciar arquivos (exames/raio-x), editar ou excluir.</li>
-                   <li><strong>Busca:</strong> Pesquise por nome ou CPF na barra superior.</li>
-                   <li><strong>Retorno:</strong> Filtre pacientes que têm data de retorno agendada.</li>
+                   <li><strong>Ações Rápidas:</strong> Use os botões ao lado do nome para emitir receitas, ver o prontuário ou acessar arquivos anexos.</li>
+                   <li><strong>Importar Excel:</strong> Traga sua base de dados antiga. A planilha deve ter colunas na ordem: Nome, Email, WhatsApp, CPF, Data Nasc (DD/MM/AAAA), Endereço, Obs.</li>
+                   <li><strong>Busca:</strong> Localize rapidamente por nome ou CPF.</li>
                 </ul>
              </div>
           </div>

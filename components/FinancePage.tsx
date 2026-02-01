@@ -13,7 +13,7 @@ const FinancePage: React.FC = () => {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [currentTier, setCurrentTier] = useState<string>('free');
   const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState(false); // New state for action processing
+  const [processing, setProcessing] = useState(false);
   const [canDelete, setCanDelete] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
@@ -21,7 +21,7 @@ const FinancePage: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [clinicId, setClinicId] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null); // New state for toasts
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   const navigate = useNavigate();
 
   const [amount, setAmount] = useState('');
@@ -36,36 +36,20 @@ const FinancePage: React.FC = () => {
   const expenseCategories = ['Aluguel Imóvel', 'Água', 'Luz', 'Telefone', 'Internet', 'Despesa Pessoal', 'Impostos', 'Fornecedores Gerais', 'Outros'];
   const paymentMethods = ['Pix', 'Dinheiro', 'Cartão de Crédito', 'Cartão de Débito', 'Boleto', 'Transferência', 'Convênio'];
 
-  useEffect(() => {
-    initialize();
-  }, [startDate, endDate, filterStatus]);
+  useEffect(() => { initialize(); }, [startDate, endDate, filterStatus]);
 
   const initialize = async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        setLoading(false);
-        return;
-    }
-
-    // 1. Identificar Perfil e Clínica Correta
+    if (!user) { setLoading(false); return; }
     let targetClinicId = user.id;
     const { data: profile } = await supabase.from('user_profiles').select('clinic_id, role').eq('id', user.id).maybeSingle();
-    
     if (profile) {
         targetClinicId = profile.clinic_id;
-        if (profile.role === 'employee') {
-            setCanDelete(false);
-        }
+        if (profile.role === 'employee') setCanDelete(false);
     }
     setClinicId(targetClinicId);
-
-    // 2. Carregar Dados
-    await Promise.all([
-        fetchTransactions(targetClinicId),
-        checkSubscription(targetClinicId)
-    ]);
-    
+    await Promise.all([fetchTransactions(targetClinicId), checkSubscription(targetClinicId)]);
     setLoading(false);
   };
 
@@ -77,7 +61,6 @@ const FinancePage: React.FC = () => {
   const fetchTransactions = async (targetId: string) => {
     let query = supabase.from('transactions').select('*').eq('clinic_id', targetId).gte('date', startDate).lte('date', endDate).order('date', { ascending: false });
     if (filterStatus !== 'all') query = query.eq('status', filterStatus as any);
-
     const { data } = await query;
     if (data) setTransactions(data);
   };
@@ -108,54 +91,34 @@ const FinancePage: React.FC = () => {
     try {
         const { error } = await supabase.from('transactions').delete().eq('id', deleteId);
         if (error) throw error;
-        setToast({ message: "Transação excluída com sucesso.", type: 'success' });
+        setToast({ message: "Transação excluída.", type: 'success' });
         if (clinicId) await fetchTransactions(clinicId);
-    } catch (err: any) {
-        setToast({ message: "Erro ao excluir: " + err.message, type: 'error' });
-    } finally {
-        setProcessing(false);
-        setDeleteId(null);
-    }
+    } catch (err: any) { setToast({ message: "Erro ao excluir: " + err.message, type: 'error' }); } 
+    finally { setProcessing(false); setDeleteId(null); }
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clinicId) {
-        setToast({ message: "Erro de identificação da clínica. Recarregue.", type: 'error' });
-        return;
-    }
-
+    if (!clinicId) return;
     try {
       const payload = { clinic_id: clinicId, amount: parseFloat(amount), category, type, status, date: new Date(date).toISOString(), observation: observation || null, payment_method: paymentMethod };
-      
       if (editingTransaction) await supabase.from('transactions').update(payload).eq('id', editingTransaction.id);
       else await supabase.from('transactions').insert(payload);
-      
       setIsModalOpen(false);
-      setToast({ message: "Lançamento salvo com sucesso!", type: 'success' });
+      setToast({ message: "Salvo com sucesso!", type: 'success' });
       await fetchTransactions(clinicId);
-    } catch (error: any) { 
-        setToast({ message: 'Erro: ' + error.message, type: 'error' });
-    }
+    } catch (error: any) { setToast({ message: 'Erro: ' + error.message, type: 'error' }); }
   };
 
   const handleQuickStatusUpdate = async (t: Transaction, newStatus: 'pending' | 'completed') => {
-      // 1. Atualização Otimista
       const previousTransactions = [...transactions];
       setTransactions(prev => prev.map(item => item.id === t.id ? { ...item, status: newStatus } : item));
-
       try {
           const { error } = await supabase.from('transactions').update({ status: newStatus }).eq('id', t.id);
           if (error) throw error;
-          
-          // Se for uma receita vinculada a um agendamento, atualizar o agendamento também?
-          // (Lógica opcional: se marcar "recebido", marca "pago" no agendamento.
-          // Por enquanto, mantemos apenas o financeiro para simplicidade e evitar efeitos colaterais indesejados).
-          
       } catch (err: any) {
-          // Reverte em caso de erro
           setTransactions(previousTransactions);
-          setToast({ message: "Erro ao atualizar status: " + err.message, type: 'error' });
+          setToast({ message: "Erro ao atualizar: " + err.message, type: 'error' });
       }
   };
 
@@ -167,50 +130,48 @@ const FinancePage: React.FC = () => {
       
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
         <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-gray-800">Fluxo de Caixa</h1>
+            <h1 className="text-2xl font-bold text-white">Fluxo de Caixa</h1>
             <button onClick={() => setShowHelp(true)} className="text-gray-400 hover:text-primary transition-colors"><HelpCircle size={20} /></button>
         </div>
-        <div className="flex space-x-2 w-full sm:w-auto">
-          <button onClick={() => handleOpenModal()} className="flex items-center justify-center px-4 py-2 bg-primary text-white rounded hover:bg-sky-600 transition shadow-sm font-bold w-full sm:w-auto">
+        <button onClick={() => handleOpenModal()} className="flex items-center justify-center px-4 py-2 bg-primary text-white rounded hover:bg-sky-600 transition shadow-sm font-bold w-full sm:w-auto">
             <Plus size={18} className="mr-2" /> Nova Transação
-          </button>
-        </div>
+        </button>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div className="bg-white p-6 rounded-lg shadow border-l-8 border-primary flex flex-col justify-center lg:col-span-1">
-          <p className="text-gray-500 font-medium text-sm">Saldo (Período)</p>
-          <p className={`text-3xl font-black ${balance >= 0 ? 'text-gray-900' : 'text-red-600'}`}>R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+        <div className="bg-gray-900/60 backdrop-blur-md p-6 rounded-lg shadow border-l-8 border-primary flex flex-col justify-center lg:col-span-1 border-y border-r border-white/5">
+          <p className="text-gray-400 font-medium text-sm">Saldo (Período)</p>
+          <p className={`text-3xl font-black ${balance >= 0 ? 'text-white' : 'text-red-400'}`}>R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow lg:col-span-2 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center text-gray-500 min-w-fit self-start sm:self-center"><Filter size={18} className="mr-2" /> <span className="font-bold text-sm uppercase">Filtros:</span></div>
+        <div className="bg-gray-900/60 backdrop-blur-md p-6 rounded-lg shadow border border-white/5 lg:col-span-2 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center text-gray-400 min-w-fit self-start sm:self-center"><Filter size={18} className="mr-2" /> <span className="font-bold text-sm uppercase">Filtros:</span></div>
             <div className="flex flex-wrap items-center gap-3 w-full justify-end">
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="border rounded px-3 py-2 text-sm" />
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="border rounded px-3 py-2 text-sm" />
-              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="border rounded px-3 py-2 text-sm bg-white">
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="bg-gray-800 border border-white/10 rounded px-3 py-2 text-sm text-white focus:border-primary outline-none" />
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="bg-gray-800 border border-white/10 rounded px-3 py-2 text-sm text-white focus:border-primary outline-none" />
+              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="bg-gray-800 border border-white/10 rounded px-3 py-2 text-sm text-white focus:border-primary outline-none">
                 <option value="all">Todos</option><option value="completed">Realizados</option><option value="pending">Pendentes</option>
               </select>
             </div>
         </div>
       </div>
 
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+      <div className="bg-gray-900/60 backdrop-blur-md shadow overflow-hidden sm:rounded-lg border border-white/5">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-white/5">
+            <thead className="bg-gray-800/50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Data</th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Categoria</th>
-                <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Valor</th>
-                <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase">Ações</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase">Data</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase">Categoria</th>
+                <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase">Status</th>
+                <th className="px-6 py-3 text-right text-xs font-bold text-gray-400 uppercase">Valor</th>
+                <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase">Ações</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {loading ? <tr><td colSpan={5} className="text-center py-8">Carregando...</td></tr> : transactions.map((t) => (
-                <tr key={t.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm text-gray-600">{formatDateAdjusted(t.date)}</td>
-                  <td className="px-6 py-4 text-sm">
+            <tbody className="divide-y divide-white/5">
+              {loading ? <tr><td colSpan={5} className="text-center py-8 text-gray-500">Carregando...</td></tr> : transactions.map((t) => (
+                <tr key={t.id} className="hover:bg-gray-800/50">
+                  <td className="px-6 py-4 text-sm text-gray-400">{formatDateAdjusted(t.date)}</td>
+                  <td className="px-6 py-4 text-sm text-gray-200">
                     <div className="flex items-center font-medium">
                        {t.type === 'income' ? <ArrowUpCircle size={16} className="text-green-500 mr-2" /> : <ArrowDownCircle size={16} className="text-red-500 mr-2" />}
                        {t.category}
@@ -220,23 +181,23 @@ const FinancePage: React.FC = () => {
                         <select
                             value={t.status}
                             onChange={(e) => handleQuickStatusUpdate(t, e.target.value as 'pending' | 'completed')}
-                            className={`px-3 py-1 text-[10px] font-bold rounded-full uppercase cursor-pointer outline-none appearance-none text-center min-w-[90px] border border-transparent hover:border-gray-300 transition-colors ${
+                            className={`px-3 py-1 text-[10px] font-bold rounded-full uppercase cursor-pointer outline-none appearance-none text-center min-w-[90px] border border-transparent transition-colors ${
                                 t.status === 'completed' 
-                                    ? (t.type === 'income' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800') 
-                                    : 'bg-yellow-100 text-yellow-800'
+                                    ? (t.type === 'income' ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400') 
+                                    : 'bg-yellow-900/30 text-yellow-400'
                             }`}
                         >
-                            <option value="pending">Pendente</option>
-                            <option value="completed">
+                            <option value="pending" className="bg-gray-800 text-white">Pendente</option>
+                            <option value="completed" className="bg-gray-800 text-white">
                                 {t.type === 'income' ? 'Recebido' : 'Pago'}
                             </option>
                         </select>
                    </td>
-                  <td className={`px-6 py-4 text-sm text-right font-black ${t.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>R$ {Number(t.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                  <td className={`px-6 py-4 text-sm text-right font-black ${t.type === 'income' ? 'text-green-400' : 'text-red-400'}`}>R$ {Number(t.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                   <td className="px-6 py-4 text-center text-sm font-medium">
                     <div className="flex justify-center space-x-2">
-                      <button onClick={() => handleOpenModal(t)} className="text-gray-400 hover:text-blue-600"><Edit2 size={16} /></button>
-                      {canDelete && <button onClick={() => setDeleteId(t.id)} className="text-gray-400 hover:text-red-600"><Trash2 size={16} /></button>}
+                      <button onClick={() => handleOpenModal(t)} className="text-gray-500 hover:text-blue-400"><Edit2 size={16} /></button>
+                      {canDelete && <button onClick={() => setDeleteId(t.id)} className="text-gray-500 hover:text-red-400"><Trash2 size={16} /></button>}
                     </div>
                   </td>
                 </tr>
@@ -248,145 +209,62 @@ const FinancePage: React.FC = () => {
 
       {/* Modal Form */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-fade-in-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-white/10 p-6 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-fade-in-up">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-900">
+              <h2 className="text-xl font-bold text-white">
                 {editingTransaction ? 'Editar Lançamento' : 'Novo Lançamento'}
               </h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
-                <X size={24} />
-              </button>
+              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-white transition-colors"><X size={24} /></button>
             </div>
 
             <form onSubmit={handleSave} className="space-y-5">
-              {/* Type Selection */}
               <div className="flex gap-4 mb-2">
-                <button
-                  type="button"
-                  onClick={() => handleTypeChange('expense')}
-                  className={`flex-1 py-3 rounded-lg text-sm font-bold uppercase border transition-all ${
-                    type === 'expense'
-                      ? 'bg-red-50 border-red-500 text-red-600 shadow-sm'
-                      : 'bg-white border-gray-200 text-gray-400 hover:bg-gray-50'
-                  }`}
-                >
-                  Despesa
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleTypeChange('income')}
-                  className={`flex-1 py-3 rounded-lg text-sm font-bold uppercase border transition-all ${
-                    type === 'income'
-                      ? 'bg-green-50 border-green-500 text-green-600 shadow-sm'
-                      : 'bg-white border-gray-200 text-gray-400 hover:bg-gray-50'
-                  }`}
-                >
-                  Receita
-                </button>
+                <button type="button" onClick={() => handleTypeChange('expense')} className={`flex-1 py-3 rounded-lg text-sm font-bold uppercase border transition-all ${type === 'expense' ? 'bg-red-900/30 border-red-500 text-red-400' : 'bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700'}`}>Despesa</button>
+                <button type="button" onClick={() => handleTypeChange('income')} className={`flex-1 py-3 rounded-lg text-sm font-bold uppercase border transition-all ${type === 'income' ? 'bg-green-900/30 border-green-500 text-green-400' : 'bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700'}`}>Receita</button>
               </div>
 
-              {/* Value */}
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Valor (R$)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  required
-                  placeholder="0,00"
-                  className="w-full border border-gray-300 rounded-lg p-3 text-lg font-medium text-gray-800 outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder-gray-300"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                />
+                <input type="number" step="0.01" required placeholder="0,00" className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-lg font-medium text-white outline-none focus:border-primary" value={amount} onChange={(e) => setAmount(e.target.value)} />
               </div>
 
-              {/* Category */}
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Categoria</label>
-                <div className="relative">
-                    <select
-                    required
-                    className="w-full border border-gray-300 rounded-lg p-3 text-gray-700 outline-none focus:ring-2 focus:ring-primary focus:border-transparent appearance-none bg-white"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    >
-                    {(type === 'income' ? incomeCategories : expenseCategories).map((cat) => (
-                        <option key={cat} value={cat}>
-                        {cat}
-                        </option>
-                    ))}
-                    </select>
-                </div>
-              </div>
-
-              {/* Payment Method */}
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Forma de Pagamento</label>
-                <select
-                  className="w-full border border-gray-300 rounded-lg p-3 text-gray-700 outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white"
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                >
-                  {paymentMethods.map((method) => (
-                    <option key={method} value={method}>
-                      {method}
-                    </option>
-                  ))}
+                <select required className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-primary" value={category} onChange={(e) => setCategory(e.target.value)}>
+                    {(type === 'income' ? incomeCategories : expenseCategories).map((cat) => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
               </div>
 
-              {/* Date & Status */}
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Forma de Pagamento</label>
+                <select className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-primary" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                  {paymentMethods.map((method) => <option key={method} value={method}>{method}</option>)}
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Data</label>
-                  <input
-                    type="date"
-                    required
-                    className="w-full border border-gray-300 rounded-lg p-3 text-gray-700 outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                  />
+                  <input type="date" required className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-primary" value={date} onChange={(e) => setDate(e.target.value)} />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Situação</label>
-                  <select
-                    className="w-full border border-gray-300 rounded-lg p-3 text-gray-700 outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white"
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value as 'pending' | 'completed')}
-                  >
+                  <select className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-primary" value={status} onChange={(e) => setStatus(e.target.value as 'pending' | 'completed')}>
                     <option value="completed">{type === 'income' ? 'Recebido' : 'Pago'}</option>
                     <option value="pending">Pendente</option>
                   </select>
                 </div>
               </div>
 
-              {/* Observation */}
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Observação (Opcional)</label>
-                <textarea
-                  rows={3}
-                  placeholder="Detalhes adicionais..."
-                  className="w-full border border-gray-300 rounded-lg p-3 text-gray-700 outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none placeholder-gray-400"
-                  value={observation}
-                  onChange={(e) => setObservation(e.target.value)}
-                />
+                <textarea rows={3} placeholder="Detalhes adicionais..." className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-primary resize-none placeholder-gray-500" value={observation} onChange={(e) => setObservation(e.target.value)} />
               </div>
 
-              {/* Footer */}
-              <div className="flex justify-end items-center gap-4 pt-4 border-t border-gray-100 mt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-gray-600 font-bold hover:text-gray-800 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-3 bg-primary text-white rounded-lg font-bold hover:bg-sky-600 transition shadow-md flex items-center"
-                >
-                   Confirmar Lançamento
-                </button>
+              <div className="flex justify-end items-center gap-4 pt-4 border-t border-white/10 mt-2">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-400 font-bold hover:text-white transition-colors">Cancelar</button>
+                <button type="submit" className="px-6 py-3 bg-primary text-white rounded-lg font-bold hover:bg-sky-600 transition shadow-md">Confirmar Lançamento</button>
               </div>
             </form>
           </div>
@@ -395,30 +273,14 @@ const FinancePage: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {deleteId && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4 backdrop-blur-sm animate-fade-in-up">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm text-center">
-             <div className="bg-red-100 p-3 rounded-full inline-block mb-4">
-                <Trash2 className="text-red-600" size={32} />
-             </div>
-             <h3 className="text-lg font-bold text-gray-900 mb-2">Excluir Transação?</h3>
-             <p className="text-gray-600 mb-6 text-sm">
-               Tem certeza que deseja remover este lançamento? Essa ação não pode ser desfeita e afetará o saldo.
-             </p>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in-up">
+          <div className="bg-gray-900 border border-white/10 p-6 rounded-lg shadow-xl w-full max-w-sm text-center">
+             <div className="bg-red-900/20 p-3 rounded-full inline-block mb-4"><Trash2 className="text-red-500" size={32} /></div>
+             <h3 className="text-lg font-bold text-white mb-2">Excluir Transação?</h3>
+             <p className="text-gray-400 mb-6 text-sm">Tem certeza que deseja remover este lançamento? Essa ação não pode ser desfeita.</p>
              <div className="flex space-x-3 w-full">
-                <button 
-                  onClick={() => setDeleteId(null)}
-                  disabled={processing}
-                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-bold transition"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  onClick={confirmDelete}
-                  disabled={processing}
-                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold transition shadow-lg shadow-red-200 flex items-center justify-center"
-                >
-                  {processing ? <Loader2 className="animate-spin" size={20}/> : 'Sim, Excluir'}
-                </button>
+                <button onClick={() => setDeleteId(null)} disabled={processing} className="flex-1 px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 font-bold transition">Cancelar</button>
+                <button onClick={confirmDelete} disabled={processing} className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold transition shadow-lg">{processing ? <Loader2 className="animate-spin" size={20}/> : 'Sim, Excluir'}</button>
              </div>
           </div>
         </div>
@@ -426,19 +288,18 @@ const FinancePage: React.FC = () => {
 
       {/* Help Modal */}
       {showHelp && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black bg-opacity-50 p-4 backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg">
-             <div className="flex justify-between items-center mb-4 border-b pb-2">
-                <h3 className="text-xl font-bold flex items-center text-gray-800 gap-2"><HelpCircle className="text-primary"/> Fluxo de Caixa</h3>
-                <button onClick={() => setShowHelp(false)} className="text-gray-400 hover:text-gray-600"><X size={20}/></button>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-white/10 p-6 rounded-lg shadow-xl w-full max-w-lg">
+             <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
+                <h3 className="text-xl font-bold flex items-center text-white gap-2"><HelpCircle className="text-primary"/> Fluxo de Caixa</h3>
+                <button onClick={() => setShowHelp(false)} className="text-gray-400 hover:text-white"><X size={20}/></button>
              </div>
-             <div className="space-y-4 text-sm text-gray-600">
+             <div className="space-y-4 text-sm text-gray-400">
                 <p>Gerencie as finanças da sua clínica de forma simples.</p>
                 <ul className="list-disc pl-5 space-y-2">
                    <li><strong>Edição Rápida:</strong> Clique no status ("Pendente" ou "Recebido/Pago") na tabela para alterá-lo rapidamente.</li>
-                   <li><strong>Receitas:</strong> O sistema lança automaticamente pagamentos de consultas quando você marca como "Pago" na Agenda. Você também pode lançar receitas avulsas aqui.</li>
-                   <li><strong>Despesas:</strong> Registre seus gastos com fornecedores, aluguel, contas de consumo, etc.</li>
-                   <li><strong>Filtros:</strong> Use os seletores de data para ver o balanço mensal ou semanal.</li>
+                   <li><strong>Receitas:</strong> O sistema lança automaticamente pagamentos de consultas quando você marca como "Pago" na Agenda.</li>
+                   <li><strong>Despesas:</strong> Registre seus gastos com fornecedores, aluguel, etc.</li>
                 </ul>
              </div>
           </div>

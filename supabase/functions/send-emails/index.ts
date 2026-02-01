@@ -96,6 +96,10 @@ Deno.serve(async (req) => {
     // 3. CONFIRMAÇÃO DE AGENDAMENTO
     else if (type === 'appointment' && client) {
         const subject = `Agendamento - ${clinicName}`;
+        
+        // Define domínio fixo para garantir que o link funcione no e-mail
+        const baseUrl = 'https://dentihub.com.br';
+
         const htmlContent = `
             <div style="font-family: Helvetica, Arial, sans-serif; padding: 20px; color: #333;">
                 <h2 style="color: #0ea5e9;">Confirmação de Agendamento</h2>
@@ -111,8 +115,8 @@ Deno.serve(async (req) => {
                 
                 ${appointment.id && appointment.id !== 'pending' ? `
                 <div style="margin-top: 20px;">
-                    <a href="${body.origin}/#/appointment-action?id=${appointment.id}&action=confirm" style="background-color: #22c55e; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-right: 10px;">Confirmar Presença</a>
-                    <a href="${body.origin}/#/appointment-action?id=${appointment.id}&action=cancel" style="background-color: #ef4444; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Cancelar</a>
+                    <a href="${baseUrl}/#/appointment-action?id=${appointment.id}&action=confirm" style="background-color: #22c55e; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-right: 10px;">Confirmar Presença</a>
+                    <a href="${baseUrl}/#/appointment-action?id=${appointment.id}&action=cancel" style="background-color: #ef4444; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Cancelar</a>
                 </div>
                 ` : ''}
             </div>
@@ -220,6 +224,9 @@ Deno.serve(async (req) => {
 
                 if (!finalHtml) {
                     if (type === 'recall') {
+                        // Alteração: Link para a página de agendamento online em vez do WhatsApp
+                        const bookingUrl = `https://dentihub.com.br/#/${clinic.slug || clinic.id}`;
+                        
                         finalSubject = `Sentimos sua falta na ${clinicName}`;
                         finalHtml = `
                             <div style="font-family: Helvetica, Arial, sans-serif; padding: 20px; color: #333;">
@@ -228,7 +235,7 @@ Deno.serve(async (req) => {
                                 <p>A saúde bucal precisa de cuidados periódicos. Que tal agendar um check-up para garantir que está tudo bem?</p>
                                 <p>Estamos com horários disponíveis e aguardando sua visita.</p>
                                 <div style="margin-top: 20px;">
-                                    ${generateButton('Agendar Agora', `https://wa.me/55${clinic.whatsapp?.replace(/\D/g, '') || ''}`, '#22c55e')}
+                                    ${generateButton('Agendar Agora', bookingUrl, '#22c55e')}
                                 </div>
                             </div>
                         `;

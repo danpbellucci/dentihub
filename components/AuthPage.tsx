@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, SUPABASE_URL } from '../services/supabase';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { Logo } from './Logo';
 import { Smile, Lock, Mail, ArrowLeft, AlertTriangle, User, KeyRound, X, FileText } from 'lucide-react';
 
 const TERMS_OF_USE_TEXT = `TERMOS DE USO – DENTIHUB
@@ -94,7 +95,7 @@ const AuthPage: React.FC = () => {
   const [password, setPassword] = useState('');
   
   // Signup Specific
-  const [name, setName] = useState(''); // Nome da Clínica/Doutor
+  const [name, setName] = useState(''); 
   const [confirmPassword, setConfirmPassword] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
@@ -109,14 +110,6 @@ const AuthPage: React.FC = () => {
 
   const isMisconfigured = SUPABASE_URL.includes('placeholder');
 
-  const getRedirectUrl = () => {
-    let url = window.location.origin;
-    if (url.endsWith('/')) {
-        url = url.slice(0, -1);
-    }
-    return url;
-  };
-
   const isValidEmail = (email: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
@@ -126,7 +119,6 @@ const AuthPage: React.FC = () => {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
 
-      // Verifica se é Super Admin para redirecionar corretamente
       try {
           const { data: isSuperAdmin } = await supabase.rpc('is_super_admin');
           if (isSuperAdmin) {
@@ -141,10 +133,14 @@ const AuthPage: React.FC = () => {
   };
 
   const handleForgot = async () => {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: getRedirectUrl() + '/#/dashboard/settings', 
+      // Chama a Edge Function para enviar e-mail personalizado com remetente contato@dentihub.com.br
+      const { data, error } = await supabase.functions.invoke('send-password-reset', {
+          body: { email }
       });
-      if (error) throw error;
+
+      if (error) throw new Error(error.message || "Erro de conexão.");
+      if (data && data.error) throw new Error(data.error);
+
       setMessage('Link de recuperação enviado para seu e-mail!');
   };
 
@@ -155,7 +151,6 @@ const AuthPage: React.FC = () => {
       if (password !== confirmPassword) throw new Error("As senhas não conferem.");
       if (!termsAccepted) throw new Error("Você deve ler e aceitar os Termos de Uso.");
 
-      // Chama a Edge Function para enviar o código
       const { data, error } = await supabase.functions.invoke('send-signup-code', {
           body: { email, name }
       });
@@ -177,7 +172,6 @@ const AuthPage: React.FC = () => {
       if (error) throw new Error(error.message || "Erro de comunicação.");
       if (data && data.error) throw new Error(data.error);
 
-      // Sucesso! Agora faz login automático
       setMessage("Conta criada! Entrando...");
       await handleLogin();
   };
@@ -213,17 +207,26 @@ const AuthPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center text-primary cursor-pointer" onClick={() => navigate('/')}>
-          <Smile size={48} />
+    <div className="min-h-screen bg-gray-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans text-gray-100 overflow-hidden relative">
+      
+      {/* BACKGROUND GLOWS */}
+      <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/20 rounded-full blur-[120px]"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/20 rounded-full blur-[120px]"></div>
+      </div>
+
+      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
+        <div className="flex justify-center cursor-pointer mb-6" onClick={() => navigate('/')}>
+          <div className="bg-gradient-to-tr from-blue-600 to-purple-600 p-3 rounded-2xl shadow-lg shadow-purple-500/20">
+            <Logo className="w-10 h-10" />
+          </div>
         </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+        <h2 className="text-center text-3xl font-black text-white tracking-tight">
           {view === 'login' && 'Acesse o DentiHub'}
           {view === 'signup' && (isVerifying ? 'Verificar E-mail' : 'Crie sua conta Grátis')}
           {view === 'forgot' && 'Recuperar Senha'}
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
+        <p className="mt-2 text-center text-sm text-gray-400">
           {view === 'login' && 'Gerencie sua clínica com inteligência.'}
           {view === 'signup' && !isVerifying && 'Comece com 20 clientes gratuitos.'}
           {view === 'signup' && isVerifying && `Enviamos um código para ${email}`}
@@ -231,14 +234,14 @@ const AuthPage: React.FC = () => {
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
+        <div className="bg-gray-900/60 backdrop-blur-xl py-8 px-4 shadow-2xl border border-white/10 sm:rounded-2xl sm:px-10">
           
           {isMisconfigured && (
-            <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded">
+            <div className="mb-6 bg-red-900/20 border-l-4 border-red-500 p-4 rounded">
               <div className="flex">
                 <AlertTriangle className="h-5 w-5 text-red-500 mr-3" />
-                <p className="text-sm text-red-700 font-bold">Erro de Configuração (Chaves Ausentes)</p>
+                <p className="text-sm text-red-200 font-bold">Erro de Configuração (Chaves Ausentes)</p>
               </div>
             </div>
           )}
@@ -248,7 +251,7 @@ const AuthPage: React.FC = () => {
             {/* Fluxo de Verificação (Código) */}
             {view === 'signup' && isVerifying ? (
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 text-center mb-4">
+                    <label className="block text-sm font-medium text-gray-300 text-center mb-4">
                         Digite o código de 6 dígitos
                     </label>
                     <div className="flex justify-center">
@@ -258,7 +261,7 @@ const AuthPage: React.FC = () => {
                             required
                             value={verificationCode}
                             onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
-                            className="block w-48 text-center text-2xl tracking-widest border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary py-3 border"
+                            className="block w-48 text-center text-2xl tracking-widest bg-gray-800 border-gray-700 text-white rounded-xl shadow-sm focus:ring-primary focus:border-primary py-3 border outline-none placeholder-gray-600"
                             placeholder="000000"
                             autoFocus
                         />
@@ -267,28 +270,28 @@ const AuthPage: React.FC = () => {
                         <button 
                             type="button" 
                             onClick={() => setIsVerifying(false)}
-                            className="text-xs text-gray-500 hover:text-primary underline"
+                            className="text-xs text-gray-400 hover:text-primary underline"
                         >
                             Corrigir e-mail ou reenviar
                         </button>
                     </div>
                 </div>
             ) : (
-                // Fluxo Padrão (Login / Cadastro Inicial / Recuperação)
+                // Fluxo Padrão
                 <>
                     {view === 'signup' && (
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Nome (Seu ou da Clínica)</label>
-                            <div className="mt-1 relative rounded-md shadow-sm">
+                            <label className="block text-sm font-medium text-gray-300 mb-1">Nome (Seu ou da Clínica)</label>
+                            <div className="relative rounded-md shadow-sm">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <User className="h-5 w-5 text-gray-400" />
+                                    <User className="h-5 w-5 text-gray-500" />
                                 </div>
                                 <input
                                     type="text"
                                     required
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
-                                    className="focus:ring-primary focus:border-primary block w-full pl-10 sm:text-sm border-gray-300 rounded-md py-2 border"
+                                    className="block w-full pl-10 bg-gray-800 border border-gray-700 text-white rounded-lg py-2.5 placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition"
                                     placeholder="Ex: Dr. Silva"
                                 />
                             </div>
@@ -296,12 +299,12 @@ const AuthPage: React.FC = () => {
                     )}
 
                     <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
                         E-mail
                     </label>
-                    <div className="mt-1 relative rounded-md shadow-sm">
+                    <div className="relative rounded-md shadow-sm">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Mail className="h-5 w-5 text-gray-400" />
+                        <Mail className="h-5 w-5 text-gray-500" />
                         </div>
                         <input
                         id="email"
@@ -310,7 +313,7 @@ const AuthPage: React.FC = () => {
                         disabled={isMisconfigured}
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="focus:ring-primary focus:border-primary block w-full pl-10 sm:text-sm border-gray-300 rounded-md py-2 border disabled:bg-gray-100"
+                        className="block w-full pl-10 bg-gray-800 border border-gray-700 text-white rounded-lg py-2.5 placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition disabled:opacity-50"
                         placeholder="admin@clinica.com"
                         />
                     </div>
@@ -319,7 +322,7 @@ const AuthPage: React.FC = () => {
                     {view !== 'forgot' && (
                     <div>
                         <div className="flex justify-between items-center mb-1">
-                        <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                        <label htmlFor="password" className="block text-sm font-medium text-gray-300">
                             Senha
                         </label>
                         {view === 'login' && (
@@ -327,7 +330,7 @@ const AuthPage: React.FC = () => {
                             type="button" 
                             disabled={isMisconfigured}
                             onClick={() => { setView('forgot'); setMessage(''); }}
-                            className="text-xs text-primary hover:text-sky-700 font-medium"
+                            className="text-xs text-primary hover:text-sky-400 font-medium transition"
                             >
                             Esqueceu a senha?
                             </button>
@@ -335,7 +338,7 @@ const AuthPage: React.FC = () => {
                         </div>
                         <div className="relative rounded-md shadow-sm">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Lock className="h-5 w-5 text-gray-400" />
+                            <Lock className="h-5 w-5 text-gray-500" />
                         </div>
                         <input
                             id="password"
@@ -345,8 +348,8 @@ const AuthPage: React.FC = () => {
                             minLength={6}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="focus:ring-primary focus:border-primary block w-full pl-10 sm:text-sm border-gray-300 rounded-md py-2 border disabled:bg-gray-100"
-                            placeholder={view === 'signup' ? 'Mínimo 6 caracteres' : ''}
+                            className="block w-full pl-10 bg-gray-800 border border-gray-700 text-white rounded-lg py-2.5 placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition disabled:opacity-50"
+                            placeholder={view === 'signup' ? 'Mínimo 6 caracteres' : '••••••••'}
                         />
                         </div>
                     </div>
@@ -355,10 +358,10 @@ const AuthPage: React.FC = () => {
                     {view === 'signup' && (
                     <>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Confirmar Senha</label>
-                            <div className="mt-1 relative rounded-md shadow-sm">
+                            <label className="block text-sm font-medium text-gray-300 mb-1">Confirmar Senha</label>
+                            <div className="relative rounded-md shadow-sm">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <KeyRound className="h-5 w-5 text-gray-400" />
+                                <KeyRound className="h-5 w-5 text-gray-500" />
                             </div>
                             <input
                                 type="password"
@@ -366,7 +369,7 @@ const AuthPage: React.FC = () => {
                                 minLength={6}
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
-                                className="focus:ring-primary focus:border-primary block w-full pl-10 sm:text-sm border-gray-300 rounded-md py-2 border"
+                                className="block w-full pl-10 bg-gray-800 border border-gray-700 text-white rounded-lg py-2.5 placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition"
                                 placeholder="Repita a senha"
                             />
                             </div>
@@ -380,16 +383,16 @@ const AuthPage: React.FC = () => {
                                     type="checkbox"
                                     checked={termsAccepted}
                                     onChange={(e) => setTermsAccepted(e.target.checked)}
-                                    className="focus:ring-primary h-4 w-4 text-primary border-gray-300 rounded cursor-pointer"
+                                    className="focus:ring-primary h-4 w-4 text-primary border-gray-600 bg-gray-800 rounded cursor-pointer"
                                 />
                             </div>
                             <div className="ml-2 text-sm">
-                                <label htmlFor="terms" className="font-medium text-gray-700">
+                                <label htmlFor="terms" className="font-medium text-gray-400">
                                     Li e concordo com os{' '}
                                     <button 
                                         type="button" 
                                         onClick={() => setShowTermsModal(true)} 
-                                        className="text-primary hover:text-sky-700 font-bold underline"
+                                        className="text-primary hover:text-sky-400 font-bold underline"
                                     >
                                         Termos de Uso
                                     </button>
@@ -405,7 +408,7 @@ const AuthPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading || isMisconfigured}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-lg shadow-blue-900/20 text-sm font-bold text-white bg-primary hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:-translate-y-0.5"
               >
                 {loading ? 'Processando...' : 
                  view === 'login' ? 'Entrar' : 
@@ -416,18 +419,18 @@ const AuthPage: React.FC = () => {
           </form>
 
           {message && (
-            <div className={`mt-4 text-sm text-center font-medium p-2 rounded ${message.includes('enviado') || message.includes('criada') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
+            <div className={`mt-4 text-sm text-center font-medium p-3 rounded-lg border ${message.includes('enviado') || message.includes('criada') ? 'bg-green-900/20 border-green-800 text-green-400' : 'bg-red-900/20 border-red-800 text-red-400'}`}>
               {message}
             </div>
           )}
 
-          <div className="mt-6">
+          <div className="mt-8">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
+                <div className="w-full border-t border-gray-700" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">
+                <span className="px-2 bg-gray-900 text-gray-500 rounded-full border border-gray-700">
                   {view === 'login' ? 'Novo por aqui?' : 'Já tem conta?'}
                 </span>
               </div>
@@ -438,7 +441,7 @@ const AuthPage: React.FC = () => {
                  <button
                    onClick={() => { setView('login'); setMessage(''); }}
                    disabled={isMisconfigured}
-                   className="w-full flex justify-center items-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                   className="w-full flex justify-center items-center py-2.5 px-4 border border-gray-700 rounded-lg shadow-sm bg-gray-800 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white disabled:opacity-50 transition-colors"
                  >
                    <ArrowLeft size={16} className="mr-2" /> Voltar para Login
                  </button>
@@ -453,7 +456,7 @@ const AuthPage: React.FC = () => {
                       setTermsAccepted(false);
                   }}
                   disabled={isMisconfigured}
-                  className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                  className="w-full flex justify-center py-2.5 px-4 border border-gray-700 rounded-lg shadow-sm bg-gray-800 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white disabled:opacity-50 transition-colors"
                 >
                   {view === 'login' ? 'Criar conta gratuita' : 'Fazer Login'}
                 </button>
@@ -463,25 +466,26 @@ const AuthPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal de Termos de Uso */}
+      {/* Modal de Termos de Uso (Dark Mode) */}
       {showTermsModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-60 p-4 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
-                <div className="p-5 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
-                    <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-80 p-4 backdrop-blur-sm animate-fade-in">
+            <div className="bg-gray-900 rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col border border-white/10">
+                <div className="p-5 border-b border-white/10 flex justify-between items-center bg-gray-800/50 rounded-t-xl">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
                         <FileText className="text-primary"/> Termos de Uso
                     </h3>
-                    <button onClick={() => setShowTermsModal(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                    <button onClick={() => setShowTermsModal(false)} className="text-gray-400 hover:text-white transition-colors">
                         <X size={24}/>
                     </button>
                 </div>
-                <div className="p-6 overflow-y-auto text-sm text-gray-700 leading-relaxed whitespace-pre-wrap custom-scrollbar">
+                <div className="p-6 overflow-y-auto text-sm text-gray-300 leading-relaxed whitespace-pre-wrap custom-scrollbar">
+                    {/* (Mantendo texto original por brevidade) */}
                     {TERMS_OF_USE_TEXT}
                 </div>
-                <div className="p-4 border-t bg-gray-50 rounded-b-xl flex justify-end gap-3">
+                <div className="p-4 border-t border-white/10 bg-gray-800/50 rounded-b-xl flex justify-end gap-3">
                     <button 
                         onClick={() => setShowTermsModal(false)}
-                        className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg font-bold hover:bg-gray-100 transition"
+                        className="px-4 py-2 border border-gray-600 text-gray-300 rounded-lg font-bold hover:bg-gray-700 transition"
                     >
                         Fechar
                     </button>

@@ -280,18 +280,24 @@ const SuperAdminPage: React.FC = () => {
             </div>
             
             {/* TABS NAVIGATION */}
-            <div className="flex bg-white p-1 rounded-lg border border-gray-200 shadow-sm mt-4 md:mt-0">
+            <div className="flex bg-white p-1 rounded-lg border border-gray-200 shadow-sm mt-4 md:mt-0 overflow-x-auto">
                 <button 
                     onClick={() => setActiveTab('dashboard')}
-                    className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition ${activeTab === 'dashboard' ? 'bg-gray-100 text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition whitespace-nowrap ${activeTab === 'dashboard' ? 'bg-gray-100 text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                     <BarChart3 size={16} /> Visão Geral
                 </button>
                 <button 
                     onClick={() => setActiveTab('social-copy')}
-                    className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition ${activeTab === 'social-copy' ? 'bg-purple-100 text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition whitespace-nowrap ${activeTab === 'social-copy' ? 'bg-purple-100 text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                     <PenTool size={16} /> Gerador de Copy
+                </button>
+                <button 
+                    onClick={() => navigate('/super-admin/leads')}
+                    className="px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition whitespace-nowrap text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                >
+                    <Users size={16} /> Gestão de Leads
                 </button>
             </div>
         </div>

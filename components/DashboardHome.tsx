@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { ClinicOnboardingForm, DentistOnboardingForm, ClientOnboardingForm } from './OnboardingForms';
 import Toast, { ToastType } from './Toast';
-import { format, parseISO, subMonths, startOfMonth, endOfMonth, isSameMonth, startOfWeek, endOfWeek } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface OnboardingStep {
@@ -54,7 +54,6 @@ const DashboardHome: React.FC = () => {
     const [showOnboarding, setShowOnboarding] = useState(false);
     const [activeOnboardingModal, setActiveOnboardingModal] = useState<'clinic' | 'dentist' | 'client' | null>(null);
     
-    // Removido o passo 'link' da lista de checklist
     const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStep[]>([
         { id: 'clinic', title: 'Dados da Clínica', desc: 'Configure nome e endereço', icon: Building2, done: false },
         { id: 'dentists', title: 'Cadastrar Dentista', desc: 'Adicione profissionais', icon: UserPlus, done: false },
@@ -177,7 +176,7 @@ const DashboardHome: React.FC = () => {
                 const startWeek = startOfWeek(new Date(), { weekStartsOn: 0 }).toISOString();
                 const endWeek = endOfWeek(new Date(), { weekStartsOn: 0 }).toISOString();
 
-                // B1. Agendamentos Pendentes (Entradas Futuras - Pendentes)
+                // B1. Agendamentos Pendentes
                 const { data: pendingAppts } = await supabase
                     .from('appointments')
                     .select('amount')
@@ -189,7 +188,7 @@ const DashboardHome: React.FC = () => {
                 
                 const incomePendingFromAppts = pendingAppts?.reduce((acc, curr) => acc + (curr.amount || 0), 0) || 0;
 
-                // B2. Transações da Semana (Todas)
+                // B2. Transações da Semana
                 const { data: weekTrans } = await supabase
                     .from('transactions')
                     .select('amount, type, status')
@@ -287,11 +286,10 @@ const DashboardHome: React.FC = () => {
         <div className="space-y-6 relative pb-10">
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
             
-            {/* Onboarding Modal */}
+            {/* Onboarding Modal - Mantido Light para contraste com formulários */}
             {showOnboarding && userProfile?.role === 'administrator' && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4 backdrop-blur-sm animate-fade-in">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 p-4 backdrop-blur-sm animate-fade-in">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col md:flex-row relative h-[600px] md:h-auto">
-                        {/* ... (Onboarding Modal content remains the same) ... */}
                         {/* Nested Form Modal */}
                         {activeOnboardingModal && userProfile?.clinic_id && (
                             <div className="absolute inset-0 z-[60] bg-white flex flex-col animate-fade-in">
@@ -414,7 +412,7 @@ const DashboardHome: React.FC = () => {
 
             {/* Dashboard Content */}
             <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-800">Visão Geral</h1>
+                <h1 className="text-2xl font-bold text-white">Visão Geral</h1>
                 {!showOnboarding && completedSteps < 3 && userProfile?.role === 'administrator' && (
                     <button onClick={() => setShowOnboarding(true)} className="text-sm text-primary font-bold hover:underline flex items-center">
                         <CheckCircle2 size={16} className="mr-1"/> Continuar Configuração
@@ -422,33 +420,44 @@ const DashboardHome: React.FC = () => {
                 )}
             </div>
 
-            {/* Stats Cards */}
+            {/* Stats Cards - DARK MODE */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center">
-                    <div className="p-4 bg-blue-50 text-primary rounded-full mr-4">
+                <div className="bg-gray-900/60 backdrop-blur-md p-6 rounded-xl shadow-lg border border-white/5 flex items-center relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 transform translate-x-1/4 -translate-y-1/4 group-hover:scale-110 transition duration-700">
+                        <Users size={100} className="text-blue-500" />
+                    </div>
+                    <div className="p-4 bg-blue-500/10 text-blue-400 rounded-xl mr-4 border border-blue-500/20 relative z-10">
                         <Users size={24} />
                     </div>
-                    <div>
-                        <p className="text-sm text-gray-500 font-medium uppercase">Pacientes</p>
-                        <p className="text-2xl font-black text-gray-800">{stats.clients}</p>
+                    <div className="relative z-10">
+                        <p className="text-sm text-gray-400 font-medium uppercase tracking-wider">Pacientes</p>
+                        <p className="text-3xl font-black text-white">{stats.clients}</p>
                     </div>
                 </div>
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center">
-                    <div className="p-4 bg-green-50 text-green-600 rounded-full mr-4">
+                
+                <div className="bg-gray-900/60 backdrop-blur-md p-6 rounded-xl shadow-lg border border-white/5 flex items-center relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 transform translate-x-1/4 -translate-y-1/4 group-hover:scale-110 transition duration-700">
+                        <Calendar size={100} className="text-green-500" />
+                    </div>
+                    <div className="p-4 bg-green-500/10 text-green-400 rounded-xl mr-4 border border-green-500/20 relative z-10">
                         <Calendar size={24} />
                     </div>
-                    <div>
-                        <p className="text-sm text-gray-500 font-medium uppercase">Agendados Hoje</p>
-                        <p className="text-2xl font-black text-gray-800">{stats.appointmentsToday}</p>
+                    <div className="relative z-10">
+                        <p className="text-sm text-gray-400 font-medium uppercase tracking-wider">Agendados Hoje</p>
+                        <p className="text-3xl font-black text-white">{stats.appointmentsToday}</p>
                     </div>
                 </div>
-                <div className={`bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center ${!stats.weeklyForecast.hasAccess ? 'opacity-50' : ''}`}>
-                    <div className="p-4 bg-yellow-50 text-yellow-600 rounded-full mr-4">
+
+                <div className={`bg-gray-900/60 backdrop-blur-md p-6 rounded-xl shadow-lg border border-white/5 flex items-center relative overflow-hidden group ${!stats.weeklyForecast.hasAccess ? 'opacity-60 grayscale' : ''}`}>
+                    <div className="absolute top-0 right-0 p-4 opacity-10 transform translate-x-1/4 -translate-y-1/4 group-hover:scale-110 transition duration-700">
+                        <DollarSign size={100} className="text-yellow-500" />
+                    </div>
+                    <div className="p-4 bg-yellow-500/10 text-yellow-400 rounded-xl mr-4 border border-yellow-500/20 relative z-10">
                         <DollarSign size={24} />
                     </div>
-                    <div>
-                        <p className="text-sm text-gray-500 font-medium uppercase">Receita (Mês)</p>
-                        <p className="text-2xl font-black text-gray-800">
+                    <div className="relative z-10">
+                        <p className="text-sm text-gray-400 font-medium uppercase tracking-wider">Receita (Mês)</p>
+                        <p className="text-3xl font-black text-white">
                             {!stats.weeklyForecast.hasAccess
                                 ? '---' 
                                 : `R$ ${stats.revenueMonth.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
@@ -458,30 +467,36 @@ const DashboardHome: React.FC = () => {
                 </div>
             </div>
 
-            {/* Recent Appointments */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                    <Clock size={18} className="mr-2 text-primary"/> Próximos Agendamentos
+            {/* Recent Appointments - DARK MODE */}
+            <div className="bg-gray-900/60 backdrop-blur-md rounded-xl shadow-lg border border-white/5 p-6 relative">
+                <h3 className="font-bold text-white mb-6 flex items-center text-lg">
+                    <Clock size={20} className="mr-2 text-primary"/> Próximos Agendamentos
                 </h3>
                 {stats.recentAppointments.length === 0 ? (
-                    <p className="text-gray-500 text-sm text-center py-4">Nenhum agendamento futuro encontrado.</p>
+                    <div className="text-gray-500 text-sm text-center py-8 flex flex-col items-center">
+                        <Calendar size={40} className="mb-2 opacity-20"/>
+                        Nenhum agendamento futuro encontrado.
+                    </div>
                 ) : (
                     <div className="space-y-3">
                         {stats.recentAppointments.map((appt: any) => (
-                            <div key={appt.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                            <div key={appt.id} className="flex items-center justify-between p-4 bg-gray-800/50 hover:bg-gray-800/80 transition rounded-xl border border-white/5 group">
                                 <div className="flex items-center gap-4">
-                                    <div className="text-center bg-white border rounded px-3 py-1">
-                                        <p className="text-xs text-gray-500 font-bold uppercase">{format(parseISO(appt.start_time), 'MMM', { locale: ptBR })}</p>
-                                        <p className="text-lg font-black text-gray-800 leading-none">{format(parseISO(appt.start_time), 'dd')}</p>
+                                    <div className="text-center bg-gray-800 border border-white/10 rounded-lg px-3 py-2 min-w-[60px]">
+                                        <p className="text-xs text-gray-400 font-bold uppercase">{format(parseISO(appt.start_time), 'MMM', { locale: ptBR })}</p>
+                                        <p className="text-xl font-black text-white leading-none mt-0.5">{format(parseISO(appt.start_time), 'dd')}</p>
                                     </div>
                                     <div>
-                                        <p className="font-bold text-gray-800 text-sm">{appt.client?.name}</p>
-                                        <p className="text-xs text-gray-500">{format(parseISO(appt.start_time), 'HH:mm')} - {appt.service_name}</p>
+                                        <p className="font-bold text-white text-base group-hover:text-primary transition-colors">{appt.client?.name}</p>
+                                        <p className="text-sm text-gray-400 flex items-center mt-1">
+                                            <span className="bg-gray-700/50 px-2 py-0.5 rounded text-xs font-mono mr-2 text-gray-300">{format(parseISO(appt.start_time), 'HH:mm')}</span>
+                                            {appt.service_name}
+                                        </p>
                                     </div>
                                 </div>
                                 <div className="hidden sm:flex items-center gap-2">
-                                    <span className="text-xs bg-white border px-2 py-1 rounded text-gray-600 flex items-center">
-                                        <div className="w-2 h-2 rounded-full mr-1" style={{ backgroundColor: appt.dentist?.color || '#ccc' }}></div>
+                                    <span className="text-xs bg-gray-900/80 border border-white/10 px-3 py-1.5 rounded-full text-gray-300 flex items-center font-medium">
+                                        <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: appt.dentist?.color || '#ccc' }}></div>
                                         {appt.dentist?.name}
                                     </span>
                                 </div>
@@ -491,27 +506,27 @@ const DashboardHome: React.FC = () => {
                 )}
             </div>
 
-            {/* Weekly Forecast (Finance Access Only) */}
+            {/* Weekly Forecast (Finance Access Only) - DARK MODE */}
             {stats.weeklyForecast.hasAccess && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in-up">
                     {/* ENTRADAS */}
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                                <TrendingUp size={20} className="text-green-600" /> Fluxo Semanal (Entradas)
+                    <div className="bg-gray-900/60 backdrop-blur-md p-6 rounded-xl shadow-lg border border-white/5">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="font-bold text-white flex items-center gap-2 text-lg">
+                                <TrendingUp size={20} className="text-green-500" /> Fluxo Semanal (Entradas)
                             </h3>
-                            <span className="text-xs font-bold bg-green-50 text-green-700 px-2 py-1 rounded">Esta Semana</span>
+                            <span className="text-xs font-bold bg-green-500/10 text-green-400 border border-green-500/20 px-3 py-1 rounded-full">Esta Semana</span>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="p-3 bg-green-50 rounded-lg border border-green-100">
-                                <p className="text-xs text-green-800 font-bold uppercase mb-1">Realizado</p>
-                                <p className="text-lg font-black text-green-700">
+                            <div className="p-4 bg-green-900/20 rounded-xl border border-green-500/20">
+                                <p className="text-xs text-green-400 font-bold uppercase mb-1">Realizado</p>
+                                <p className="text-xl font-black text-green-300">
                                     R$ {stats.weeklyForecast.incomeRealized.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                 </p>
                             </div>
-                            <div className="p-3 bg-gray-50 rounded-lg border border-gray-100 opacity-80">
-                                <p className="text-xs text-gray-500 font-bold uppercase mb-1">A Receber (Previsto)</p>
-                                <p className="text-lg font-black text-gray-600">
+                            <div className="p-4 bg-gray-800/40 rounded-xl border border-white/5">
+                                <p className="text-xs text-gray-400 font-bold uppercase mb-1">A Receber (Previsto)</p>
+                                <p className="text-xl font-black text-gray-300">
                                     R$ {stats.weeklyForecast.incomePending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                 </p>
                             </div>
@@ -519,23 +534,23 @@ const DashboardHome: React.FC = () => {
                     </div>
 
                     {/* SAÍDAS */}
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                                <TrendingDown size={20} className="text-red-600" /> Fluxo Semanal (Saídas)
+                    <div className="bg-gray-900/60 backdrop-blur-md p-6 rounded-xl shadow-lg border border-white/5">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="font-bold text-white flex items-center gap-2 text-lg">
+                                <TrendingDown size={20} className="text-red-500" /> Fluxo Semanal (Saídas)
                             </h3>
-                            <span className="text-xs font-bold bg-red-50 text-red-700 px-2 py-1 rounded">Esta Semana</span>
+                            <span className="text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20 px-3 py-1 rounded-full">Esta Semana</span>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="p-3 bg-red-50 rounded-lg border border-red-100">
-                                <p className="text-xs text-red-800 font-bold uppercase mb-1">Pago (Realizado)</p>
-                                <p className="text-lg font-black text-red-700">
+                            <div className="p-4 bg-red-900/20 rounded-xl border border-red-500/20">
+                                <p className="text-xs text-red-400 font-bold uppercase mb-1">Pago (Realizado)</p>
+                                <p className="text-xl font-black text-red-300">
                                     R$ {stats.weeklyForecast.expenseRealized.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                 </p>
                             </div>
-                            <div className="p-3 bg-gray-50 rounded-lg border border-gray-100 opacity-80">
-                                <p className="text-xs text-gray-500 font-bold uppercase mb-1">A Pagar (Previsto)</p>
-                                <p className="text-lg font-black text-gray-600">
+                            <div className="p-4 bg-gray-800/40 rounded-xl border border-white/5">
+                                <p className="text-xs text-gray-400 font-bold uppercase mb-1">A Pagar (Previsto)</p>
+                                <p className="text-xl font-black text-gray-300">
                                     R$ {stats.weeklyForecast.expensePending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                 </p>
                             </div>
