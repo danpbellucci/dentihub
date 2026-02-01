@@ -64,23 +64,81 @@ const RequestsPage: React.FC = () => {
           if (conflicts && conflicts.length > 0) { setWarningMessage("O dentista já possui agendamento neste horário."); setProcessing(false); return; }
 
           let finalClientId = null;
-          if (request.patient_cpf) { const { data: existingClient } = await supabase.from('clients').select('id').eq('clinic_id', request.clinic_id).eq('cpf', request.patient_cpf).maybeSingle(); if (existingClient) finalClientId = existingClient.id; }
-          if (!finalClientId) {
-              const { data: newClient, error: clientError } = await supabase.from('clients').insert({ clinic_id: request.clinic_id, name: request.patient_name, email: request.patient_email || null, whatsapp: request.patient_phone, cpf: request.patient_cpf || null, address: request.patient_address || null, birth_date: request.patient_birth_date || null }).select().single();
-              if (clientError) throw new Error("Erro ao criar cliente");
-              if (newClient) { finalClientId = newClient.id; }
+          let feedbackMessage = "Solicitação aceita!";
+
+          // 1. Verifica se já existe paciente com este CPF na base
+          if (request.patient_cpf) { 
+              const { data: existingClient } = await supabase
+                  .from('clients')
+                  .select('id, name')
+                  .eq('clinic_id', request.clinic_id)
+                  .eq('cpf', request.patient_cpf)
+                  .maybeSingle();
+              
+              if (existingClient) {
+                  // Se encontrou, usa o ID existente e NÃO atualiza os dados (preserva o nome original "João Paulo" por exemplo)
+                  finalClientId = existingClient.id;
+                  feedbackMessage = `Agendamento confirmado para o paciente já cadastrado: ${existingClient.name}`;
+              }
           }
+
+          // 2. Se não encontrou pelo CPF, cria um novo
+          if (!finalClientId) {
+              const { data: newClient, error: clientError } = await supabase.from('clients').insert({ 
+                  clinic_id: request.clinic_id, 
+                  name: request.patient_name, 
+                  email: request.patient_email || null, 
+                  whatsapp: request.patient_phone, 
+                  cpf: request.patient_cpf || null, 
+                  address: request.patient_address || null, 
+                  birth_date: request.patient_birth_date || null 
+              }).select().single();
+              
+              if (clientError) throw new Error("Erro ao criar cliente: " + clientError.message);
+              if (newClient) { 
+                  finalClientId = newClient.id; 
+                  feedbackMessage = "Novo paciente cadastrado e agendamento confirmado!";
+              }
+          }
+
+          // 3. Cria o agendamento vinculado ao ID final (seja novo ou existente)
           if (finalClientId) {
             const { error: apptError } = await supabase.from('appointments').insert({ clinic_id: request.clinic_id, dentist_id: request.dentist_id, client_id: finalClientId, service_name: request.service_name, start_time: start.toISOString(), end_time: end.toISOString(), status: 'scheduled' });
             if (apptError) throw apptError;
-            if (request.patient_email) { await supabase.functions.invoke('send-emails', { body: { type: 'appointment', subtype: 'created', appointment: { id: 'pending', date: format(start, "dd/MM/yyyy"), time: format(start, "HH:mm"), service_name: request.service_name, dentist_name: request.dentist?.name }, client: { name: request.patient_name, email: request.patient_email }, origin: window.location.href.split('#')[0].replace(/\/$/, '') } }); }
+            
+            // Envia e-mail de confirmação
+            if (request.patient_email) { 
+                await supabase.functions.invoke('send-emails', { 
+                    body: { 
+                        type: 'appointment', 
+                        subtype: 'created', 
+                        appointment: { id: 'pending', date: format(start, "dd/MM/yyyy"), time: format(start, "HH:mm"), service_name: request.service_name, dentist_name: request.dentist?.name }, 
+                        client: { name: request.patient_name, email: request.patient_email }, 
+                        origin: window.location.href.split('#')[0].replace(/\/$/, '') 
+                    } 
+                }); 
+            }
+            
+            setToast({ message: feedbackMessage, type: 'success' });
           }
+        } else {
+            setToast({ message: "Solicitação recusada.", type: 'success' });
         }
+
+        // Limpa a solicitação da lista
         await supabase.from('appointment_requests').delete().eq('id', request.id);
-        fetchData(true); if (refreshNotifications) refreshNotifications();
-        setToast({ message: action === 'accepted' ? "Solicitação aceita!" : "Solicitação recusada.", type: 'success' });
-    } catch (err: any) { console.error(err); setWarningMessage("Erro ao processar."); } 
-    finally { setProcessing(false); setAcceptId(null); setRejectId(null); }
+        
+        fetchData(true); 
+        if (refreshNotifications) refreshNotifications();
+        
+    } catch (err: any) { 
+        console.error(err); 
+        setWarningMessage("Erro ao processar: " + (err.message || "Tente novamente.")); 
+    } finally { 
+        setProcessing(false); 
+        setAcceptId(null); 
+        setRejectId(null); 
+    }
   };
 
   const handleStatusUpdate = async (update: any) => {
