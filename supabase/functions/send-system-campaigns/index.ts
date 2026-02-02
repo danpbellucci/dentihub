@@ -104,7 +104,7 @@ async function sendEmail(apiKey: string, to: string, subject: string, htmlBody: 
             'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-            from: "DentiHub <contato@dentihub.com.br>",
+            from: "DentiHub <naoresponda@dentihub.com.br>",
             to: [to],
             subject: subject,
             html: finalHtml
@@ -118,7 +118,6 @@ async function sendEmail(apiKey: string, to: string, subject: string, htmlBody: 
 }
 
 Deno.serve(async (req) => {
-  // Configuração de CORS Dinâmica
   const origin = req.headers.get('origin') ?? '';
   const allowedOrigins = [
     'http://localhost:5173', 
@@ -126,7 +125,6 @@ Deno.serve(async (req) => {
     'https://www.dentihub.com.br',
     'https://app.dentihub.com.br'
   ];
-  // Se a origem estiver na lista permitida, usa ela. Senão, fallback para produção (sem www).
   const corsOrigin = allowedOrigins.includes(origin) ? origin : 'https://dentihub.com.br';
 
   const corsHeaders = {
@@ -147,14 +145,11 @@ Deno.serve(async (req) => {
     const campaignKeys = Object.keys(CAMPAIGNS);
     const results: any = {};
 
-    // Verifica se é uma chamada de teste via POST (body)
     let body: any = {};
     if (req.method === 'POST') {
         try {
             body = await req.json();
-        } catch {
-            // Body vazio ou inválido (pode ser cron job)
-        }
+        } catch {}
     }
 
     const { testMode, targetEmail } = body;
@@ -187,27 +182,19 @@ Deno.serve(async (req) => {
         });
     }
 
-    // --- MODO PRODUÇÃO (REAL - via CRON ou Chamada Manual sem testMode) ---
+    // --- MODO PRODUÇÃO ---
     for (const key of campaignKeys) {
         const campaign = CAMPAIGNS[key as keyof typeof CAMPAIGNS];
-        
-        // Chama a RPC para buscar alvos
         const { data: targets, error } = await supabase.rpc('get_campaign_targets', { p_campaign_key: key });
         
-        if (error) {
-            console.error(`Erro buscando alvos para ${key}:`, error);
-            continue;
-        }
+        if (error) continue;
 
         let sentCount = 0;
         if (targets && targets.length > 0) {
-            console.log(`[CAMPAIGN] ${key}: ${targets.length} alvos encontrados.`);
-            
             for (const user of targets) {
                 try {
                     if (!user.email) continue;
 
-                    // Envia o e-mail
                     await sendEmail(
                         resendApiKey, 
                         user.email, 
@@ -217,13 +204,12 @@ Deno.serve(async (req) => {
                         campaign.ctaLink
                     );
 
-                    // Registra o envio para não enviar novamente
                     await supabase.from('communications').insert({
                         clinic_id: user.user_id,
                         type: 'system',
                         recipient_name: user.name,
                         recipient_email: user.email,
-                        subject: campaign.subject, // Usado para verificação de duplicidade na RPC
+                        subject: campaign.subject,
                         status: 'sent'
                     });
 
@@ -236,7 +222,6 @@ Deno.serve(async (req) => {
         results[key] = sentCount;
     }
 
-    // LOG DE USO
     await supabase.from('edge_function_logs').insert({
         function_name: 'send-system-campaigns',
         metadata: { results },

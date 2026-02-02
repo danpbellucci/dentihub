@@ -29,7 +29,7 @@ async function sendEmail(apiKey: string, to: string, subject: string, html: stri
             'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-            from: `${clinicName} <contato@dentihub.com.br>`, 
+            from: `${clinicName} <naoresponda@dentihub.com.br>`, 
             to: [to],
             subject: subject,
             html: html,
@@ -107,7 +107,6 @@ Deno.serve(async (req) => {
         }
     }
 
-    // LOG DE USO
     await supabase.from('edge_function_logs').insert({
         function_name: 'send-daily-finance',
         metadata: { sent_count: emailsSent },

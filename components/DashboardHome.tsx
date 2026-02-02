@@ -288,12 +288,12 @@ const DashboardHome: React.FC = () => {
             
             {/* Onboarding Modal - Mantido Light para contraste com formulários */}
             {showOnboarding && userProfile?.role === 'administrator' && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 p-4 backdrop-blur-sm animate-fade-in">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 p-4 backdrop-blur-sm animate-fade-in text-gray-900">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col md:flex-row relative h-[600px] md:h-auto">
                         {/* Nested Form Modal */}
                         {activeOnboardingModal && userProfile?.clinic_id && (
                             <div className="absolute inset-0 z-[60] bg-white flex flex-col animate-fade-in">
-                                <div className="flex justify-between items-center p-4 border-b">
+                                <div className="flex justify-between items-center p-4 border-b border-gray-100">
                                     <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
                                         {activeOnboardingModal === 'clinic' && <><Building2 className="text-primary"/> Perfil da Clínica</>}
                                         {activeOnboardingModal === 'dentist' && <><UserPlus className="text-primary"/> Novo Dentista</>}

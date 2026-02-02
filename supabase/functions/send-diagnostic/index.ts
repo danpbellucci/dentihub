@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
             'Authorization': `Bearer ${resendApiKey}`
         },
         body: JSON.stringify({
-            from: `${clinicName} <contato@dentihub.com.br>`,
+            from: `${clinicName} <naoresponda@dentihub.com.br>`,
             to: [email],
             subject: 'Teste de Conexão DentiHub ✅',
             html: `

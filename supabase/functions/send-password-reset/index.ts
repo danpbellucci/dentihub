@@ -41,7 +41,6 @@ Deno.serve(async (req) => {
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
     // 1. Gerar Link de Recuperação
-    // Redireciona para a raiz. O frontend detectará o hash #access_token&type=recovery
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
         type: 'recovery',
         email: email,
@@ -63,7 +62,7 @@ Deno.serve(async (req) => {
             'Authorization': `Bearer ${resendApiKey}`
         },
         body: JSON.stringify({
-            from: "DentiHub Segurança <contato@dentihub.com.br>",
+            from: "DentiHub Segurança <naoresponda@dentihub.com.br>",
             to: [email],
             subject: "Redefinição de Senha - DentiHub",
             html: `

@@ -143,7 +143,6 @@ Deno.serve(async (req) => {
     if (inviteRole === 'dentist') roleDisplay = 'Dentista';
     if (inviteRole === 'administrator') roleDisplay = 'Administrador';
 
-    // Tenta buscar label personalizado se não for padrão
     if (!['dentist', 'administrator', 'employee'].includes(inviteRole)) {
          const { data: roleData } = await supabaseAdmin.from('clinic_roles').select('label').eq('name', inviteRole).eq('clinic_id', clinicId).maybeSingle();
          if (roleData) roleDisplay = roleData.label;
@@ -158,7 +157,7 @@ Deno.serve(async (req) => {
             'Authorization': `Bearer ${resendApiKey}`
         },
         body: JSON.stringify({
-            from: `${finalClinicName} <contato@dentihub.com.br>`,
+            from: `${finalClinicName} <naoresponda@dentihub.com.br>`,
             to: [email],
             subject: `Convite: Junte-se à equipe da ${finalClinicName}`,
             html: `

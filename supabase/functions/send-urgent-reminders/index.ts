@@ -21,7 +21,7 @@ async function sendEmail(apiKey: string, to: string, subject: string, html: stri
             'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-            from: `${fromName} <contato@dentihub.com.br>`, 
+            from: `${fromName} <naoresponda@dentihub.com.br>`, 
             to: [to],
             subject: subject,
             html: html,
@@ -38,7 +38,7 @@ async function sendEmail(apiKey: string, to: string, subject: string, html: stri
 
 const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
-    date.setHours(date.getHours() - 3); // Ajuste BRT simples para display
+    date.setHours(date.getHours() - 3); 
     return date.toISOString().substring(11, 16);
 };
 
@@ -57,13 +57,11 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const now = new Date();
-    // Janela de busca: Agendamentos que acontecem daqui a 12h (com margem de 1h para o cron)
     const rangeStart = new Date(now.getTime() + (12 * 60 * 60 * 1000));
     const rangeEnd = new Date(now.getTime() + (13 * 60 * 60 * 1000));
 
     console.log(`[URGENT] Buscando agendamentos entre ${rangeStart.toISOString()} e ${rangeEnd.toISOString()}`);
 
-    // Busca apenas agendamentos com status 'scheduled' (não confirmados/cancelados)
     const { data: appointments, error: apptError } = await supabase
         .from('appointments')
         .select(`
@@ -78,7 +76,7 @@ Deno.serve(async (req) => {
         `)
         .gte('start_time', rangeStart.toISOString())
         .lt('start_time', rangeEnd.toISOString()) 
-        .eq('status', 'scheduled'); // CRÍTICO: Apenas quem ainda não respondeu
+        .eq('status', 'scheduled');
 
     if (apptError) throw apptError;
 
@@ -92,7 +90,6 @@ Deno.serve(async (req) => {
                 continue;
             }
 
-            // Verifica se já enviou este tipo de lembrete
             const { data: existingComm } = await supabase
                 .from('communications')
                 .select('id')
@@ -176,7 +173,6 @@ Deno.serve(async (req) => {
         }
     }
 
-    // LOG
     await supabase.from('edge_function_logs').insert({
         function_name: 'send-urgent-reminders',
         metadata: { processed: appointments?.length || 0, sent: sentCount, skipped: skippedCount },

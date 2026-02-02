@@ -21,7 +21,7 @@ async function sendEmail(apiKey: string, to: string, subject: string, html: stri
             'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-            from: "DentiHub System <contato@dentihub.com.br>",
+            from: "DentiHub System <naoresponda@dentihub.com.br>",
             to: [to],
             subject: subject,
             html: html
@@ -42,8 +42,6 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const resendApiKey = Deno.env.get('RESEND_API_KEY')!;
-    
-    // E-mail do Super Admin (Fallback hardcoded para segurança caso a variável não exista)
     const adminEmail = 'danilobellucci@gmail.com'; 
 
     if (!supabaseUrl || !supabaseKey || !resendApiKey) {
@@ -52,10 +50,6 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Definir intervalo do dia atual (UTC)
-    // Ajustar para fuso horário de Brasília (UTC-3) se necessário, mas aqui usaremos UTC padrão do servidor
-    // Para pegar "hoje", consideramos o intervalo das últimas 24h ou o dia calendário atual.
-    // Vamos usar o dia calendário atual UTC.
     const now = new Date();
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).toISOString();
     const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
@@ -63,7 +57,6 @@ Deno.serve(async (req) => {
 
     console.log(`[REPORT] Gerando relatório para: ${dateLabel}`);
 
-    // Executar queries em paralelo para performance
     const [
         { count: newClinics },
         { count: newPatients },
@@ -76,17 +69,15 @@ Deno.serve(async (req) => {
         supabase.from('clinics').select('*', { count: 'exact', head: true }).gte('created_at', startOfDay).lte('created_at', endOfDay),
         supabase.from('clients').select('*', { count: 'exact', head: true }).gte('created_at', startOfDay).lte('created_at', endOfDay),
         supabase.from('user_profiles').select('*', { count: 'exact', head: true }).eq('role', 'dentist').gte('created_at', startOfDay).lte('created_at', endOfDay),
-        supabase.from('appointments').select('*', { count: 'exact', head: true }).gte('created_at', startOfDay).lte('created_at', endOfDay), // created_at do registro
+        supabase.from('appointments').select('*', { count: 'exact', head: true }).gte('created_at', startOfDay).lte('created_at', endOfDay),
         supabase.from('clinical_records').select('*', { count: 'exact', head: true }).gte('created_at', startOfDay).lte('created_at', endOfDay),
         supabase.from('communications').select('*', { count: 'exact', head: true }).eq('status', 'sent').gte('sent_at', startOfDay).lte('sent_at', endOfDay),
-        supabase.from('transactions').select('amount').eq('type', 'income').gte('created_at', startOfDay).lte('created_at', endOfDay) // created_at ou date? Usando created_at para inserções do sistema hoje
+        supabase.from('transactions').select('amount').eq('type', 'income').gte('created_at', startOfDay).lte('created_at', endOfDay)
     ]);
 
-    // Calcular volume financeiro total registrado hoje (apenas receitas inseridas no sistema)
     const totalVolume = transactionsData?.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) || 0;
     const formattedVolume = totalVolume.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-    // Montar HTML do E-mail
     const htmlContent = `
         <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
             <div style="background-color: #1e293b; padding: 20px; text-align: center;">
@@ -146,10 +137,8 @@ Deno.serve(async (req) => {
         </div>
     `;
 
-    // Enviar E-mail
     await sendEmail(resendApiKey, adminEmail, `Relatório Diário (${dateLabel}) - DentiHub`, htmlContent);
 
-    // Log de Execução
     await supabase.from('edge_function_logs').insert({
         function_name: 'send-super-admin-daily-report',
         metadata: { 

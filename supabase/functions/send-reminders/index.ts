@@ -22,7 +22,7 @@ async function sendEmail(apiKey: string, to: string, subject: string, html: stri
             'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-            from: `${fromName} <contato@dentihub.com.br>`, 
+            from: `${fromName} <naoresponda@dentihub.com.br>`, 
             to: [to],
             subject: subject,
             html: html,
@@ -64,8 +64,6 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const now = new Date();
-    // Define o intervalo para buscar agendamentos de amanhã (entre 23h e 48h a partir de agora, ajustável conforme lógica de negócio)
-    // Aqui assumimos que o job roda 1x por hora e pega o que está para acontecer em ~24h
     const rangeStart = new Date(now.getTime() + (23 * 60 * 60 * 1000));
     const rangeEnd = new Date(now.getTime() + (24 * 60 * 60 * 1000));
 
@@ -100,7 +98,6 @@ Deno.serve(async (req) => {
                 continue;
             }
 
-            // Verifica se já enviou lembrete para este agendamento
             const { data: existingComm } = await supabase
                 .from('communications')
                 .select('id')
@@ -119,7 +116,6 @@ Deno.serve(async (req) => {
             const date = formatDate(appt.start_time);
             const dentistName = appt.dentist?.name || "Dentista";
 
-            // CORREÇÃO: Usa domínio explícito com HashRouter para evitar 404
             const domain = 'https://dentihub.com.br';
             const confirmLink = `${domain}/#/appointment-action?id=${appt.id}&action=confirm`;
             const cancelLink = `${domain}/#/appointment-action?id=${appt.id}&action=cancel`;
@@ -183,7 +179,6 @@ Deno.serve(async (req) => {
         }
     }
 
-    // LOG DE USO
     await supabase.from('edge_function_logs').insert({
         function_name: 'send-reminders',
         metadata: { processed: appointments?.length || 0, sent: sentCount, skipped: skippedCount, errors: errorsCount },

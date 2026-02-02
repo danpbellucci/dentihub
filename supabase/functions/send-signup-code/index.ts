@@ -43,15 +43,11 @@ Deno.serve(async (req) => {
 
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-    // NOTA: NÃO verificamos se o usuário existe em 'user_profiles' aqui.
-    // Isso permite que usuários convidados (que já têm profile mas não auth) recebam o código.
-    // A validação de conta já existente (Auth) ocorrerá naturalmente no complete-signup.
-
     // 1. Gerar Código de 6 dígitos
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
 
-    // 2. Salvar no Banco (Limpa códigos anteriores deste email)
+    // 2. Salvar no Banco
     await supabaseAdmin.from('verification_codes').delete().eq('email', email);
     
     const { error: dbError } = await supabaseAdmin.from('verification_codes').insert({
@@ -70,7 +66,7 @@ Deno.serve(async (req) => {
             'Authorization': `Bearer ${resendApiKey}`
         },
         body: JSON.stringify({
-            from: "DentiHub Segurança <contato@dentihub.com.br>",
+            from: "DentiHub Segurança <naoresponda@dentihub.com.br>",
             to: [email],
             subject: `${code} é seu código de verificação`,
             html: `

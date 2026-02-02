@@ -21,7 +21,7 @@ async function sendEmail(apiKey: string, to: string, subject: string, html: stri
             'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-            from: `${clinicName} <contato@dentihub.com.br>`, 
+            from: `${clinicName} <naoresponda@dentihub.com.br>`, 
             to: [to],
             subject: subject,
             html: html,
@@ -47,7 +47,6 @@ Deno.serve(async (req) => {
 
     if (rpcError) throw new Error(`Erro RPC: ${rpcError.message}`);
     if (!clients || clients.length === 0) {
-        // Log even if empty
         await supabase.from('edge_function_logs').insert({
             function_name: 'send-birthday-emails',
             metadata: { sent_count: 0, message: "Nenhum aniversariante" },
@@ -87,7 +86,6 @@ Deno.serve(async (req) => {
         } catch (e) {}
     }
 
-    // LOG DE USO
     await supabase.from('edge_function_logs').insert({
         function_name: 'send-birthday-emails',
         metadata: { sent_count: emailsSent },
