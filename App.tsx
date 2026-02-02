@@ -84,6 +84,56 @@ const PrivateRoute = ({ children }: { children?: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Componente de Segurança Específico para o Super Admin
+const SuperAdminRoute = ({ children }: { children?: React.ReactNode }) => {
+    const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+
+    useEffect(() => {
+        const verifyAdmin = async () => {
+            try {
+                // 1. Verificação Rápida de E-mail (Front-end First Layer)
+                const { data: { user } } = await supabase.auth.getUser();
+                
+                // Hardcoded para segurança imediata no frontend, deve bater com o SQL is_super_admin()
+                if (user?.email !== 'danilobellucci@gmail.com') {
+                    setIsAuthorized(false);
+                    return;
+                }
+
+                // 2. Verificação Robusta via RPC (Back-end Authority)
+                const { data: isSuperAdmin, error } = await supabase.rpc('is_super_admin');
+                
+                if (error || !isSuperAdmin) {
+                    setIsAuthorized(false);
+                } else {
+                    setIsAuthorized(true);
+                }
+            } catch (err) {
+                console.error("Erro ao verificar permissão de admin:", err);
+                setIsAuthorized(false);
+            }
+        };
+        verifyAdmin();
+    }, []);
+
+    if (isAuthorized === null) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-gray-950">
+                <div className="flex flex-col items-center gap-2">
+                    <Loader2 className="h-8 w-8 animate-spin text-red-500" />
+                    <span className="text-gray-500 font-medium text-sm">Verificando Credenciais de Segurança...</span>
+                </div>
+            </div>
+        );
+    }
+
+    if (!isAuthorized) {
+        return <Navigate to="/dashboard" replace />;
+    }
+
+    return <>{children}</>;
+};
+
 // Componente Wrapper para detectar eventos de auth
 const AuthListener = () => {
     const navigate = useNavigate();
@@ -157,10 +207,28 @@ const App: React.FC = () => {
             <Route path="settings" element={<SettingsPage />} />
           </Route>
 
-          {/* Super Admin Routes */}
-          <Route path="/super-admin" element={<PrivateRoute><SuperAdminPage /></PrivateRoute>} />
-          <Route path="/super-admin/campaigns" element={<PrivateRoute><SuperAdminCampaigns /></PrivateRoute>} />
-          <Route path="/super-admin/leads" element={<PrivateRoute><SuperAdminLeads /></PrivateRoute>} />
+          {/* Super Admin Routes - PROTEGIDAS DUPLAMENTE */}
+          <Route path="/super-admin" element={
+              <PrivateRoute>
+                  <SuperAdminRoute>
+                      <SuperAdminPage />
+                  </SuperAdminRoute>
+              </PrivateRoute>
+          } />
+          <Route path="/super-admin/campaigns" element={
+              <PrivateRoute>
+                  <SuperAdminRoute>
+                      <SuperAdminCampaigns />
+                  </SuperAdminRoute>
+              </PrivateRoute>
+          } />
+          <Route path="/super-admin/leads" element={
+              <PrivateRoute>
+                  <SuperAdminRoute>
+                      <SuperAdminLeads />
+                  </SuperAdminRoute>
+              </PrivateRoute>
+          } />
 
           {/* 
              Public Booking Page (Dynamic Slug at Root) 
