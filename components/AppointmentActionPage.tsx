@@ -3,15 +3,16 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import { Logo } from './Logo';
-import { CheckCircle, XCircle, Loader2, RefreshCcw, AlertOctagon, ArrowRight } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, RefreshCcw, AlertOctagon, ArrowRight, CalendarX } from 'lucide-react';
 
 const AppointmentActionPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState<'success' | 'error' | 'reschedule'>('success');
+  const [status, setStatus] = useState<'success' | 'error' | 'reschedule' | 'already_cancelled'>('success');
   const [message, setMessage] = useState('');
   const [debugInfo, setDebugInfo] = useState('');
+  const [targetSlug, setTargetSlug] = useState('');
   
   const id = searchParams.get('id');
   const action = searchParams.get('action'); // 'confirm', 'cancel', 'reschedule'
@@ -48,8 +49,20 @@ const AppointmentActionPage: React.FC = () => {
       }
 
       // Cast to any to access properties returned by the RPC function
-      const { clinic_name, clinic_slug, client_id, clinic_id } = appointmentData as any;
+      const { clinic_name, clinic_slug, client_id, clinic_id, current_status } = appointmentData as any;
       const displayClinicName = clinic_name || 'Clínica Odontológica';
+      
+      // Salva o slug para redirecionamento
+      const slugToUse = clinic_slug || clinic_id;
+      setTargetSlug(slugToUse);
+
+      // --- VALIDAÇÃO DE STATUS: Se tentar confirmar algo já cancelado ---
+      if (action === 'confirm' && current_status === 'cancelled') {
+          setStatus('already_cancelled');
+          setMessage('Este agendamento foi cancelado anteriormente. Para ser atendido, você deve realizar uma nova solicitação de agendamento.');
+          setLoading(false);
+          return;
+      }
 
       // 2. Lógica de Reagendamento (Redirecionamento)
       if (action === 'reschedule') {
@@ -64,9 +77,8 @@ const AppointmentActionPage: React.FC = () => {
           setStatus('reschedule');
           setMessage('Redirecionando para a página de agendamento...');
           
-          const targetSlug = clinic_slug || clinic_id;
           setTimeout(() => {
-              navigate(`/${targetSlug}`);
+              navigate(`/${slugToUse}`);
           }, 2000);
           
           setLoading(false);
@@ -118,7 +130,12 @@ const AppointmentActionPage: React.FC = () => {
 
       <div className="bg-white p-8 md:p-10 rounded-2xl shadow-2xl max-w-md w-full text-center animate-fade-in-up border border-gray-100 relative overflow-hidden">
         {/* Decorative Top Bar */}
-        <div className={`absolute top-0 left-0 w-full h-2 ${status === 'success' && action !== 'cancel' ? 'bg-green-500' : status === 'reschedule' ? 'bg-blue-500' : 'bg-red-500'}`}></div>
+        <div className={`absolute top-0 left-0 w-full h-2 ${
+            status === 'success' && action !== 'cancel' ? 'bg-green-500' : 
+            status === 'reschedule' ? 'bg-blue-500' : 
+            status === 'already_cancelled' ? 'bg-orange-500' :
+            'bg-red-500'
+        }`}></div>
 
         {loading ? (
           <div className="flex flex-col items-center py-12">
@@ -141,6 +158,10 @@ const AppointmentActionPage: React.FC = () => {
                 <div className="bg-blue-50 p-5 rounded-full mb-6 ring-4 ring-blue-100 shadow-inner">
                    <RefreshCcw className="h-12 w-12 text-blue-500 animate-spin-slow" />
                 </div>
+            ) : status === 'already_cancelled' ? (
+                <div className="bg-orange-50 p-5 rounded-full mb-6 ring-4 ring-orange-100 shadow-inner">
+                   <CalendarX className="h-12 w-12 text-orange-500" />
+                </div>
             ) : (
                 <div className="bg-gray-100 p-5 rounded-full mb-6 shadow-inner">
                    <AlertOctagon className="h-12 w-12 text-gray-500" />
@@ -149,7 +170,9 @@ const AppointmentActionPage: React.FC = () => {
             
             <h2 className={`text-2xl font-black mb-4 ${status === 'error' ? 'text-gray-800' : 'text-gray-900'}`}>
                 {status === 'success' ? (action === 'confirm' ? 'Confirmado!' : 'Cancelado') : 
-                 status === 'reschedule' ? 'Reagendando...' : 'Ops!'}
+                 status === 'reschedule' ? 'Reagendando...' : 
+                 status === 'already_cancelled' ? 'Agendamento Cancelado' :
+                 'Ops!'}
             </h2>
             
             <p className="text-gray-600 mb-8 leading-relaxed text-lg">
@@ -162,13 +185,23 @@ const AppointmentActionPage: React.FC = () => {
                 </p>
             )}
 
-            <button 
-                onClick={() => navigate('/')}
-                className="w-full px-6 py-3.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-black transition shadow-lg flex items-center justify-center gap-2 group"
-            >
-                Ir para o Início
-                <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform"/>
-            </button>
+            {status === 'already_cancelled' ? (
+                <button 
+                    onClick={() => navigate(`/${targetSlug}`)}
+                    className="w-full px-6 py-3.5 bg-primary text-white rounded-xl font-bold hover:bg-sky-600 transition shadow-lg flex items-center justify-center gap-2 group"
+                >
+                    Fazer Novo Agendamento
+                    <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform"/>
+                </button>
+            ) : (
+                <button 
+                    onClick={() => navigate('/')}
+                    className="w-full px-6 py-3.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-black transition shadow-lg flex items-center justify-center gap-2 group"
+                >
+                    Ir para o Início
+                    <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform"/>
+                </button>
+            )}
           </div>
         )}
       </div>

@@ -1,19 +1,22 @@
 
 -- ============================================================================
--- FUNÇÃO SEGURA PARA AÇÕES DE AGENDAMENTO (PÚBLICO)
+-- ATUALIZAÇÃO DA FUNÇÃO DE AÇÃO PÚBLICA (Incluindo Status Atual)
 -- ============================================================================
--- Permite buscar IDs e Nome da Clínica baseados no ID do agendamento,
--- contornando o RLS da tabela appointments de forma segura.
 
+-- 1. Remove a função antiga para permitir alteração no tipo de retorno
+DROP FUNCTION IF EXISTS public.get_appointment_details_for_action(uuid);
+
+-- 2. Recria a função com o novo campo 'current_status'
 CREATE OR REPLACE FUNCTION public.get_appointment_details_for_action(p_appointment_id UUID)
 RETURNS TABLE (
   client_id UUID,
   clinic_id UUID,
   clinic_name TEXT,
-  clinic_slug TEXT
+  clinic_slug TEXT,
+  current_status TEXT -- Campo adicionado
 )
 LANGUAGE plpgsql
-SECURITY DEFINER -- Roda com permissões de administrador para ler a tabela
+SECURITY DEFINER -- Importante: Roda com permissões de admin
 SET search_path = public
 AS $$
 BEGIN
@@ -22,7 +25,8 @@ BEGIN
     a.client_id,
     a.clinic_id,
     c.name as clinic_name,
-    c.slug as clinic_slug
+    c.slug as clinic_slug,
+    a.status as current_status
   FROM
     public.appointments a
   JOIN
@@ -33,5 +37,5 @@ BEGIN
 END;
 $$;
 
--- Conceder permissão para usuários anônimos (pacientes clicando no email)
+-- 3. Garante permissões públicas
 GRANT EXECUTE ON FUNCTION public.get_appointment_details_for_action TO anon, authenticated, service_role;
