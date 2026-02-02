@@ -230,7 +230,7 @@ const DashboardLayout: React.FC = () => {
                 <div className="bg-gradient-to-tr from-blue-600 to-purple-600 p-1.5 rounded-lg shadow-lg shadow-purple-500/20">
                     <Logo className="w-5 h-5 text-white" />
                 </div>
-                <span>DentiHub</span>
+                <span>Denti<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Hub</span></span>
             </div>
             {isSuperAdmin ? (
                 <span className="text-[10px] bg-red-500/20 text-red-300 border border-red-500/30 px-2 py-0.5 rounded-full font-bold mt-1 inline-flex items-center w-fit">
@@ -306,7 +306,7 @@ const DashboardLayout: React.FC = () => {
         <div className="md:hidden bg-gray-900 border-b border-white/5 p-4 flex items-center justify-between">
             <div className="flex items-center text-white font-bold gap-2">
                 <Logo className="w-6 h-6" /> 
-                DentiHub
+                <span>Denti<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Hub</span></span>
             </div>
             <button onClick={() => setSidebarOpen(true)} className="text-gray-400 hover:text-white">
                 <Menu size={24} />

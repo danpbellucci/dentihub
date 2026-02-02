@@ -112,7 +112,8 @@ const AppointmentActionPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
       {/* Header Minimalista */}
       <div className="absolute top-6 flex items-center text-gray-400 font-bold text-xl gap-2 cursor-pointer hover:text-primary transition-colors" onClick={() => navigate('/')}>
-          <Logo className="w-8 h-8" /> DentiHub
+          <Logo className="w-8 h-8" /> 
+          <span>Denti<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Hub</span></span>
       </div>
 
       <div className="bg-white p-8 md:p-10 rounded-2xl shadow-2xl max-w-md w-full text-center animate-fade-in-up border border-gray-100 relative overflow-hidden">

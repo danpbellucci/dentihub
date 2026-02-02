@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Logo } from './Logo';
 import { 
@@ -9,6 +9,11 @@ import {
 
 const LearnMorePage: React.FC = () => {
   const navigate = useNavigate();
+
+  // Garante que a página comece do topo ao ser carregada
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   const features = [
     {
@@ -103,7 +108,7 @@ const LearnMorePage: React.FC = () => {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-2 text-white font-bold text-xl cursor-pointer hover:opacity-80 transition" onClick={() => navigate('/')}>
               <Logo className="w-8 h-8" />
-              <span>DentiHub</span>
+              <span>Denti<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Hub</span></span>
             </div>
             <button 
               onClick={() => navigate('/')} 

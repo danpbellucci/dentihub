@@ -325,16 +325,6 @@ const AuthPage: React.FC = () => {
                         <label htmlFor="password" className="block text-sm font-medium text-gray-300">
                             Senha
                         </label>
-                        {view === 'login' && (
-                            <button 
-                            type="button" 
-                            disabled={isMisconfigured}
-                            onClick={() => { setView('forgot'); setMessage(''); }}
-                            className="text-xs text-primary hover:text-sky-400 font-medium transition"
-                            >
-                            Esqueceu a senha?
-                            </button>
-                        )}
                         </div>
                         <div className="relative rounded-md shadow-sm">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -352,6 +342,18 @@ const AuthPage: React.FC = () => {
                             placeholder={view === 'signup' ? 'Mínimo 6 caracteres' : '••••••••'}
                         />
                         </div>
+                        {view === 'login' && (
+                            <div className="flex justify-end mt-2">
+                                <button
+                                type="button"
+                                disabled={isMisconfigured}
+                                onClick={() => { setView('forgot'); setMessage(''); }}
+                                className="text-xs text-primary hover:text-sky-400 font-medium transition"
+                                >
+                                Esqueceu a senha?
+                                </button>
+                            </div>
+                        )}
                     </div>
                     )}
 
