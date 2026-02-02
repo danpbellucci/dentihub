@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useNavigate } from 'react-router-dom';
 import { Logo } from './Logo';
-import { Search, MapPin, Smile, Phone, ArrowRight, Home, Filter, Loader2 } from 'lucide-react';
+import { Search, MapPin, Smile, Phone, ArrowRight, Home, Filter, Loader2, Menu, X } from 'lucide-react';
 
 const BRAZIL_STATES = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 
@@ -26,6 +26,9 @@ const FindClinicPage: React.FC = () => {
 
   // Debounce para não chamar a API a cada tecla no nome
   const [debouncedName, setDebouncedName] = useState(searchName);
+  
+  // Estado do Menu Mobile
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navigate = useNavigate();
 
@@ -129,22 +132,53 @@ const FindClinicPage: React.FC = () => {
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/20 rounded-full blur-[120px]"></div>
       </div>
 
-      {/* Header */}
-      <header className="fixed w-full top-0 z-50 border-b border-white/5 bg-gray-950/90 backdrop-blur-md transition-all duration-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
-          <div className="flex items-center gap-2 text-white font-bold text-2xl cursor-pointer hover:opacity-80 transition" onClick={() => navigate('/')}>
-            <Logo className="w-8 h-8" />
-            <span className="tracking-tight">
+      {/* HEADER */}
+      <header className="fixed w-full top-0 z-50 border-b border-white/5 bg-gray-950/90 backdrop-blur-md supports-[backdrop-filter]:bg-gray-950/60 transition-all duration-300">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-2 text-white font-bold text-2xl cursor-pointer hover:opacity-80 transition" onClick={() => navigate('/')}>
+              <Logo className="w-8 h-8" />
+              <span className="tracking-tight">
                 Denti<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Hub</span>
-            </span>
+              </span>
+            </div>
+            
+            <div className="hidden md:flex items-center gap-8">
+              <button onClick={() => navigate('/')} className="text-sm font-medium text-gray-300 hover:text-white transition">Recursos</button>
+              <button onClick={() => navigate('/')} className="text-sm font-medium text-gray-300 hover:text-white transition">Preços</button>
+              <button onClick={() => navigate('/entenda')} className="text-sm font-medium text-gray-300 hover:text-white transition">Como Funciona</button>
+              
+              <div className="flex items-center gap-4 pl-4 border-l border-white/10">
+                <button className="text-sm font-medium text-white transition flex items-center gap-2 cursor-default">
+                    <Search size={16} className="text-primary"/> Buscar Clínica
+                </button>
+                <button onClick={() => navigate('/auth', { state: { view: 'login' } })} className="text-sm font-bold text-white hover:text-purple-400 transition">Entrar</button>
+                <button onClick={() => navigate('/auth', { state: { view: 'signup' } })} className="bg-white text-gray-900 px-5 py-2 rounded-full font-bold hover:bg-gray-100 transition shadow-[0_0_20px_rgba(255,255,255,0.3)] text-sm">
+                    Começar Grátis
+                </button>
+              </div>
+            </div>
+
+            <div className="md:hidden flex items-center gap-4">
+                <button onClick={() => navigate('/auth', { state: { view: 'login' } })} className="text-sm font-bold text-white hover:text-purple-400 transition">Entrar</button>
+                <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-gray-300 hover:text-white p-1">
+                    {mobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
+                </button>
+            </div>
           </div>
-          <button 
-            onClick={() => navigate('/')}
-            className="text-sm font-medium text-gray-300 hover:text-white flex items-center px-3 py-2 rounded-lg hover:bg-white/5 transition"
-          >
-            <Home size={16} className="mr-2" /> Início
-          </button>
         </div>
+
+        {mobileMenuOpen && (
+            <div className="md:hidden absolute top-16 left-0 w-full bg-gray-950 border-b border-white/10 shadow-2xl animate-fade-in-down">
+                <div className="flex flex-col p-4 space-y-4">
+                    <button onClick={() => navigate('/')} className="text-left text-base font-medium text-gray-300 hover:text-white py-2 border-b border-white/5">Recursos</button>
+                    <button onClick={() => navigate('/')} className="text-left text-base font-medium text-gray-300 hover:text-white py-2 border-b border-white/5">Preços</button>
+                    <button onClick={() => navigate('/entenda')} className="text-left text-base font-medium text-gray-300 hover:text-white py-2 border-b border-white/5">Como Funciona</button>
+                    <button onClick={() => setMobileMenuOpen(false)} className="text-left text-base font-medium text-white py-2 border-b border-white/5 flex items-center gap-2"><Search size={16} className="text-primary"/> Buscar Clínica</button>
+                    <button onClick={() => navigate('/auth', { state: { view: 'signup' } })} className="bg-white text-gray-900 py-3 rounded-lg font-bold text-center mt-2 shadow-lg">Começar Grátis</button>
+                </div>
+            </div>
+        )}
       </header>
 
       {/* Hero Busca */}

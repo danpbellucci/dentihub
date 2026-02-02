@@ -1,14 +1,16 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Logo } from './Logo';
 import { 
   ArrowLeft, Brain, Clock, ShieldCheck, Database, Mic, Smile, CheckCircle, 
-  FileText, Calendar, BellRing, DollarSign, Users, Repeat, Smartphone, Cloud, Lock
+  FileText, Calendar, BellRing, DollarSign, Users, Repeat, Smartphone, Cloud, Lock,
+  Search, Menu, X
 } from 'lucide-react';
 
 const LearnMorePage: React.FC = () => {
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Garante que a página comece do topo ao ser carregada
   useEffect(() => {
@@ -102,39 +104,70 @@ const LearnMorePage: React.FC = () => {
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/20 rounded-full blur-[120px]"></div>
       </div>
 
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-gray-950/80 backdrop-blur-md border-b border-white/5">
+      {/* HEADER */}
+      <header className="fixed w-full top-0 z-50 border-b border-white/5 bg-gray-950/90 backdrop-blur-md supports-[backdrop-filter]:bg-gray-950/60 transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-2 text-white font-bold text-xl cursor-pointer hover:opacity-80 transition" onClick={() => navigate('/')}>
+            <div className="flex items-center gap-2 text-white font-bold text-2xl cursor-pointer hover:opacity-80 transition" onClick={() => navigate('/')}>
               <Logo className="w-8 h-8" />
-              <span>Denti<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Hub</span></span>
+              <span className="tracking-tight">
+                Denti<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Hub</span>
+              </span>
             </div>
-            <button 
-              onClick={() => navigate('/')} 
-              className="text-gray-300 hover:text-white transition flex items-center text-sm font-medium px-3 py-2 rounded-lg hover:bg-white/5"
-            >
-              <ArrowLeft size={16} className="mr-2" /> Voltar ao Início
-            </button>
+            
+            <div className="hidden md:flex items-center gap-8">
+              <button onClick={() => navigate('/')} className="text-sm font-medium text-gray-300 hover:text-white transition">Recursos</button>
+              <button onClick={() => navigate('/')} className="text-sm font-medium text-gray-300 hover:text-white transition">Preços</button>
+              <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-sm font-medium text-white transition cursor-default">Como Funciona</button>
+              
+              <div className="flex items-center gap-4 pl-4 border-l border-white/10">
+                <button onClick={() => navigate('/encontrar-clinica')} className="text-sm font-medium text-gray-300 hover:text-white transition flex items-center gap-2">
+                    <Search size={16}/> Buscar Clínica
+                </button>
+                <button onClick={() => navigate('/auth', { state: { view: 'login' } })} className="text-sm font-bold text-white hover:text-purple-400 transition">Entrar</button>
+                <button onClick={() => navigate('/auth', { state: { view: 'signup' } })} className="bg-white text-gray-900 px-5 py-2 rounded-full font-bold hover:bg-gray-100 transition shadow-[0_0_20px_rgba(255,255,255,0.3)] text-sm">
+                    Começar Grátis
+                </button>
+              </div>
+            </div>
+
+            <div className="md:hidden flex items-center gap-4">
+                <button onClick={() => navigate('/auth', { state: { view: 'login' } })} className="text-sm font-bold text-white hover:text-purple-400 transition">Entrar</button>
+                <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-gray-300 hover:text-white p-1">
+                    {mobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
+                </button>
+            </div>
           </div>
         </div>
-      </nav>
+
+        {mobileMenuOpen && (
+            <div className="md:hidden absolute top-16 left-0 w-full bg-gray-950 border-b border-white/10 shadow-2xl animate-fade-in-down">
+                <div className="flex flex-col p-4 space-y-4">
+                    <button onClick={() => navigate('/')} className="text-left text-base font-medium text-gray-300 hover:text-white py-2 border-b border-white/5">Recursos</button>
+                    <button onClick={() => navigate('/')} className="text-left text-base font-medium text-gray-300 hover:text-white py-2 border-b border-white/5">Preços</button>
+                    <button onClick={() => setMobileMenuOpen(false)} className="text-left text-base font-medium text-white py-2 border-b border-white/5">Como Funciona</button>
+                    <button onClick={() => navigate('/encontrar-clinica')} className="text-left text-base font-medium text-gray-300 hover:text-white py-2 border-b border-white/5 flex items-center gap-2"><Search size={16}/> Buscar Clínica</button>
+                    <button onClick={() => navigate('/auth', { state: { view: 'signup' } })} className="bg-white text-gray-900 py-3 rounded-lg font-bold text-center mt-2 shadow-lg">Começar Grátis</button>
+                </div>
+            </div>
+        )}
+      </header>
 
       {/* Hero Header & Intro Narrative */}
-      <div className="relative z-10 pt-20 pb-16 px-4">
+      <div className="relative z-10 pt-48 pb-16 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-blue-300 text-xs font-bold uppercase tracking-wide mb-6 backdrop-blur-sm">
+          <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-blue-300 text-xs font-bold uppercase tracking-wide mb-6 backdrop-blur-sm animate-fade-in-up">
             Funcionalidades Completas
           </div>
-          <h1 className="text-4xl sm:text-5xl font-black text-white leading-tight mb-6 drop-shadow-2xl">
+          <h1 className="text-4xl sm:text-5xl font-black text-white leading-tight mb-6 drop-shadow-2xl animate-fade-in-up delay-100">
             Por que sua clínica precisa de um <br/>
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">ERP com Inteligência Artificial?</span>
           </h1>
-          <p className="text-xl text-gray-400 leading-relaxed max-w-3xl mx-auto mb-12">
+          <p className="text-xl text-gray-400 leading-relaxed max-w-3xl mx-auto mb-12 animate-fade-in-up delay-200">
             Descubra como a tecnologia está transformando a rotina de dentistas, eliminando a burocracia e devolvendo o foco ao que realmente importa: o paciente.
           </p>
 
-          <div className="bg-gray-900/60 backdrop-blur-md p-8 rounded-3xl border border-white/10 text-left relative overflow-hidden group">
+          <div className="bg-gray-900/60 backdrop-blur-md p-8 rounded-3xl border border-white/10 text-left relative overflow-hidden group animate-fade-in-up delay-300">
             <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-500 to-purple-600"></div>
             <div className="absolute -right-10 -top-10 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl group-hover:bg-blue-500/20 transition duration-700"></div>
             
@@ -256,7 +289,7 @@ const LearnMorePage: React.FC = () => {
         <div className="mt-32 text-center">
           <h2 className="text-3xl font-bold text-white mb-6">Tudo isso em uma única plataforma</h2>
           <button 
-            onClick={() => navigate('/auth')}
+            onClick={() => navigate('/auth', { state: { view: 'signup' } })}
             className="bg-blue-600 text-white text-xl font-bold px-10 py-5 rounded-xl shadow-[0_0_30px_rgba(37,99,235,0.4)] hover:bg-blue-500 transition-all transform hover:-translate-y-1 hover:shadow-[0_0_40px_rgba(37,99,235,0.6)]"
           >
             Começar Gratuitamente
