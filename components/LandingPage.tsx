@@ -14,12 +14,21 @@ import {
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeMockup, setActiveMockup] = useState('Visão Geral');
-  const [device, setDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
+  // Inicia detectando se é mobile para renderizar o componente correto imediatamente (evita layout shift/peso)
+  const [device, setDevice] = useState<'mobile' | 'tablet' | 'desktop'>(
+      typeof window !== 'undefined' && window.innerWidth < 768 ? 'mobile' : 'desktop'
+  );
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [leadEmail, setLeadEmail] = useState('');
   const [leadStatus, setLeadStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
   useEffect(() => {
+    // Listener para redimensionamento
+    const handleResize = () => {
+        if (window.innerWidth < 768 && device !== 'mobile') setDevice('mobile');
+    };
+    window.addEventListener('resize', handleResize);
+
     const observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
@@ -37,9 +46,10 @@ const LandingPage: React.FC = () => {
     }
 
     return () => {
+      window.removeEventListener('resize', handleResize);
       if (plansElement) observer.unobserve(plansElement);
     };
-  }, []);
+  }, [device]);
 
   const handleLeadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,14 +91,19 @@ const LandingPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-950 font-sans text-gray-100 selection:bg-purple-500 selection:text-white overflow-x-hidden">
       
-      {/* BACKGROUND AMBIENT GLOWS */}
-      <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+      {/* 
+          CORREÇÃO CRÍTICA DE PERFORMANCE IOS:
+          Ocultar os "Glows" (Blur 120px) no mobile.
+          O Safari Mobile trava tentando renderizar grandes áreas de blur gaussian.
+          Usamos 'hidden md:block' para exibir apenas em tablets/desktop.
+      */}
+      <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 hidden md:block">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/20 rounded-full blur-[120px]"></div>
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/20 rounded-full blur-[120px]"></div>
       </div>
 
       {/* HEADER */}
-      <header className="fixed w-full top-0 z-50 border-b border-white/5 bg-gray-950/80 backdrop-blur-md">
+      <header className="fixed w-full top-0 z-50 border-b border-white/5 bg-gray-950/90 backdrop-blur-md supports-[backdrop-filter]:bg-gray-950/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-2 text-white font-bold text-2xl cursor-pointer hover:opacity-80 transition" onClick={() => navigate('/')}>
@@ -129,7 +144,7 @@ const LandingPage: React.FC = () => {
             <SparklesIcon /> <span className="text-gray-200">Novo:</span> Prontuário com IA Generativa
           </div>
           
-          <h1 className="text-5xl sm:text-7xl font-black text-white tracking-tight mb-8 leading-tight max-w-5xl mx-auto drop-shadow-2xl">
+          <h1 className="text-5xl sm:text-7xl font-black text-white tracking-tight mb-8 leading-tight max-w-5xl mx-auto drop-shadow-2xl will-change-transform">
             O Sistema Operacional <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 animate-gradient-x">
               do Futuro para Dentistas
@@ -159,7 +174,6 @@ const LandingPage: React.FC = () => {
           </div>
 
           {/* MOCKUP INTERATIVO */}
-          {/* REMOVIDO: perspective-1000 que pode bugar mobile */}
           <div className="relative mx-auto px-4 sm:px-6 lg:px-8 animate-fade-in-up delay-200 flex flex-col items-center">
             
             {/* Device Selector */}
@@ -192,7 +206,7 @@ const LandingPage: React.FC = () => {
                 )}
 
                 <div className={`flex bg-white h-full relative text-left ${device === 'mobile' ? 'flex-col' : 'flex-row'}`}>
-                    {/* Sidebar Mockup (Light Mode inside the app for contrast) */}
+                    {/* Sidebar Mockup */}
                     <div className={`bg-gray-50 border-r border-gray-200 flex-shrink-0 z-20 ${device === 'mobile' ? 'hidden' : 'w-56 p-4 flex flex-col'}`}>
                         <div className="flex items-center gap-2 text-gray-900 font-bold mb-8 px-2">
                             <Logo className="w-6 h-6" /> <span>DentiHub</span>
