@@ -37,8 +37,8 @@ const daysOfWeek = [
     { key: 'sunday', label: 'Domingo' },
 ];
 
-const inputClass = "w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all";
-const labelClass = "block text-xs font-bold text-gray-600 uppercase mb-1.5 tracking-wide";
+const inputClass = "w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all";
+const labelClass = "block text-xs font-bold text-gray-400 uppercase mb-1.5 tracking-wide";
 
 // --- CLINIC FORM ---
 export const ClinicOnboardingForm: React.FC<{ clinicId: string; onSuccess: () => void; onCancel: () => void }> = ({ clinicId, onSuccess, onCancel }) => {
@@ -134,8 +134,8 @@ export const ClinicOnboardingForm: React.FC<{ clinicId: string; onSuccess: () =>
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
             
             <div className="flex justify-center mb-6">
-                <div className={`relative h-24 w-24 border-2 border-dashed border-gray-300 rounded-full flex items-center justify-center cursor-pointer hover:bg-gray-50 hover:border-primary transition overflow-hidden group ${uploadingLogo ? 'opacity-50' : ''}`} onClick={() => fileInputRef.current?.click()}>
-                    {formData.logo_url ? <img src={formData.logo_url} className="h-full w-full object-cover" /> : <Upload className="text-gray-400 group-hover:text-primary transition-colors" />}
+                <div className={`relative h-24 w-24 border-2 border-dashed border-gray-700 rounded-full flex items-center justify-center cursor-pointer hover:bg-gray-800 hover:border-primary transition overflow-hidden group ${uploadingLogo ? 'opacity-50' : ''}`} onClick={() => fileInputRef.current?.click()}>
+                    {formData.logo_url ? <img src={formData.logo_url} className="h-full w-full object-cover" /> : <Upload className="text-gray-500 group-hover:text-primary transition-colors" />}
                     <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
                     <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                         <span className="text-white text-xs font-bold">Alterar</span>
@@ -162,8 +162,8 @@ export const ClinicOnboardingForm: React.FC<{ clinicId: string; onSuccess: () =>
                 <div><label className={labelClass}>Telefone</label><input className={inputClass} value={formData.phone || ''} onChange={e => setFormData({...formData, phone: maskPhone(e.target.value)})} placeholder="(00) 0000-0000" maxLength={15}/></div>
             </div>
             
-            <div className="pt-6 flex justify-end gap-3 border-t border-gray-100">
-                <button type="button" onClick={onCancel} className="px-5 py-2.5 text-gray-600 font-bold hover:bg-gray-100 rounded-lg transition-colors">Cancelar</button>
+            <div className="pt-6 flex justify-end gap-3 border-t border-white/10">
+                <button type="button" onClick={onCancel} className="px-5 py-2.5 text-gray-400 font-bold hover:bg-gray-800 hover:text-white rounded-lg transition-colors">Cancelar</button>
                 <button type="submit" disabled={saving} className="px-6 py-2.5 bg-primary text-white rounded-lg font-bold hover:bg-sky-600 flex items-center shadow-lg shadow-blue-500/30 transition-all">{saving ? <Loader2 className="animate-spin mr-2"/> : 'Salvar e Continuar'}</button>
             </div>
         </form>
@@ -284,7 +284,7 @@ export const DentistOnboardingForm: React.FC<{ clinicId: string; onSuccess: () =
                 
                 {/* 1. DADOS PESSOAIS */}
                 <div className="space-y-5 animate-fade-in">
-                    <h3 className="font-bold text-gray-800 border-b border-gray-200 pb-3 flex items-center text-lg"><User size={20} className="mr-2 text-primary"/> Dados Pessoais</h3>
+                    <h3 className="font-bold text-gray-300 border-b border-white/10 pb-3 flex items-center text-lg"><User size={20} className="mr-2 text-primary"/> Dados Pessoais</h3>
                     
                     <div>
                         <label className={labelClass}>Nome Completo *</label>
@@ -323,7 +323,7 @@ export const DentistOnboardingForm: React.FC<{ clinicId: string; onSuccess: () =
                         <div>
                             <label className={labelClass}>Cor na Agenda</label>
                             <div className="relative">
-                                <input type="color" className="h-11 w-full rounded-lg cursor-pointer border border-gray-300 p-1 bg-white" value={formData.color} onChange={e => setFormData({...formData, color: e.target.value})} />
+                                <input type="color" className="h-11 w-full rounded-lg cursor-pointer border border-gray-700 p-1 bg-gray-800" value={formData.color} onChange={e => setFormData({...formData, color: e.target.value})} />
                             </div>
                         </div>
                     </div>
@@ -331,7 +331,7 @@ export const DentistOnboardingForm: React.FC<{ clinicId: string; onSuccess: () =
 
                 {/* 2. PLANOS ACEITOS */}
                 <div className="space-y-5 mt-8 animate-fade-in">
-                    <h3 className="font-bold text-gray-800 border-b border-gray-200 pb-3 flex items-center text-lg"><ShieldCheck size={20} className="mr-2 text-primary"/> Planos Aceitos</h3>
+                    <h3 className="font-bold text-gray-300 border-b border-white/10 pb-3 flex items-center text-lg"><ShieldCheck size={20} className="mr-2 text-primary"/> Planos Aceitos</h3>
                     <div className="flex gap-2">
                         <input 
                             className={inputClass} 
@@ -340,12 +340,12 @@ export const DentistOnboardingForm: React.FC<{ clinicId: string; onSuccess: () =
                             onChange={e => setNewPlan(e.target.value)}
                             onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddPlan())}
                         />
-                        <button type="button" onClick={handleAddPlan} className="bg-gray-100 border border-gray-300 px-6 rounded-lg hover:bg-gray-200 text-gray-700 font-bold transition-colors">Adicionar</button>
+                        <button type="button" onClick={handleAddPlan} className="bg-gray-800 border border-gray-700 px-6 rounded-lg hover:bg-gray-700 text-gray-300 font-bold transition-colors">Adicionar</button>
                     </div>
                     <div className="flex flex-wrap gap-2">
                         {plans.map(p => (
-                            <span key={p} className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full text-sm font-bold flex items-center border border-blue-200 shadow-sm">
-                                {p} <button type="button" onClick={() => removePlan(p)} className="ml-2 text-blue-400 hover:text-blue-900 transition-colors"><X size={14}/></button>
+                            <span key={p} className="bg-blue-900/30 text-blue-300 px-3 py-1.5 rounded-full text-sm font-bold flex items-center border border-blue-500/30 shadow-sm">
+                                {p} <button type="button" onClick={() => removePlan(p)} className="ml-2 text-blue-400 hover:text-white transition-colors"><X size={14}/></button>
                             </span>
                         ))}
                     </div>
@@ -353,12 +353,12 @@ export const DentistOnboardingForm: React.FC<{ clinicId: string; onSuccess: () =
 
                 {/* 3. SERVIÇOS */}
                 <div className="space-y-5 mt-8 animate-fade-in">
-                    <h3 className="font-bold text-gray-800 border-b border-gray-200 pb-3 flex items-center text-lg"><DollarSign size={20} className="mr-2 text-primary"/> Serviços e Preços</h3>
-                    <div className="grid grid-cols-12 gap-3 items-end bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-inner">
+                    <h3 className="font-bold text-gray-300 border-b border-white/10 pb-3 flex items-center text-lg"><DollarSign size={20} className="mr-2 text-primary"/> Serviços e Preços</h3>
+                    <div className="grid grid-cols-12 gap-3 items-end bg-gray-800/50 p-4 rounded-xl border border-white/5 shadow-inner">
                         <div className="col-span-12 sm:col-span-5">
                             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1 block">Nome do Serviço</label>
                             <input 
-                                className="w-full bg-white border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none" 
+                                className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-white" 
                                 placeholder="Ex: Limpeza"
                                 value={newService.name} 
                                 onChange={e => setNewService({...newService, name: e.target.value})}
@@ -368,7 +368,7 @@ export const DentistOnboardingForm: React.FC<{ clinicId: string; onSuccess: () =
                             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1 block">Preço (R$)</label>
                             <input 
                                 type="number" 
-                                className={`w-full bg-white border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none ${newService.is_variable_price ? 'bg-gray-100 text-gray-400' : ''}`} 
+                                className={`w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-white ${newService.is_variable_price ? 'bg-gray-800 text-gray-500' : ''}`} 
                                 value={newService.price} 
                                 onChange={e => setNewService({...newService, price: e.target.value})}
                                 disabled={newService.is_variable_price}
@@ -376,26 +376,26 @@ export const DentistOnboardingForm: React.FC<{ clinicId: string; onSuccess: () =
                         </div>
                         <div className="col-span-6 sm:col-span-2">
                             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1 block">Minutos</label>
-                            <input type="number" className="w-full bg-white border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none" value={newService.duration} onChange={e => setNewService({...newService, duration: e.target.value})}/>
+                            <input type="number" className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-white" value={newService.duration} onChange={e => setNewService({...newService, duration: e.target.value})}/>
                         </div>
                         <div className="col-span-12 sm:col-span-2 flex items-center pt-2 sm:pt-0">
                              <button type="button" onClick={handleAddService} className="w-full bg-primary text-white p-2 rounded-lg hover:bg-sky-600 flex items-center justify-center font-bold text-sm shadow-md transition-all"><Plus size={16} className="mr-1"/> Add</button>
                         </div>
                         
                         <div className="col-span-12 flex gap-4 mt-2 px-1">
-                            <label className="flex items-center text-xs text-gray-600 cursor-pointer font-medium hover:text-primary transition-colors">
+                            <label className="flex items-center text-xs text-gray-400 cursor-pointer font-medium hover:text-white transition-colors">
                                 <input 
                                     type="checkbox" 
-                                    className="mr-2 rounded text-primary focus:ring-primary border-gray-300"
+                                    className="mr-2 rounded text-primary focus:ring-primary border-gray-600 bg-gray-700"
                                     checked={newService.is_variable_price}
                                     onChange={e => setNewService({...newService, is_variable_price: e.target.checked, price: e.target.checked ? '' : newService.price})}
                                 />
                                 Preço a combinar
                             </label>
-                            <label className="flex items-center text-xs text-gray-600 cursor-pointer font-medium hover:text-primary transition-colors">
+                            <label className="flex items-center text-xs text-gray-400 cursor-pointer font-medium hover:text-white transition-colors">
                                 <input 
                                     type="checkbox" 
-                                    className="mr-2 rounded text-primary focus:ring-primary border-gray-300"
+                                    className="mr-2 rounded text-primary focus:ring-primary border-gray-600 bg-gray-700"
                                     checked={newService.covered_by_plans}
                                     onChange={e => setNewService({...newService, covered_by_plans: e.target.checked})}
                                 />
@@ -406,20 +406,20 @@ export const DentistOnboardingForm: React.FC<{ clinicId: string; onSuccess: () =
 
                     <div className="max-h-48 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                         {services.map((s, i) => (
-                            <div key={i} className="flex justify-between items-center bg-white p-3 rounded-lg text-sm border border-gray-200 shadow-sm hover:border-primary/30 transition-colors">
+                            <div key={i} className="flex justify-between items-center bg-gray-800 p-3 rounded-lg text-sm border border-gray-700 shadow-sm hover:border-primary/30 transition-colors">
                                 <div className="flex flex-col">
-                                    <span className="font-bold text-gray-800">{s.name}</span>
+                                    <span className="font-bold text-gray-200">{s.name}</span>
                                     <div className="flex gap-2 text-[10px] text-gray-500 mt-0.5">
-                                        {s.covered_by_plans && <span className="flex items-center text-blue-600 bg-blue-50 px-1.5 rounded"><ShieldCheck size={10} className="mr-0.5"/> Planos</span>}
-                                        {s.is_variable_price && <span className="flex items-center text-orange-600 bg-orange-50 px-1.5 rounded"><Tag size={10} className="mr-0.5"/> A combinar</span>}
+                                        {s.covered_by_plans && <span className="flex items-center text-blue-400 bg-blue-900/30 px-1.5 rounded"><ShieldCheck size={10} className="mr-0.5"/> Planos</span>}
+                                        {s.is_variable_price && <span className="flex items-center text-orange-400 bg-orange-900/30 px-1.5 rounded"><Tag size={10} className="mr-0.5"/> A combinar</span>}
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-4">
-                                    <span className="text-gray-500 text-xs bg-gray-100 px-2 py-1 rounded">{s.duration}min</span>
-                                    <span className="font-bold text-green-600 text-sm whitespace-nowrap">
+                                    <span className="text-gray-400 text-xs bg-gray-900 px-2 py-1 rounded">{s.duration}min</span>
+                                    <span className="font-bold text-green-400 text-sm whitespace-nowrap">
                                         {s.is_variable_price ? 'A combinar' : `R$ ${Number(s.price).toFixed(2)}`}
                                     </span>
-                                    <button type="button" onClick={() => removeService(i)} className="text-gray-400 hover:text-red-500 transition-colors p-1 hover:bg-red-50 rounded"><X size={16}/></button>
+                                    <button type="button" onClick={() => removeService(i)} className="text-gray-500 hover:text-red-400 transition-colors p-1 hover:bg-red-900/20 rounded"><X size={16}/></button>
                                 </div>
                             </div>
                         ))}
@@ -427,39 +427,39 @@ export const DentistOnboardingForm: React.FC<{ clinicId: string; onSuccess: () =
                 </div>
 
                 {/* 4. DISPONIBILIDADE */}
-                <div className="mt-8 animate-fade-in border-t border-gray-200 pt-6">
-                    <h3 className="font-bold text-gray-800 mb-4 flex items-center text-lg"><Clock size={20} className="mr-2 text-primary"/> Disponibilidade Semanal</h3>
-                    <div className="space-y-3 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                <div className="mt-8 animate-fade-in border-t border-gray-700 pt-6">
+                    <h3 className="font-bold text-gray-300 mb-4 flex items-center text-lg"><Clock size={20} className="mr-2 text-primary"/> Disponibilidade Semanal</h3>
+                    <div className="space-y-3 bg-gray-800/50 p-4 rounded-xl border border-gray-700">
                         {daysOfWeek.map(({ key, label }) => {
                             const dayConfig = schedule[key];
                             return (
-                                <div key={key} className="flex items-start gap-3 py-2 border-b border-gray-200 last:border-0">
+                                <div key={key} className="flex items-start gap-3 py-2 border-b border-gray-700 last:border-0">
                                     <div className="w-28 flex items-center pt-2">
                                         <input 
                                             type="checkbox" 
                                             checked={dayConfig.active} 
                                             onChange={e => updateScheduleDay(key, 'active', e.target.checked)}
-                                            className="mr-3 h-5 w-5 text-primary rounded focus:ring-primary border-gray-300 cursor-pointer"
+                                            className="mr-3 h-5 w-5 text-primary rounded focus:ring-primary border-gray-600 bg-gray-700 cursor-pointer"
                                         />
-                                        <span className={`text-sm font-bold ${dayConfig.active ? 'text-gray-900' : 'text-gray-400'}`}>{label}</span>
+                                        <span className={`text-sm font-bold ${dayConfig.active ? 'text-gray-200' : 'text-gray-500'}`}>{label}</span>
                                     </div>
                                     {dayConfig.active ? (
                                         <div className="flex flex-col gap-2 flex-1">
                                             <div className="flex gap-2 items-center">
-                                                <input type="time" className="border border-gray-300 rounded p-1.5 text-sm flex-1 bg-white focus:ring-2 focus:ring-primary outline-none" value={dayConfig.start} onChange={e => updateScheduleDay(key, 'start', e.target.value)} />
-                                                <span className="text-gray-400 text-xs font-medium">até</span>
-                                                <input type="time" className="border border-gray-300 rounded p-1.5 text-sm flex-1 bg-white focus:ring-2 focus:ring-primary outline-none" value={dayConfig.end} onChange={e => updateScheduleDay(key, 'end', e.target.value)} />
+                                                <input type="time" className="border border-gray-600 rounded p-1.5 text-sm flex-1 bg-gray-900 text-white focus:ring-2 focus:ring-primary outline-none" value={dayConfig.start} onChange={e => updateScheduleDay(key, 'start', e.target.value)} />
+                                                <span className="text-gray-500 text-xs font-medium">até</span>
+                                                <input type="time" className="border border-gray-600 rounded p-1.5 text-sm flex-1 bg-gray-900 text-white focus:ring-2 focus:ring-primary outline-none" value={dayConfig.end} onChange={e => updateScheduleDay(key, 'end', e.target.value)} />
                                             </div>
                                             
                                             <div className="flex gap-2 items-center">
                                                 <span className="text-[10px] text-gray-500 uppercase font-bold w-12 sm:w-auto">Pausa:</span>
-                                                <input type="time" className="border border-gray-300 rounded p-1.5 text-sm flex-1 bg-white focus:ring-2 focus:ring-primary outline-none" value={dayConfig.pause_start} onChange={e => updateScheduleDay(key, 'pause_start', e.target.value)} />
-                                                <span className="text-gray-400 text-xs font-medium">até</span>
-                                                <input type="time" className="border border-gray-300 rounded p-1.5 text-sm flex-1 bg-white focus:ring-2 focus:ring-primary outline-none" value={dayConfig.pause_end} onChange={e => updateScheduleDay(key, 'pause_end', e.target.value)} />
+                                                <input type="time" className="border border-gray-600 rounded p-1.5 text-sm flex-1 bg-gray-900 text-white focus:ring-2 focus:ring-primary outline-none" value={dayConfig.pause_start} onChange={e => updateScheduleDay(key, 'pause_start', e.target.value)} />
+                                                <span className="text-gray-500 text-xs font-medium">até</span>
+                                                <input type="time" className="border border-gray-600 rounded p-1.5 text-sm flex-1 bg-gray-900 text-white focus:ring-2 focus:ring-primary outline-none" value={dayConfig.pause_end} onChange={e => updateScheduleDay(key, 'pause_end', e.target.value)} />
                                             </div>
                                         </div>
                                     ) : (
-                                        <span className="text-xs text-gray-400 italic pt-2.5 font-medium">Dia de folga</span>
+                                        <span className="text-xs text-gray-500 italic pt-2.5 font-medium">Dia de folga</span>
                                     )}
                                 </div>
                             );
@@ -468,23 +468,23 @@ export const DentistOnboardingForm: React.FC<{ clinicId: string; onSuccess: () =
                 </div>
 
                 {/* 5. DATAS BLOQUEADAS */}
-                <div className="mt-8 animate-fade-in border-t border-gray-200 pt-6">
-                    <div className="bg-red-50 p-5 rounded-xl border border-red-100">
-                        <h3 className="font-bold text-red-800 mb-4 flex items-center"><AlertTriangle size={18} className="mr-2"/> Datas Bloqueadas (Férias/Feriados)</h3>
+                <div className="mt-8 animate-fade-in border-t border-gray-700 pt-6">
+                    <div className="bg-red-900/10 p-5 rounded-xl border border-red-500/20">
+                        <h3 className="font-bold text-red-400 mb-4 flex items-center"><AlertTriangle size={18} className="mr-2"/> Datas Bloqueadas (Férias/Feriados)</h3>
                         <div className="flex flex-col sm:flex-row gap-4 items-end mb-4">
                             <div className="w-full sm:w-auto">
-                                <label className="text-[10px] font-bold text-red-700 uppercase mb-1 block">Data</label>
-                                <input type="date" className="w-full bg-white border border-red-200 rounded-lg p-2 text-sm text-gray-700 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none" value={blockDate} onChange={e => setBlockDate(e.target.value)} />
+                                <label className="text-[10px] font-bold text-red-400 uppercase mb-1 block">Data</label>
+                                <input type="date" className="w-full bg-gray-900 border border-red-500/30 rounded-lg p-2 text-sm text-white focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none" value={blockDate} onChange={e => setBlockDate(e.target.value)} />
                             </div>
                             <div className="flex items-center pb-2.5 px-2">
-                                <input type="checkbox" id="allDay" checked={blockAllDay} onChange={e => setBlockAllDay(e.target.checked)} className="mr-2 h-4 w-4 text-red-600 focus:ring-red-500 border-red-300 rounded" />
-                                <label htmlFor="allDay" className="text-sm font-bold text-red-800 cursor-pointer">Dia Todo</label>
+                                <input type="checkbox" id="allDay" checked={blockAllDay} onChange={e => setBlockAllDay(e.target.checked)} className="mr-2 h-4 w-4 text-red-600 focus:ring-red-500 border-red-500/30 bg-gray-700 rounded" />
+                                <label htmlFor="allDay" className="text-sm font-bold text-red-300 cursor-pointer">Dia Todo</label>
                             </div>
                             {!blockAllDay && (
                                 <div className="flex gap-2 items-center w-full sm:w-auto">
-                                    <input type="time" className="border border-red-200 rounded p-2 text-sm bg-white" value={blockStart} onChange={e => setBlockStart(e.target.value)} />
+                                    <input type="time" className="border border-red-500/30 rounded p-2 text-sm bg-gray-900 text-white" value={blockStart} onChange={e => setBlockStart(e.target.value)} />
                                     <span className="text-red-400">-</span>
-                                    <input type="time" className="border border-red-200 rounded p-2 text-sm bg-white" value={blockEnd} onChange={e => setBlockEnd(e.target.value)} />
+                                    <input type="time" className="border border-red-500/30 rounded p-2 text-sm bg-gray-900 text-white" value={blockEnd} onChange={e => setBlockEnd(e.target.value)} />
                                 </div>
                             )}
                             <button type="button" onClick={handleBlockDate} className="bg-red-600 text-white px-5 py-2 rounded-lg font-bold text-sm hover:bg-red-700 transition-colors shadow-sm w-full sm:w-auto">Bloquear</button>
@@ -497,9 +497,9 @@ export const DentistOnboardingForm: React.FC<{ clinicId: string; onSuccess: () =
                                 const label = formatDateSafe(dateStr) + (isFull ? '' : ` (${b.start}-${b.end})`);
                                 
                                 return (
-                                    <span key={i} className="bg-white border border-red-200 text-red-700 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center shadow-sm">
+                                    <span key={i} className="bg-red-900/30 border border-red-500/30 text-red-300 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center shadow-sm">
                                         {label}
-                                        <button type="button" onClick={() => removeBlockedDate(i)} className="ml-2 text-red-300 hover:text-red-600 transition-colors"><X size={14}/></button>
+                                        <button type="button" onClick={() => removeBlockedDate(i)} className="ml-2 text-red-400 hover:text-red-200 transition-colors"><X size={14}/></button>
                                     </span>
                                 );
                             })}
@@ -509,8 +509,8 @@ export const DentistOnboardingForm: React.FC<{ clinicId: string; onSuccess: () =
 
             </div>
 
-            <div className="pt-6 flex justify-end gap-3 border-t border-gray-100 mt-auto bg-white sticky bottom-0">
-                <button type="button" onClick={onCancel} className="px-5 py-2.5 text-gray-600 font-bold hover:bg-gray-100 rounded-lg transition-colors">Cancelar</button>
+            <div className="pt-6 flex justify-end gap-3 border-t border-gray-700 mt-auto bg-gray-900 sticky bottom-0">
+                <button type="button" onClick={onCancel} className="px-5 py-2.5 text-gray-400 font-bold hover:bg-gray-800 hover:text-white rounded-lg transition-colors">Cancelar</button>
                 <button type="submit" disabled={saving} className="px-6 py-2.5 bg-primary text-white rounded-lg font-bold hover:bg-sky-600 flex items-center shadow-lg shadow-blue-500/30 transition-all">{saving ? <Loader2 className="animate-spin mr-2"/> : 'Salvar Dentista'}</button>
             </div>
         </form>
@@ -539,13 +539,13 @@ export const ClientOnboardingForm: React.FC<{ clinicId: string; onSuccess: () =>
         <form onSubmit={handleSave} className="space-y-6">
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
             
-            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-6 flex items-start">
-                <div className="bg-blue-100 p-2 rounded-lg mr-3 text-blue-600">
+            <div className="bg-blue-900/20 p-4 rounded-xl border border-blue-500/20 mb-6 flex items-start">
+                <div className="bg-blue-500/20 p-2 rounded-lg mr-3 text-blue-400">
                     <User size={20} />
                 </div>
                 <div>
-                    <h3 className="font-bold text-blue-900 text-sm">Cadastro de Paciente</h3>
-                    <p className="text-xs text-blue-700 mt-1">Este é o primeiro passo para organizar seus prontuários e agendamentos.</p>
+                    <h3 className="font-bold text-blue-300 text-sm">Cadastro de Paciente</h3>
+                    <p className="text-xs text-blue-400 mt-1">Este é o primeiro passo para organizar seus prontuários e agendamentos.</p>
                 </div>
             </div>
 
@@ -567,8 +567,8 @@ export const ClientOnboardingForm: React.FC<{ clinicId: string; onSuccess: () =>
                 <input type="email" className={inputClass} value={formData.email || ''} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="email@paciente.com" />
             </div>
             
-            <div className="pt-6 flex justify-end gap-3 border-t border-gray-100">
-                <button type="button" onClick={onCancel} className="px-5 py-2.5 text-gray-600 font-bold hover:bg-gray-100 rounded-lg transition-colors">Cancelar</button>
+            <div className="pt-6 flex justify-end gap-3 border-t border-gray-700">
+                <button type="button" onClick={onCancel} className="px-5 py-2.5 text-gray-400 font-bold hover:bg-gray-800 hover:text-white rounded-lg transition-colors">Cancelar</button>
                 <button type="submit" disabled={saving} className="px-6 py-2.5 bg-primary text-white rounded-lg font-bold hover:bg-sky-600 flex items-center shadow-lg shadow-blue-500/30 transition-all">{saving ? <Loader2 className="animate-spin mr-2"/> : 'Salvar Paciente'}</button>
             </div>
         </form>

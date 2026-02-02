@@ -286,22 +286,22 @@ const DashboardHome: React.FC = () => {
         <div className="space-y-6 relative pb-10">
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
             
-            {/* Onboarding Modal - Mantido Light para contraste com formulários */}
+            {/* Onboarding Modal - DARK MODE */}
             {showOnboarding && userProfile?.role === 'administrator' && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 p-4 backdrop-blur-sm animate-fade-in text-gray-900">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col md:flex-row relative h-[600px] md:h-auto">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 p-4 backdrop-blur-sm animate-fade-in text-white">
+                    <div className="bg-gray-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col md:flex-row relative h-[600px] md:h-auto">
                         {/* Nested Form Modal */}
                         {activeOnboardingModal && userProfile?.clinic_id && (
-                            <div className="absolute inset-0 z-[60] bg-white flex flex-col animate-fade-in">
-                                <div className="flex justify-between items-center p-4 border-b border-gray-100">
-                                    <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+                            <div className="absolute inset-0 z-[60] bg-gray-900 flex flex-col animate-fade-in">
+                                <div className="flex justify-between items-center p-4 border-b border-white/10 bg-gray-900">
+                                    <h3 className="font-bold text-white text-lg flex items-center gap-2">
                                         {activeOnboardingModal === 'clinic' && <><Building2 className="text-primary"/> Perfil da Clínica</>}
                                         {activeOnboardingModal === 'dentist' && <><UserPlus className="text-primary"/> Novo Dentista</>}
                                         {activeOnboardingModal === 'client' && <><Users className="text-primary"/> Novo Paciente</>}
                                     </h3>
-                                    <button onClick={() => setActiveOnboardingModal(null)} className="text-gray-400 hover:text-gray-600"><X size={24}/></button>
+                                    <button onClick={() => setActiveOnboardingModal(null)} className="text-gray-400 hover:text-white"><X size={24}/></button>
                                 </div>
-                                <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+                                <div className="flex-1 overflow-y-auto p-6 bg-gray-900 custom-scrollbar">
                                     {activeOnboardingModal === 'clinic' && (
                                         <ClinicOnboardingForm clinicId={userProfile.clinic_id} onSuccess={handleModalSuccess} onCancel={() => setActiveOnboardingModal(null)} />
                                     )}
@@ -338,12 +338,12 @@ const DashboardHome: React.FC = () => {
                         </div>
 
                         {/* Right Side */}
-                        <div className="p-8 md:w-2/3 bg-white relative overflow-y-auto">
-                            <button onClick={closeOnboarding} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                        <div className="p-8 md:w-2/3 bg-gray-900 relative overflow-y-auto custom-scrollbar">
+                            <button onClick={closeOnboarding} className="absolute top-4 right-4 text-gray-400 hover:text-white">
                                 <X size={24} />
                             </button>
 
-                            <h3 className="text-lg font-bold text-gray-800 mb-6">Passos Iniciais</h3>
+                            <h3 className="text-lg font-bold text-white mb-6">Passos Iniciais</h3>
                             
                             <div className="space-y-3 mb-6">
                                 {onboardingSteps.map((step) => {
@@ -353,37 +353,37 @@ const DashboardHome: React.FC = () => {
                                             onClick={() => handleStepClick(step, false)}
                                             className={`group flex items-center p-3 rounded-xl border transition-all ${
                                                 step.done 
-                                                    ? 'bg-green-50 border-green-100 cursor-pointer' 
-                                                    : 'bg-white border-gray-100 hover:border-primary hover:shadow-md cursor-pointer'
+                                                    ? 'bg-green-900/20 border-green-500/20 cursor-pointer' 
+                                                    : 'bg-gray-800/50 border-white/5 hover:border-primary/50 hover:bg-gray-800 cursor-pointer'
                                             }`}
                                         >
                                             <div className={`h-10 w-10 rounded-full flex items-center justify-center mr-4 transition-colors ${
-                                                step.done ? 'bg-green-200 text-green-700' : 'bg-gray-100 text-gray-500 group-hover:bg-blue-50 group-hover:text-primary'
+                                                step.done ? 'bg-green-500/20 text-green-400' : 'bg-gray-700 text-gray-400 group-hover:bg-primary/20 group-hover:text-primary'
                                             }`}>
                                                 {step.done ? <CheckCircle2 size={20} /> : <step.icon size={20} />}
                                             </div>
                                             <div className="flex-1">
-                                                <h4 className={`font-bold text-sm ${step.done ? 'text-green-800' : 'text-gray-800'}`}>{step.title}</h4>
-                                                <p className="text-xs text-gray-500">{step.desc}</p>
+                                                <h4 className={`font-bold text-sm ${step.done ? 'text-green-400' : 'text-white'}`}>{step.title}</h4>
+                                                <p className="text-xs text-gray-400">{step.desc}</p>
                                             </div>
-                                            {!step.done && <ArrowRight size={16} className="text-gray-300 group-hover:text-primary transition-transform group-hover:translate-x-1" />}
+                                            {!step.done && <ArrowRight size={16} className="text-gray-500 group-hover:text-primary transition-transform group-hover:translate-x-1" />}
                                         </div>
                                     );
                                 })}
                             </div>
 
-                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-6">
-                                <h4 className="font-bold text-blue-900 text-sm mb-2 flex items-center gap-2">
+                            <div className="bg-blue-900/20 p-4 rounded-lg border border-blue-500/20 mb-6">
+                                <h4 className="font-bold text-blue-300 text-sm mb-2 flex items-center gap-2">
                                     <LinkIcon size={16} /> Link de Agendamento
                                 </h4>
-                                <p className="text-xs text-blue-700 mb-3">
+                                <p className="text-xs text-blue-200/70 mb-3">
                                     Compartilhe este link para que seus pacientes solicitem agendamentos online.
                                 </p>
                                 <div className="flex gap-2">
                                     <input 
                                         readOnly 
                                         value={`${window.location.origin}/#/${clinicSlug || userProfile?.clinic_id}`}
-                                        className="flex-1 text-xs border border-blue-200 rounded px-2 py-1.5 text-gray-600 bg-white focus:outline-none"
+                                        className="flex-1 text-xs border border-blue-500/30 rounded px-2 py-1.5 text-blue-100 bg-blue-900/30 focus:outline-none"
                                     />
                                     <button 
                                         onClick={copyLink}
@@ -394,13 +394,13 @@ const DashboardHome: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="pt-4 border-t border-gray-100 flex justify-end">
+                            <div className="pt-4 border-t border-white/10 flex justify-end">
                                 {isClinicDone && isDentistsDone && isPatientsDone ? (
                                     <button onClick={closeOnboarding} className="bg-green-600 text-white hover:bg-green-700 text-sm font-bold px-6 py-2 rounded transition shadow-md flex items-center">
                                         <Check size={16} className="mr-2" /> Encerrar
                                     </button>
                                 ) : (
-                                    <button onClick={closeOnboarding} className="text-gray-500 hover:text-gray-700 text-sm font-bold px-4 py-2 hover:bg-gray-50 rounded transition">
+                                    <button onClick={closeOnboarding} className="text-gray-400 hover:text-white text-sm font-bold px-4 py-2 hover:bg-white/5 rounded transition">
                                         Pular por enquanto
                                     </button>
                                 )}
