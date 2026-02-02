@@ -15,9 +15,6 @@ const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeMockup, setActiveMockup] = useState('Visão Geral');
   const [device, setDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  // --- LÓGICA DO POP-UP DE LEADS ---
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [leadEmail, setLeadEmail] = useState('');
   const [leadStatus, setLeadStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -63,7 +60,6 @@ const LandingPage: React.FC = () => {
   const closeLeadModal = () => {
     setShowLeadModal(false);
   };
-  // ----------------------------------
 
   const scrollToPlans = () => {
     document.getElementById('plans')?.scrollIntoView({ behavior: 'smooth' });
@@ -163,7 +159,8 @@ const LandingPage: React.FC = () => {
           </div>
 
           {/* MOCKUP INTERATIVO */}
-          <div className="relative mx-auto px-4 sm:px-6 lg:px-8 animate-fade-in-up delay-200 flex flex-col items-center perspective-1000">
+          {/* REMOVIDO: perspective-1000 que pode bugar mobile */}
+          <div className="relative mx-auto px-4 sm:px-6 lg:px-8 animate-fade-in-up delay-200 flex flex-col items-center">
             
             {/* Device Selector */}
             <div className="flex items-center justify-center gap-4 mb-8 p-1.5 bg-gray-900/80 backdrop-blur rounded-full border border-white/10 shadow-xl w-fit">

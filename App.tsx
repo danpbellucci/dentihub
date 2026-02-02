@@ -24,6 +24,7 @@ import SuperAdminPage from './components/SuperAdminPage';
 import SuperAdminCampaigns from './components/SuperAdminCampaigns';
 import SuperAdminLeads from './components/SuperAdminLeads';
 import UpdatePasswordPage from './components/UpdatePasswordPage';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Loader2 } from 'lucide-react';
 
 const PrivateRoute = ({ children }: { children?: React.ReactNode }) => {
@@ -116,55 +117,59 @@ const App: React.FC = () => {
   // Se estiver em modo de recuperação (link do email), exibe APENAS a página de senha
   if (isRecoveryMode) {
       return (
-          <HashRouter>
-              <UpdatePasswordPage />
-          </HashRouter>
+          <ErrorBoundary>
+            <HashRouter>
+                <UpdatePasswordPage />
+            </HashRouter>
+          </ErrorBoundary>
       );
   }
 
   return (
-    <HashRouter>
-      <AuthListener />
-      <Routes>
-        {/* Landing Page (Public Root) */}
-        <Route path="/" element={<LandingPage />} />
+    <ErrorBoundary>
+      <HashRouter>
+        <AuthListener />
+        <Routes>
+          {/* Landing Page (Public Root) */}
+          <Route path="/" element={<LandingPage />} />
 
-        {/* Specific Public Routes */}
-        <Route path="/encontrar-clinica" element={<FindClinicPage />} />
-        <Route path="/entenda" element={<LearnMorePage />} />
-        <Route path="/auth" element={<AuthPage />} />
-        
-        {/* Rota de senha acessível diretamente */}
-        <Route path="/update-password" element={<UpdatePasswordPage />} />
-        
-        <Route path="/appointment-action" element={<AppointmentActionPage />} />
+          {/* Specific Public Routes */}
+          <Route path="/encontrar-clinica" element={<FindClinicPage />} />
+          <Route path="/entenda" element={<LearnMorePage />} />
+          <Route path="/auth" element={<AuthPage />} />
+          
+          {/* Rota de senha acessível diretamente */}
+          <Route path="/update-password" element={<UpdatePasswordPage />} />
+          
+          <Route path="/appointment-action" element={<AppointmentActionPage />} />
 
-        {/* Private Dashboard Routes */}
-        <Route path="/dashboard" element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
-          <Route index element={<DashboardHome />} />
-          <Route path="clients" element={<ClientsPage />} />
-          <Route path="dentists" element={<DentistsPage />} />
-          <Route path="calendar" element={<CalendarPage />} />
-          <Route path="smart-record" element={<SmartRecordPage />} />
-          <Route path="messaging" element={<MessagingPage />} />
-          <Route path="finance" element={<FinancePage />} />
-          <Route path="requests" element={<RequestsPage />} />
-          <Route path="guide" element={<GuidePage />} />
-          <Route path="settings" element={<SettingsPage />} />
-        </Route>
+          {/* Private Dashboard Routes */}
+          <Route path="/dashboard" element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
+            <Route index element={<DashboardHome />} />
+            <Route path="clients" element={<ClientsPage />} />
+            <Route path="dentists" element={<DentistsPage />} />
+            <Route path="calendar" element={<CalendarPage />} />
+            <Route path="smart-record" element={<SmartRecordPage />} />
+            <Route path="messaging" element={<MessagingPage />} />
+            <Route path="finance" element={<FinancePage />} />
+            <Route path="requests" element={<RequestsPage />} />
+            <Route path="guide" element={<GuidePage />} />
+            <Route path="settings" element={<SettingsPage />} />
+          </Route>
 
-        {/* Super Admin Routes */}
-        <Route path="/super-admin" element={<PrivateRoute><SuperAdminPage /></PrivateRoute>} />
-        <Route path="/super-admin/campaigns" element={<PrivateRoute><SuperAdminCampaigns /></PrivateRoute>} />
-        <Route path="/super-admin/leads" element={<PrivateRoute><SuperAdminLeads /></PrivateRoute>} />
+          {/* Super Admin Routes */}
+          <Route path="/super-admin" element={<PrivateRoute><SuperAdminPage /></PrivateRoute>} />
+          <Route path="/super-admin/campaigns" element={<PrivateRoute><SuperAdminCampaigns /></PrivateRoute>} />
+          <Route path="/super-admin/leads" element={<PrivateRoute><SuperAdminLeads /></PrivateRoute>} />
 
-        {/* 
-           Public Booking Page (Dynamic Slug at Root) 
-           IMPORTANTE: Esta rota deve ser a ÚLTIMA.
-        */}
-        <Route path="/:slug" element={<PublicBookingPage />} />
-      </Routes>
-    </HashRouter>
+          {/* 
+             Public Booking Page (Dynamic Slug at Root) 
+             IMPORTANTE: Esta rota deve ser a ÚLTIMA.
+          */}
+          <Route path="/:slug" element={<PublicBookingPage />} />
+        </Routes>
+      </HashRouter>
+    </ErrorBoundary>
   );
 };
 

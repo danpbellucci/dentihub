@@ -30,27 +30,23 @@ const DashboardLayout: React.FC = () => {
   const [dbError, setDbError] = useState<string | null>(null);
   const [allowedModules, setAllowedModules] = useState<Set<string>>(new Set());
   const [loadingPermissions, setLoadingPermissions] = useState(true);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false); // Estado gerenciado pelo Backend
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Ref para guardar o canal e evitar recriação desnecessária
   const channelRef = useRef<any>(null);
   const pollIntervalRef = useRef<any>(null);
 
-  // Função auxiliar para buscar contagem
   const fetchCount = async (clinicId: string) => {
     if (!clinicId) return;
     
-    // 1. Solicitações de Agendamento Pendentes
     const { count: requestsCount } = await supabase
       .from('appointment_requests')
       .select('*', { count: 'exact', head: true })
       .eq('clinic_id', clinicId) 
       .eq('status', 'pending');
     
-    // 2. Atualizações de Status (Respostas de Email)
     const { count: updatesCount } = await supabase
       .from('appointment_status_updates')
       .select('*', { count: 'exact', head: true })
@@ -84,7 +80,6 @@ const DashboardLayout: React.FC = () => {
         if (!mounted) return;
         if (!user) { navigate('/auth'); return; }
 
-        // 1. Verificação de Super Admin via Backend (RPC)
         const { data: superAdminStatus } = await supabase.rpc('is_super_admin');
         if (mounted) setIsSuperAdmin(!!superAdminStatus);
 
@@ -110,7 +105,6 @@ const DashboardLayout: React.FC = () => {
         if (mounted && profileData) {
             setUserProfile(profileData);
             
-            // --- LOAD PERMISSIONS ---
             if (profileData.role === 'administrator') {
                 setAllowedModules(new Set(['calendar', 'clients', 'dentists', 'smart-record', 'messaging', 'finance', 'requests', 'guide', 'settings']));
             } else {
@@ -139,15 +133,11 @@ const DashboardLayout: React.FC = () => {
             setLoadingPermissions(false);
 
             if (profileData.clinic_id) {
-                // Initial Fetch
                 fetchCount(profileData.clinic_id);
-                
-                // Polling Setup (Every 30s) - Backup for Realtime
                 pollIntervalRef.current = setInterval(() => {
                     if (profileData?.clinic_id) fetchCount(profileData.clinic_id);
                 }, 30000);
 
-                // Realtime Logic
                 if (channelRef.current) supabase.removeChannel(channelRef.current);
                 channelRef.current = supabase.channel('global_notifications')
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'appointment_requests'}, (payload) => { 
@@ -198,7 +188,7 @@ const DashboardLayout: React.FC = () => {
   ];
 
   const visibleNavItems = navItems.filter(item => {
-      if (isSuperAdmin) return true; // Super admin vê tudo
+      if (isSuperAdmin) return true;
       if (item.key === 'dashboard') return true;
       if (userProfile?.role === 'administrator') return true;
       if (loadingPermissions) return false; 
@@ -209,7 +199,7 @@ const DashboardLayout: React.FC = () => {
 
   if (dbError) {
       return (
-          <div className="flex h-screen bg-gray-950 items-center justify-center p-4">
+          <div className="flex h-[100dvh] bg-gray-950 items-center justify-center p-4">
               <div className="bg-gray-900 border border-red-900/50 p-8 rounded-lg shadow-xl max-w-lg text-center">
                   <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-900/20 mb-6">
                       <AlertTriangle className="h-10 w-10 text-red-500" />
@@ -223,9 +213,9 @@ const DashboardLayout: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-950 text-gray-100 overflow-hidden font-sans">
+    // Usa h-[100dvh] para garantir altura correta em navegadores móveis
+    <div className="flex h-screen h-[100dvh] bg-gray-950 text-gray-100 overflow-hidden font-sans">
       
-      {/* BACKGROUND AMBIENT GLOWS (Visíveis em telas grandes onde o conteúdo não cobre tudo) */}
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/10 rounded-full blur-[120px]"></div>
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/10 rounded-full blur-[120px]"></div>
@@ -289,7 +279,6 @@ const DashboardLayout: React.FC = () => {
             </NavLink>
           ))}
 
-          {/* Super Admin Link */}
           {isSuperAdmin && (
               <NavLink 
                 to="/super-admin" 
