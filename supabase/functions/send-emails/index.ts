@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
                            <h2 style="color: #0f172a; margin-top: 0;">Você foi convidado(a)!</h2>
                            <p style="margin-bottom: 20px;">Olá <strong>${r.name || ''}</strong>,</p>
                            <p>A clínica <strong>${clinicName}</strong> convidou você para acessar a plataforma DentiHub com o perfil de <strong>${roleLabel}</strong>.</p>
-                           <p>Para começar, clique no botão abaixo e defina sua senha:</p>
+                           <p>Para começar, clique no botão abaixo e crie sua conta:</p>
 
                            <div style="margin: 35px 0;">
                               <a href="https://dentihub.com.br/#/auth?view=forgot" target="_blank" style="background-color: #0ea5e9; color: #ffffff; padding: 12px 24px; font-family: Helvetica, Arial, sans-serif; font-size: 14px; font-weight: bold; text-decoration: none; border-radius: 6px; display: inline-block;">

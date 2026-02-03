@@ -795,7 +795,7 @@ const CalendarPage: React.FC = () => {
             </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between mt-4 pt-3 border-t border-white/5">
+        <div className="flex flex-wrap items-center justify-between mt-4 pt-3 border-t border-white/10">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-2 sm:mb-0">
                 <label className="flex items-center text-sm text-gray-400 cursor-pointer hover:text-white transition-colors">
                     <input 
@@ -1059,7 +1059,7 @@ const CalendarPage: React.FC = () => {
                   
                   {isCustomService && (
                       <input 
-                        type="text" required
+                        type="text"
                         className="w-full border border-gray-700 bg-gray-800 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-primary animate-fade-in-up"
                         placeholder="Digite o nome do serviço..."
                         value={formData.service_name}
