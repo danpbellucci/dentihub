@@ -202,7 +202,7 @@ const LandingPage: React.FC = () => {
           
           <h1 className="text-5xl sm:text-7xl font-black text-white tracking-tight mb-8 leading-tight max-w-5xl mx-auto drop-shadow-2xl will-change-transform">
             O Sistema Operacional <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-fuchsia-400 to-pink-400 animate-gradient-x">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 animate-gradient-x">
               do Futuro para Dentistas
             </span>
           </h1>
@@ -267,6 +267,12 @@ const LandingPage: React.FC = () => {
                                 </button>
                             ))}
                         </div>
+                        <div className="mt-auto p-4 border-t border-white/5">
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-gray-800 border border-white/10 flex items-center justify-center text-xs font-bold text-white">AS</div>
+                                <div><p className="text-xs text-white font-bold">Dr. André Silva</p><p className="text-[10px] text-gray-500">Admin</p></div>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Mockup Content Area */}
@@ -306,6 +312,28 @@ const LandingPage: React.FC = () => {
                                             <p className="text-2xl font-black text-white">R$ 15.450,00</p>
                                         </div>
                                     </div>
+                                    <div className="bg-gray-900/60 border border-white/5 rounded-xl p-4 h-64">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <h3 className="font-bold text-white text-sm flex items-center"><Clock size={16} className="mr-2 text-primary"/> Próximos Agendamentos</h3>
+                                            <span className="text-[10px] bg-gray-800 px-2 py-1 rounded text-gray-400">Rolar para ver mais</span>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between p-3 bg-gray-800/40 rounded-lg border border-white/5">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="text-center bg-gray-800 border border-white/10 rounded px-2 py-1"><p className="text-[9px] text-gray-400 uppercase">HOJE</p><p className="text-sm font-black text-white">14</p></div>
+                                                    <div><p className="font-bold text-white text-sm">Mariana Souza</p><div className="flex items-center gap-2"><span className="text-[10px] font-mono text-gray-300 bg-gray-700/50 px-1 rounded">14:00</span><span className="text-[10px] text-gray-500">Limpeza</span></div></div>
+                                                </div>
+                                                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                            </div>
+                                            <div className="flex items-center justify-between p-3 bg-gray-800/40 rounded-lg border border-white/5">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="text-center bg-gray-800 border border-white/10 rounded px-2 py-1"><p className="text-[9px] text-gray-400 uppercase">HOJE</p><p className="text-sm font-black text-white">14</p></div>
+                                                    <div><p className="font-bold text-white text-sm">Carlos Pereira</p><div className="flex items-center gap-2"><span className="text-[10px] font-mono text-gray-300 bg-gray-700/50 px-1 rounded">15:30</span><span className="text-[10px] text-gray-500">Avaliação</span></div></div>
+                                                </div>
+                                                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                             
@@ -316,6 +344,10 @@ const LandingPage: React.FC = () => {
                                         <button className="bg-primary text-white text-xs px-3 py-1.5 rounded-lg font-bold flex items-center shadow-lg shadow-blue-900/20">
                                             <Plus size={14} className="mr-1"/> Novo
                                         </button>
+                                    </div>
+                                    <div className="flex items-center justify-between bg-gray-900 p-2 rounded-lg border border-white/5">
+                                        <div className="flex items-center gap-2 text-gray-400"><ChevronLeft size={16}/><span className="text-white font-bold text-sm">Outubro 2026</span><ChevronRight size={16}/></div>
+                                        <span className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">Hoje</span>
                                     </div>
                                     <div className="flex-1 bg-gray-900/50 border border-white/5 rounded-lg overflow-hidden flex flex-col">
                                         <div className="grid grid-cols-4 bg-gray-800/50 p-2 text-[10px] font-bold text-gray-500 uppercase">
@@ -344,11 +376,239 @@ const LandingPage: React.FC = () => {
                                 </div>
                             )}
 
-                            {activeMockup !== 'Visão Geral' && activeMockup !== 'Agenda' && (
-                                <div className="h-64 flex items-center justify-center text-gray-500 text-sm">
-                                    <p>Conteúdo da aba {activeMockup}</p>
+                            {activeMockup === 'Pacientes' && (
+                                <div className="space-y-4 animate-fade-in">
+                                    <div className="flex justify-between items-center">
+                                        <h2 className="text-xl font-bold text-white">Pacientes</h2>
+                                        <button className="bg-primary text-white text-xs px-3 py-1.5 rounded font-bold flex items-center"><Plus size={14} className="mr-1"/> Novo</button>
+                                    </div>
+                                    <div className="bg-gray-900 border border-white/5 p-2 rounded-lg flex items-center text-gray-400 text-sm">
+                                        <Search size={16} className="mr-2 ml-1"/> <span className="opacity-50">Buscar por nome ou CPF...</span>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="bg-gray-900/60 border border-white/5 p-3 rounded-lg flex justify-between items-center group hover:border-white/10 transition">
+                                            <div>
+                                                <p className="font-bold text-white text-sm">Mariana Souza</p>
+                                                <p className="text-[10px] text-gray-500">(11) 99999-0000 | 123.456.789-00</p>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button className="p-1.5 bg-gray-800 rounded border border-white/5 text-gray-400 hover:text-purple-400"><FileText size={14}/></button>
+                                                <button className="p-1.5 bg-gray-800 rounded border border-white/5 text-gray-400 hover:text-yellow-400"><Folder size={14}/></button>
+                                            </div>
+                                        </div>
+                                        <div className="bg-gray-900/60 border border-white/5 p-3 rounded-lg flex justify-between items-center group hover:border-white/10 transition">
+                                            <div>
+                                                <p className="font-bold text-white text-sm">Carlos Pereira</p>
+                                                <p className="text-[10px] text-gray-500">(11) 98888-1111 | 987.654.321-99</p>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button className="p-1.5 bg-gray-800 rounded border border-white/5 text-gray-400 hover:text-purple-400"><FileText size={14}/></button>
+                                                <button className="p-1.5 bg-gray-800 rounded border border-white/5 text-gray-400 hover:text-yellow-400"><Folder size={14}/></button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
+
+                            {activeMockup === 'Dentistas' && (
+                                <div className="space-y-4 animate-fade-in">
+                                    <div className="flex justify-between items-center">
+                                        <h2 className="text-xl font-bold text-white">Dentistas</h2>
+                                        <button className="bg-primary text-white text-xs px-3 py-1.5 rounded font-bold flex items-center"><Plus size={14} className="mr-1"/> Novo</button>
+                                    </div>
+                                    <div className="bg-gray-900 border border-white/5 p-2 rounded-lg flex items-center text-gray-400 text-sm">
+                                        <Search size={16} className="mr-2 ml-1"/> <span className="opacity-50">Buscar por nome...</span>
+                                    </div>
+                                    <div className="bg-gray-900/60 border border-white/5 p-4 rounded-lg relative overflow-hidden group">
+                                        <div className="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center font-bold text-gray-400 border border-white/10">F</div>
+                                            <div><p className="text-sm font-bold text-white">Dra. Fernanda</p><p className="text-[10px] text-gray-500">CRO: 12345</p></div>
+                                        </div>
+                                        <div className="flex gap-1 mb-3"><span className="text-[9px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded border border-white/10">ORTODONTIA</span></div>
+                                        <div className="flex justify-end gap-2 border-t border-white/5 pt-2">
+                                            <button className="text-[10px] font-bold text-blue-400 hover:bg-blue-500/10 px-2 py-1 rounded">Editar</button>
+                                            <button className="text-[10px] font-bold text-red-400 hover:bg-red-500/10 px-2 py-1 rounded">Excluir</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeMockup === 'Prontuário IA' && (
+                                <div className="space-y-6 animate-fade-in h-full flex flex-col items-center justify-center text-center">
+                                    <div className="w-full bg-blue-900/20 border border-blue-500/20 p-3 rounded-lg text-left mb-auto w-full">
+                                        <p className="text-xs text-blue-300 font-bold flex items-center"><Zap size={12} className="mr-1"/> Plano Gratuito</p>
+                                        <p className="text-[10px] text-blue-400">Restam 3 usos no plano Gratuito. Duração máx: 5 minutos.</p>
+                                    </div>
+                                    
+                                    <div className="w-full max-w-sm space-y-3">
+                                        <div className="bg-gray-800 border border-gray-700 p-2 rounded text-left text-xs text-gray-300">Paciente: <strong>Mariana Souza</strong></div>
+                                        <div className="bg-gray-800 border border-gray-700 p-2 rounded text-left text-xs text-gray-300">Dentista: <strong>Dr. André Silva</strong></div>
+                                    </div>
+
+                                    <div className="my-8 relative group cursor-pointer">
+                                        <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl group-hover:bg-primary/40 transition"></div>
+                                        <div className="relative w-20 h-20 bg-gray-800 border-2 border-dashed border-gray-600 rounded-full flex items-center justify-center text-gray-400 group-hover:border-primary group-hover:text-primary transition">
+                                            <Mic size={32} />
+                                        </div>
+                                    </div>
+                                    <p className="text-sm text-gray-500">Clique para gravar a evolução clínica</p>
+                                </div>
+                            )}
+
+                            {activeMockup === 'Mensageria' && (
+                                <div className="space-y-4 animate-fade-in">
+                                    <h2 className="text-xl font-bold text-white mb-4">Central de Mensagens</h2>
+                                    <div className="bg-blue-900/20 border border-blue-500/20 p-3 rounded-lg flex justify-between items-center">
+                                        <div>
+                                            <p className="text-xs font-bold text-blue-300 flex items-center"><Zap size={12} className="mr-1 text-yellow-400"/> Envios Automáticos</p>
+                                            <p className="text-[10px] text-blue-400">Verificação diária da agenda ativa.</p>
+                                        </div>
+                                        <span className="text-[9px] bg-green-900/30 text-green-400 border border-green-500/20 px-2 py-0.5 rounded-full font-bold">Ativo</span>
+                                    </div>
+                                    <div className="bg-gray-900/60 border border-white/5 rounded-xl overflow-hidden">
+                                        <div className="px-3 py-2 bg-gray-800/50 text-[10px] font-bold text-gray-500 uppercase">Últimos Envios</div>
+                                        <div className="divide-y divide-white/5">
+                                            {[
+                                                { to: 'João Santos', type: 'Lembrete (24h)', time: '15:00', status: 'Enviado' },
+                                                { to: 'Ana Costa', type: 'Lembrete (24h)', time: '14:00', status: 'Enviado' },
+                                                { to: 'Dr. André Silva', type: 'Agenda Diária', time: '08:00', status: 'Enviado' },
+                                            ].map((msg, i) => (
+                                                <div key={i} className="p-3 flex justify-between items-center text-xs">
+                                                    <div><p className="text-white font-bold">{msg.to}</p><p className="text-gray-500">{msg.type}</p></div>
+                                                    <div className="text-right"><span className="text-green-400 bg-green-900/20 px-1.5 py-0.5 rounded border border-green-500/20 flex items-center text-[9px] font-bold"><Check size={8} className="mr-1"/> {msg.status}</span><p className="text-[9px] text-gray-600 mt-1">{msg.time}</p></div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeMockup === 'Financeiro' && (
+                                <div className="space-y-6 animate-fade-in">
+                                    <div className="flex justify-between items-center">
+                                        <h2 className="text-xl font-bold text-white">Fluxo de Caixa</h2>
+                                        <button className="bg-primary text-white text-xs px-3 py-1.5 rounded font-bold flex items-center"><Plus size={14} className="mr-1"/> Transação</button>
+                                    </div>
+                                    <div className="bg-gray-900/60 border border-green-500/30 p-4 rounded-xl">
+                                        <p className="text-xs text-green-400 uppercase font-bold">Saldo (Período)</p>
+                                        <p className="text-2xl font-black text-green-500">R$ +4.200,00</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-center p-3 bg-gray-800/40 rounded-lg border border-white/5">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-1.5 bg-green-500/10 rounded text-green-500"><TrendingUp size={14}/></div>
+                                                <div><p className="text-xs font-bold text-white">Consulta Particular</p><p className="text-[10px] text-gray-500">15/10/2026</p></div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xs font-black text-green-500">R$ 250,00</p>
+                                                <span className="text-[9px] bg-green-900/30 text-green-400 px-1.5 rounded border border-green-500/20">RECEBIDO</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-between items-center p-3 bg-gray-800/40 rounded-lg border border-white/5">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-1.5 bg-red-500/10 rounded text-red-500"><TrendingDown size={14}/></div>
+                                                <div><p className="text-xs font-bold text-white">Aluguel Sala</p><p className="text-[10px] text-gray-500">10/10/2026</p></div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xs font-black text-red-500">R$ 1.500,00</p>
+                                                <span className="text-[9px] bg-red-900/30 text-red-400 px-1.5 rounded border border-red-500/20">PAGO</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeMockup === 'Solicitações' && (
+                                <div className="space-y-4 animate-fade-in">
+                                    <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">Solicitações <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">2</span></h2>
+                                    <div className="bg-gray-900/60 border border-white/5 rounded-xl overflow-hidden">
+                                        <div className="p-4 border-b border-white/5 flex flex-col gap-2">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <p className="text-white font-bold text-sm">Lucas Martins <span className="text-[10px] bg-blue-900/30 text-blue-400 px-1.5 py-0.5 rounded ml-2">Novo Paciente</span></p>
+                                                    <p className="text-gray-400 text-xs mt-1">Quer agendar: <strong>Avaliação</strong></p>
+                                                </div>
+                                                <div className="bg-blue-900/20 text-blue-400 text-xs px-2 py-1 rounded border border-blue-500/20 flex items-center">
+                                                    <Clock size={12} className="mr-1"/> Amanhã 15:00
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2 mt-2">
+                                                <button className="flex-1 bg-green-600/20 text-green-400 border border-green-500/20 py-1.5 rounded text-xs font-bold hover:bg-green-600/30 transition">Aceitar</button>
+                                                <button className="flex-1 bg-red-600/20 text-red-400 border border-red-500/20 py-1.5 rounded text-xs font-bold hover:bg-red-600/30 transition">Recusar</button>
+                                            </div>
+                                        </div>
+                                        <div className="p-4 flex flex-col gap-2 opacity-60">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <p className="text-white font-bold text-sm">Ana Costa</p>
+                                                    <p className="text-gray-400 text-xs mt-1">Quer agendar: <strong>Limpeza</strong></p>
+                                                </div>
+                                                <div className="bg-blue-900/20 text-blue-400 text-xs px-2 py-1 rounded border border-blue-500/20 flex items-center">
+                                                    <Clock size={12} className="mr-1"/> 20/10 09:00
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeMockup === 'Guia Prático' && (
+                                <div className="space-y-4 animate-fade-in">
+                                    <h2 className="text-xl font-bold text-white mb-4">Guia Prático</h2>
+                                    <div className="space-y-3">
+                                        <div className="bg-gray-800/50 border border-white/5 p-3 rounded-lg flex justify-between items-center cursor-pointer hover:bg-gray-800 transition">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400"><Calendar size={16}/></div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-white">Como configurar a Agenda?</p>
+                                                    <p className="text-[10px] text-gray-500">3 passos simples</p>
+                                                </div>
+                                            </div>
+                                            <ChevronRight size={16} className="text-gray-500"/>
+                                        </div>
+                                        <div className="bg-gray-800/50 border border-white/5 p-3 rounded-lg flex justify-between items-center cursor-pointer hover:bg-gray-800 transition">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400"><Mic size={16}/></div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-white">Usando a IA no Prontuário</p>
+                                                    <p className="text-[10px] text-gray-500">Tutorial rápido</p>
+                                                </div>
+                                            </div>
+                                            <ChevronRight size={16} className="text-gray-500"/>
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 bg-blue-900/20 border border-blue-500/20 p-4 rounded-lg text-center">
+                                        <p className="text-xs text-blue-300 font-bold mb-2">Precisa de ajuda?</p>
+                                        <button className="bg-blue-600 text-white text-xs px-4 py-2 rounded font-bold hover:bg-blue-500 transition">Falar com Suporte</button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeMockup === 'Configurações' && (
+                                <div className="space-y-6 animate-fade-in">
+                                    <h2 className="text-xl font-bold text-white mb-4">Configurações</h2>
+                                    <div className="bg-gray-900/60 border border-white/5 p-4 rounded-xl">
+                                        <div className="flex gap-4 border-b border-white/5 pb-4 mb-4 overflow-x-auto">
+                                            <button className="text-xs font-bold text-primary border-b-2 border-primary pb-1">Perfil da Clínica</button>
+                                            <button className="text-xs font-bold text-gray-500 hover:text-white pb-1">Equipe</button>
+                                            <button className="text-xs font-bold text-gray-500 hover:text-white pb-1">Planos</button>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Nome da Clínica</label>
+                                                <input type="text" value="Clínica Odonto Vida" className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white" readOnly/>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Endereço</label>
+                                                <input type="text" value="Av. Paulista, 1000 - SP" className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white" readOnly/>
+                                            </div>
+                                            <button className="w-full bg-primary text-white py-2 rounded text-sm font-bold mt-2">Salvar Alterações</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                         </div>
 
                         {/* Mobile Menu Overlay Mockup */}
@@ -383,7 +643,7 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* AI SPOTLIGHT SECTION */}
+      {/* VIDEO DEMO SECTION */}
       <section id="ai-section" className="py-32 relative z-10 border-t border-white/5 bg-gray-900/50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid lg:grid-cols-2 gap-16 items-center">

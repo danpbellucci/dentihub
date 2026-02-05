@@ -2,7 +2,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import { Client, Dentist } from '../types';
-import { Mic, Square, Save, Loader2, Info, FileText, CheckCircle, Lock, Zap, HelpCircle, X } from 'lucide-react';
+import { Mic, Square, Save, Loader2, Info, FileText, CheckCircle, Lock, Zap, HelpCircle, X, AlertTriangle } from 'lucide-react';
+import Toast, { ToastType } from './Toast';
 
 const SmartRecordPage: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -35,6 +36,11 @@ const SmartRecordPage: React.FC = () => {
   const [maxTime, setMaxTime] = useState(600); // Default 10 min
 
   const [showHelp, setShowHelp] = useState(false);
+  
+  // Novos estados para UI melhorada
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+
   const timerRef = useRef<any>(null);
 
   useEffect(() => {
@@ -52,7 +58,7 @@ const SmartRecordPage: React.FC = () => {
   useEffect(() => {
     if (isRecording && recordingTime >= maxTime) {
         stopRecording();
-        alert(`Tempo limite de ${Math.floor(maxTime/60)} minutos atingido.`);
+        setToast({ message: `Tempo limite de ${Math.floor(maxTime/60)} minutos atingido.`, type: 'warning' });
     }
   }, [recordingTime, isRecording, maxTime]);
 
@@ -134,9 +140,9 @@ const SmartRecordPage: React.FC = () => {
   };
 
   const startRecording = async () => {
-    if (!selectedDentistId) { alert("Selecione um dentista responsável."); return; }
-    if (!selectedClientId) { alert("Selecione um paciente."); return; }
-    if (!canRecord) { alert("Limite de uso atingido."); return; }
+    if (!selectedDentistId) { setToast({ message: "Selecione um dentista responsável.", type: 'warning' }); return; }
+    if (!selectedClientId) { setToast({ message: "Selecione um paciente.", type: 'warning' }); return; }
+    if (!canRecord) { setToast({ message: "Limite de uso atingido.", type: 'error' }); return; }
     
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -154,7 +160,7 @@ const SmartRecordPage: React.FC = () => {
       setIsRecording(true);
       setRecordingTime(0);
       timerRef.current = setInterval(() => { setRecordingTime(prev => prev + 1); }, 1000);
-    } catch (err) { console.error(err); alert("Erro ao acessar microfone."); }
+    } catch (err) { console.error(err); setToast({ message: "Erro ao acessar microfone.", type: 'error' }); }
   };
 
   const stopRecording = () => {
@@ -202,24 +208,38 @@ const SmartRecordPage: React.FC = () => {
                 }
                 setIsReviewed(false);
             }
-        } catch (innerErr: any) { alert("Erro IA: " + innerErr.message); } finally { setProcessing(false); }
+        } catch (innerErr: any) { setToast({ message: "Erro IA: " + innerErr.message, type: 'error' }); } finally { setProcessing(false); }
       };
-    } catch (err: any) { alert("Erro arquivo: " + err.message); setProcessing(false); }
+    } catch (err: any) { setToast({ message: "Erro arquivo: " + err.message, type: 'error' }); setProcessing(false); }
   };
 
-  const handleSave = async () => {
-     if (!selectedClientId || !selectedDentistId || !clinicId) { alert("Selecione paciente e dentista."); return; }
-     if (!isReviewed) { alert("Revise o resumo antes de salvar."); return; }
+  // Abre o modal de confirmação
+  const handleSaveClick = () => {
+     if (!selectedClientId || !selectedDentistId || !clinicId) { setToast({ message: "Selecione paciente e dentista.", type: 'warning' }); return; }
+     if (!isReviewed) { setToast({ message: "Revise o resumo antes de salvar.", type: 'warning' }); return; }
+     setShowConfirmModal(true);
+  };
+
+  // Executa a gravação real
+  const confirmSave = async () => {
+     if (!clinicId) return;
      setSaving(true);
+     
      const fullDescription = `[Transcrição]\n${transcription}\n\n[SOAP]\nS: ${soapData.subjective}\nO: ${soapData.objective}\nA: ${soapData.assessment}\nP: ${soapData.plan}`;
+     
      const { error } = await supabase.from('clinical_records').insert({
          clinic_id: clinicId, client_id: selectedClientId, dentist_id: selectedDentistId,
          date: new Date().toISOString().split('T')[0], description: fullDescription, created_at: new Date().toISOString()
      });
+     
      setSaving(false);
-     if (error) alert("Erro ao salvar: " + error.message);
-     else {
-         alert("Salvo com sucesso!");
+     setShowConfirmModal(false);
+
+     if (error) {
+         setToast({ message: "Erro ao salvar: " + error.message, type: 'error' });
+     } else {
+         setToast({ message: "Prontuário salvo com sucesso!", type: 'success' });
+         // Reset form
          setAudioBlob(null); setTranscription(''); setSoapData({ subjective: '', objective: '', assessment: '', plan: '' }); setIsReviewed(false);
          checkUsageLimits(clinicId, selectedDentistId);
      }
@@ -227,6 +247,8 @@ const SmartRecordPage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto pb-10">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-white flex items-center">
@@ -317,11 +339,43 @@ const SmartRecordPage: React.FC = () => {
                           <span className="ml-2 text-sm text-gray-400 font-medium select-none">Li, revisei e concordo com o resumo.</span>
                       </label>
                   </div>
-                  <button onClick={handleSave} disabled={saving || !isReviewed} className={`mt-4 w-full py-3 text-white rounded-lg font-bold transition flex items-center justify-center shadow ${saving || !isReviewed ? 'bg-gray-700 text-gray-500 cursor-not-allowed shadow-none' : 'bg-green-600 hover:bg-green-700'}`}>
+                  <button onClick={handleSaveClick} disabled={saving || !isReviewed} className={`mt-4 w-full py-3 text-white rounded-lg font-bold transition flex items-center justify-center shadow ${saving || !isReviewed ? 'bg-gray-700 text-gray-500 cursor-not-allowed shadow-none' : 'bg-green-600 hover:bg-green-700'}`}>
                      {saving ? <Loader2 className="animate-spin mr-2"/> : <Save className="mr-2" size={18}/>} Salvar no Prontuário
                   </button>
               </div>
           </div>
+      )}
+
+      {/* CONFIRMATION MODAL */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in">
+            <div className="bg-gray-900 border border-white/10 p-6 rounded-xl shadow-2xl w-full max-w-sm text-center">
+                <div className="bg-green-900/20 p-3 rounded-full inline-block mb-4 border border-green-500/30">
+                    <Save className="text-green-500" size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">Salvar Prontuário?</h3>
+                <p className="text-gray-400 mb-6 text-sm">
+                    Você está prestes a gravar o resumo SOAP no histórico do paciente <strong>{clients.find(c => c.id === selectedClientId)?.name}</strong>.
+                </p>
+                <div className="flex gap-3 justify-center">
+                    <button 
+                        onClick={() => setShowConfirmModal(false)}
+                        className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg font-bold hover:bg-gray-800 transition"
+                        disabled={saving}
+                    >
+                        Cancelar
+                    </button>
+                    <button 
+                        onClick={confirmSave}
+                        className="px-6 py-2 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition shadow-lg flex items-center"
+                        disabled={saving}
+                    >
+                        {saving ? <Loader2 className="animate-spin mr-2" size={18}/> : <CheckCircle className="mr-2" size={18}/>}
+                        Confirmar
+                    </button>
+                </div>
+            </div>
+        </div>
       )}
 
       {showHelp && (
