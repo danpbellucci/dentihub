@@ -22,6 +22,7 @@ import {
   Activity
 } from 'lucide-react';
 import { UserProfile } from '../types';
+import AiHelpButton from './AiHelpButton';
 
 const DashboardLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -316,9 +317,13 @@ const DashboardLayout: React.FC = () => {
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-transparent p-4 sm:p-6 lg:p-8 custom-scrollbar">
           <Outlet context={{ userProfile, refreshProfile }} />
         </main>
+
+        {/* AI Help Button */}
+        <AiHelpButton />
       </div>
     </div>
   );
 };
 
 export default DashboardLayout;
+    

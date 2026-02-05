@@ -2,7 +2,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import { Dentist, ServiceItem } from '../types';
-import { Plus, Edit2, Trash2, X, Loader2, User, Phone, Mail, HelpCircle, Clock, DollarSign, ShieldCheck, AlertTriangle, Check, Tag } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Loader2, User, Phone, Mail, HelpCircle, Clock, DollarSign, ShieldCheck, AlertTriangle, Check, Tag, Upload, Download, CheckCircle, Lock, Zap } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import Toast, { ToastType } from './Toast';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { validateCPF } from '../utils/validators';
@@ -49,6 +50,19 @@ const DentistsPage: React.FC = () => {
   const [blockAllDay, setBlockAllDay] = useState(true);
   const [blockStart, setBlockStart] = useState('08:00');
   const [blockEnd, setBlockEnd] = useState('12:00');
+
+  // Import Result Modal
+  const [importResult, setImportResult] = useState<{
+      show: boolean;
+      successCount: number;
+      errorCount: number;
+      errors: string[];
+  }>({ show: false, successCount: 0, errorCount: 0, errors: [] });
+
+  // UPGRADE MODAL
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [clinicId, setClinicId] = useState<string | null>(null);
   const [currentTier, setCurrentTier] = useState<string>('free');
@@ -137,7 +151,7 @@ const DentistsPage: React.FC = () => {
       if (currentTier === 'pro') limit = 5;
 
       if (dentists.length >= limit) {
-           setToast({ message: `Limite atingido: O plano ${currentTier.toUpperCase()} permite apenas ${limit} dentista(s).`, type: 'warning' });
+           setShowUpgradeModal(true);
            return;
       }
 
@@ -152,6 +166,7 @@ const DentistsPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  // ... (funções de schedule, plans, services, blockDate mantidas iguais) ...
   const updateScheduleDay = (day: string, field: string, value: any) => {
       setSchedule((prev: any) => ({ ...prev, [day]: { ...prev[day], [field]: value } }));
   };
@@ -248,23 +263,158 @@ const DentistsPage: React.FC = () => {
     finally { setProcessing(false); setDeleteId(null); }
   };
 
+  const handleDownloadTemplate = () => {
+      const ws = XLSX.utils.aoa_to_sheet([
+          ["Nome Completo", "Email", "Telefone", "CRO", "CPF", "Especialidades (separadas por vírgula)"],
+          ["Dr. Exemplo", "dr.exemplo@email.com", "11999999999", "12345", "000.000.000-00", "Ortodontia, Implante"]
+      ]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Modelo_Dentistas");
+      XLSX.writeFile(wb, "Modelo_Importacao_Dentistas_DentiHub.xlsx");
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!e.target.files || e.target.files.length === 0) return;
+      if (!clinicId) { setToast({message: "Erro de identificação da clínica", type: 'error'}); return; }
+
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      
+      reader.onload = async (evt) => {
+          const bstr = evt.target?.result;
+          const wb = XLSX.read(bstr, { type: 'binary' });
+          const wsname = wb.SheetNames[0];
+          const ws = wb.Sheets[wsname];
+          const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+          
+          if (data.length <= 1) {
+              setToast({ message: "Arquivo vazio ou inválido.", type: 'warning' });
+              return;
+          }
+
+          setLoading(true);
+
+          const rows = data.slice(1).filter(r => r[0]); // Ignora cabeçalho e linhas vazias
+          const newEntriesCount = rows.length;
+
+          // Verificar Limites do Plano
+          let limit = Infinity;
+          if (currentTier === 'free') limit = 1;
+          if (currentTier === 'starter') limit = 3;
+          if (currentTier === 'pro') limit = 5;
+
+          const { count: currentCount } = await supabase
+              .from('dentists')
+              .select('*', { count: 'exact', head: true })
+              .eq('clinic_id', clinicId);
+          
+          const totalAfterImport = (currentCount || 0) + newEntriesCount;
+
+          if (totalAfterImport > limit) {
+              setLoading(false);
+              setImportResult({
+                  show: true,
+                  successCount: 0,
+                  errorCount: newEntriesCount,
+                  errors: [`Importação cancelada: O total excederia o limite do plano (${limit} dentistas). Faça upgrade.`]
+              });
+              if (fileInputRef.current) fileInputRef.current.value = "";
+              return;
+          }
+          
+          let successCount = 0;
+          let errors: string[] = [];
+          
+          for (let i = 0; i < rows.length; i++) {
+              const row = rows[i];
+              // Mapeamento: 0:Nome, 1:Email, 2:Telefone, 3:CRO, 4:CPF, 5:Especialidades
+              
+              const specialtiesArray = row[5] ? row[5].toString().split(',').map((s:string) => s.trim()) : [];
+
+              const payload = {
+                  clinic_id: clinicId,
+                  name: row[0],
+                  email: row[1],
+                  phone: row[2] ? row[2].toString() : null,
+                  cro: row[3] ? row[3].toString() : null,
+                  cpf: row[4] ? row[4].toString() : null,
+                  specialties: specialtiesArray,
+                  color: '#0ea5e9', // Default color
+                  schedule_config: initialSchedule
+              };
+
+              try {
+                  if (!payload.name || !payload.email || !payload.cpf) {
+                      throw new Error("Campos obrigatórios faltando (Nome, Email ou CPF).");
+                  }
+                  
+                  const { error } = await supabase.from('dentists').insert(payload);
+                  if (error) throw error;
+                  
+                  // Tenta convidar (Silent fail se der erro no envio de email, mas conta como sucesso no cadastro)
+                  try {
+                      await supabase.functions.invoke('send-emails', { body: { type: 'invite_dentist', recipients: [{ name: payload.name, email: payload.email }] } });
+                      await supabase.from('user_profiles').insert({ email: payload.email, role: 'dentist', clinic_id: clinicId });
+                  } catch (e) {}
+
+                  successCount++;
+              } catch (err: any) { 
+                  errors.push(`Linha ${i + 2} (${row[0] || 'Sem Nome'}): ${err.message}`);
+              }
+          }
+
+          setLoading(false);
+          setImportResult({
+              show: true,
+              successCount,
+              errorCount: errors.length,
+              errors
+          });
+          fetchDentists(clinicId);
+          if (fileInputRef.current) fileInputRef.current.value = "";
+      };
+      
+      reader.readAsBinaryString(file);
+  };
+
   const filteredDentists = dentists.filter(d => d.name.toLowerCase().includes(searchTerm.toLowerCase()));
   const daysOfWeek = [ { key: 'monday', label: 'Segunda' }, { key: 'tuesday', label: 'Terça' }, { key: 'wednesday', label: 'Quarta' }, { key: 'thursday', label: 'Quinta' }, { key: 'friday', label: 'Sexta' }, { key: 'saturday', label: 'Sábado' }, { key: 'sunday', label: 'Domingo' } ];
 
   if (loading) return <div className="flex h-96 w-full items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
 
+  const dentistLimit = currentTier === 'free' ? 1 : currentTier === 'starter' ? 3 : 5;
+
   return (
     <div>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       
+      {/* ... Header e Search Bar ... */}
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
         <div className="flex items-center gap-2 mb-4 sm:mb-0">
-            <h1 className="text-2xl font-bold text-white">Dentistas</h1>
+            <div>
+                <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                    Dentistas
+                    <span className="text-sm font-normal bg-gray-800 text-gray-300 px-2 py-0.5 rounded border border-white/10">
+                        {dentists.length} / {dentistLimit}
+                    </span>
+                </h1>
+            </div>
             <button onClick={() => setShowHelp(true)} className="text-gray-400 hover:text-primary transition-colors"><HelpCircle size={20} /></button>
         </div>
-        <button onClick={() => handleOpenModal()} className="flex items-center px-4 py-2 bg-primary text-white rounded hover:bg-sky-600 transition shadow-sm font-bold">
-          <Plus size={18} className="mr-2" /> Novo
-        </button>
+        
+        <div className="flex gap-2 w-full sm:w-auto">
+            <button onClick={handleDownloadTemplate} className="flex items-center justify-center px-4 py-2 bg-gray-900 border border-white/10 text-gray-300 rounded hover:bg-gray-800 transition shadow-sm font-bold text-sm">
+                <Download size={16} className="mr-2" /> Modelo
+            </button>
+            <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center px-4 py-2 bg-gray-900 border border-white/10 text-gray-300 rounded hover:bg-gray-800 transition shadow-sm font-bold text-sm">
+                <Upload size={16} className="mr-2" /> Importar
+            </button>
+            <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls" onChange={handleFileUpload} />
+
+            <button onClick={() => handleOpenModal()} className="flex items-center px-4 py-2 bg-primary text-white rounded hover:bg-sky-600 transition shadow-sm font-bold text-sm">
+                <Plus size={18} className="mr-2" /> Novo
+            </button>
+        </div>
       </div>
 
       <div className="bg-gray-900/60 backdrop-blur-md p-4 rounded-lg shadow-lg border border-white/5 mb-6">
@@ -280,6 +430,7 @@ const DentistsPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Grid de Dentistas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredDentists.map(dentist => (
           <div key={dentist.id} className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow border border-white/5 overflow-hidden hover:border-white/20 transition-all group relative">
@@ -335,7 +486,81 @@ const DentistsPage: React.FC = () => {
           </div>
       )}
 
-      {/* MODAL FORM */}
+      {/* UPGRADE MODAL */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+            <div className="bg-gray-900 border border-white/10 p-6 rounded-xl shadow-2xl w-full max-w-sm text-center">
+                <div className="bg-yellow-500/20 p-4 rounded-full inline-block mb-4 border border-yellow-500/30">
+                    <Lock className="text-yellow-500" size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">Limite do Plano Atingido</h3>
+                <p className="text-gray-400 mb-6">
+                    Você atingiu o limite de {dentistLimit} dentistas do seu plano atual. Faça um upgrade para continuar crescendo.
+                </p>
+                <div className="flex flex-col gap-3">
+                    <button 
+                        onClick={() => navigate('/dashboard/settings', { state: { openBilling: true } })}
+                        className="w-full py-3 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg font-bold hover:from-yellow-500 hover:to-orange-500 transition shadow-lg flex items-center justify-center gap-2"
+                    >
+                        <Zap size={18} fill="currentColor" /> Fazer Upgrade
+                    </button>
+                    <button 
+                        onClick={() => setShowUpgradeModal(false)}
+                        className="text-gray-500 hover:text-white text-sm font-medium transition"
+                    >
+                        Agora não
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* IMPORT RESULT MODAL (Mantido do anterior) */}
+      {importResult.show && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in">
+            <div className="bg-gray-900 border border-white/10 p-6 rounded-lg shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+                <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        {importResult.errorCount === 0 ? <CheckCircle className="text-green-500"/> : <AlertTriangle className="text-yellow-500"/>}
+                        Resultado da Importação
+                    </h3>
+                    <button onClick={() => setImportResult({ ...importResult, show: false })} className="text-gray-400 hover:text-white"><X size={24}/></button>
+                </div>
+                
+                <div className="mb-4">
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="bg-green-900/20 border border-green-500/30 p-3 rounded-lg text-center">
+                            <span className="block text-2xl font-bold text-green-400">{importResult.successCount}</span>
+                            <span className="text-xs text-green-200 uppercase font-bold">Processados com Sucesso</span>
+                        </div>
+                        <div className={`border p-3 rounded-lg text-center ${importResult.errorCount > 0 ? 'bg-red-900/20 border-red-500/30' : 'bg-gray-800 border-gray-700'}`}>
+                            <span className={`block text-2xl font-bold ${importResult.errorCount > 0 ? 'text-red-400' : 'text-gray-400'}`}>{importResult.errorCount}</span>
+                            <span className={`text-xs uppercase font-bold ${importResult.errorCount > 0 ? 'text-red-200' : 'text-gray-500'}`}>Erros / Falhas</span>
+                        </div>
+                    </div>
+
+                    {importResult.errors.length > 0 && (
+                        <div className="bg-gray-800 rounded-lg p-3 border border-gray-700 max-h-48 overflow-y-auto custom-scrollbar">
+                            <p className="text-xs font-bold text-gray-400 mb-2 uppercase">Detalhes dos Erros:</p>
+                            <ul className="space-y-1">
+                                {importResult.errors.map((err, idx) => (
+                                    <li key={idx} className="text-xs text-red-300 border-b border-white/5 pb-1 last:border-0">{err}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex justify-end">
+                    <button onClick={() => setImportResult({ ...importResult, show: false })} className="px-6 py-2 bg-gray-800 text-white rounded font-bold hover:bg-gray-700 transition">
+                        Fechar
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* MODAL FORM, DELETE MODAL, HELP MODAL (Mantidos) */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
           <div className="bg-gray-900 border border-white/10 p-6 rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-fade-in-up">
@@ -538,6 +763,7 @@ const DentistsPage: React.FC = () => {
                 <ul className="list-disc pl-5 space-y-2">
                    <li><strong>Disponibilidade:</strong> Configure os horários de atendimento de cada dentista.</li>
                    <li><strong>Serviços:</strong> Defina quais procedimentos cada profissional realiza.</li>
+                   <li><strong>Importar Excel:</strong> Utilize a importação em massa para cadastrar sua equipe rapidamente.</li>
                    <li><strong>Login:</strong> O dentista receberá um convite por e-mail para acessar o sistema.</li>
                 </ul>
              </div>

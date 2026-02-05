@@ -4,6 +4,7 @@ import { supabase } from '../services/supabase';
 import { Client, Dentist } from '../types';
 import { Mic, Square, Save, Loader2, Info, FileText, CheckCircle, Lock, Zap, HelpCircle, X, AlertTriangle } from 'lucide-react';
 import Toast, { ToastType } from './Toast';
+import { useNavigate } from 'react-router-dom';
 
 const SmartRecordPage: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -40,8 +41,12 @@ const SmartRecordPage: React.FC = () => {
   // Novos estados para UI melhorada
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  
+  // UPGRADE MODAL
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const timerRef = useRef<any>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     initialize();
@@ -142,7 +147,11 @@ const SmartRecordPage: React.FC = () => {
   const startRecording = async () => {
     if (!selectedDentistId) { setToast({ message: "Selecione um dentista responsável.", type: 'warning' }); return; }
     if (!selectedClientId) { setToast({ message: "Selecione um paciente.", type: 'warning' }); return; }
-    if (!canRecord) { setToast({ message: "Limite de uso atingido.", type: 'error' }); return; }
+    
+    if (!canRecord) { 
+        setShowUpgradeModal(true);
+        return; 
+    }
     
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -290,7 +299,7 @@ const SmartRecordPage: React.FC = () => {
          <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-700 rounded-xl bg-gray-800/30 relative">
              {!isRecording && !audioBlob && !processing && (
                  <>
-                    <button onClick={startRecording} disabled={!selectedClientId || !selectedDentistId || !canRecord} className={`h-20 w-20 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 ${(!selectedClientId || !selectedDentistId || !canRecord) ? 'bg-gray-700 cursor-not-allowed text-gray-500' : 'bg-red-600 hover:bg-red-700 text-white'}`}>
+                    <button onClick={startRecording} disabled={!selectedClientId || !selectedDentistId} className={`h-20 w-20 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 ${(!selectedClientId || !selectedDentistId) ? 'bg-gray-700 cursor-not-allowed text-gray-500' : 'bg-red-600 hover:bg-red-700 text-white'}`}>
                         <Mic size={32} />
                     </button>
                     {!canRecord && <p className="text-red-400 font-bold text-xs mt-4">Limite atingido.</p>}
@@ -372,6 +381,35 @@ const SmartRecordPage: React.FC = () => {
                     >
                         {saving ? <Loader2 className="animate-spin mr-2" size={18}/> : <CheckCircle className="mr-2" size={18}/>}
                         Confirmar
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* UPGRADE MODAL */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+            <div className="bg-gray-900 border border-white/10 p-6 rounded-xl shadow-2xl w-full max-w-sm text-center">
+                <div className="bg-yellow-500/20 p-4 rounded-full inline-block mb-4 border border-yellow-500/30">
+                    <Lock className="text-yellow-500" size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">Limite do Plano Atingido</h3>
+                <p className="text-gray-400 mb-6">
+                    Você atingiu o limite de usos da IA para o seu plano atual. Faça um upgrade para liberar mais acessos.
+                </p>
+                <div className="flex flex-col gap-3">
+                    <button 
+                        onClick={() => navigate('/dashboard/settings', { state: { openBilling: true } })}
+                        className="w-full py-3 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg font-bold hover:from-yellow-500 hover:to-orange-500 transition shadow-lg flex items-center justify-center gap-2"
+                    >
+                        <Zap size={18} fill="currentColor" /> Fazer Upgrade
+                    </button>
+                    <button 
+                        onClick={() => setShowUpgradeModal(false)}
+                        className="text-gray-500 hover:text-white text-sm font-medium transition"
+                    >
+                        Agora não
                     </button>
                 </div>
             </div>

@@ -5,7 +5,7 @@ import { UserProfile, ClinicRole } from '../types';
 import { Save, Loader2, Shield, Users, CreditCard, Trash2, AlertTriangle, CheckCircle, X, Building, Upload, Copy, Send, Zap, Settings, Lock, Plus, Pencil, Bell, Folder } from 'lucide-react';
 import Toast, { ToastType } from './Toast';
 import SubscriptionPaymentModal from './SubscriptionPaymentModal';
-import { useOutletContext, useNavigate } from 'react-router-dom';
+import { useOutletContext, useNavigate, useLocation } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 
@@ -29,6 +29,7 @@ const DEFAULT_ROLES: ClinicRole[] = [ { name: 'dentist', label: 'Dentista' }, { 
 const SettingsPage: React.FC = () => {
   const { userProfile: contextProfile, refreshProfile } = useOutletContext<{ userProfile: UserProfile | null; refreshProfile?: () => Promise<void>; }>() || {};
   const navigate = useNavigate();
+  const location = useLocation(); // Hook para ler estado da navegação
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -62,7 +63,13 @@ const SettingsPage: React.FC = () => {
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { fetchData(); }, [contextProfile?.clinic_id]);
+  useEffect(() => { 
+      fetchData(); 
+      // Se vier redirecionado com pedido para abrir billing
+      if (location.state && (location.state as any).openBilling) {
+          setActiveTab('billing');
+      }
+  }, [contextProfile?.clinic_id, location.state]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -161,6 +168,7 @@ const SettingsPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto">
+      {/* ... (rest of the component remains unchanged) ... */}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <h1 className="text-2xl font-bold text-white mb-6">Configurações</h1>
       <div className="flex flex-col md:flex-row gap-6">
@@ -182,6 +190,7 @@ const SettingsPage: React.FC = () => {
         </div>
 
         <div className="flex-1">
+            {/* ... (Tab contents remain unchanged) ... */}
             {activeTab === 'profile' && (
                 <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow-sm p-6 animate-fade-in border border-white/5">
                     <h2 className="text-xl font-bold text-white mb-6 pb-2 border-b border-white/10">Dados da Clínica</h2>
