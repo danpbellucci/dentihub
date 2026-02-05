@@ -19,7 +19,9 @@
             animation: {
               'fade-in': 'fadeIn 0.5s ease-out',
               'fade-in-up': 'fadeInUp 0.5s ease-out',
+              'fade-in-down': 'fadeInDown 0.3s ease-out',
               'bounce-slow': 'bounce 3s infinite',
+              'spin-slow': 'spin 3s linear infinite',
             },
             keyframes: {
               fadeIn: {
@@ -28,6 +30,10 @@
               },
               fadeInUp: {
                 '0%': { opacity: '0', transform: 'translateY(10px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              fadeInDown: {
+                '0%': { opacity: '0', transform: 'translateY(-10px)' },
                 '100%': { opacity: '1', transform: 'translateY(0)' },
               }
             }
@@ -42,19 +48,18 @@
     "react/": "https://esm.sh/react@18.2.0/",
     "react-dom": "https://esm.sh/react-dom@18.2.0",
     "react-dom/": "https://esm.sh/react-dom@18.2.0/",
-    "lucide-react": "https://esm.sh/lucide-react@0.263.1?external=react",
-    "recharts": "https://esm.sh/recharts@2.7.2?external=react,react-dom",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.31.0",
-    "react-router-dom": "https://esm.sh/react-router-dom@6.14.2?external=react,react-dom",
+    "lucide-react": "https://esm.sh/lucide-react@0.294.0?external=react",
+    "recharts": "https://esm.sh/recharts@2.10.3?external=react,react-dom",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.39.7",
+    "react-router-dom": "https://esm.sh/react-router-dom@6.21.1?external=react,react-dom",
     "date-fns": "https://esm.sh/date-fns@2.30.0",
     "date-fns/": "https://esm.sh/date-fns@2.30.0/",
-    "@stripe/stripe-js": "https://esm.sh/@stripe/stripe-js@4.1.0",
-    "@stripe/react-stripe-js": "https://esm.sh/@stripe/react-stripe-js@2.7.3?external=react,react-dom",
-    "stripe": "https://esm.sh/stripe@^20.1.0",
+    "@stripe/stripe-js": "https://esm.sh/@stripe/stripe-js@2.4.0",
+    "@stripe/react-stripe-js": "https://esm.sh/@stripe/react-stripe-js@2.4.0?external=react,react-dom",
+    "stripe": "https://esm.sh/stripe@14.14.0",
     "jspdf": "https://esm.sh/jspdf@2.5.1",
     "@google/genai": "https://esm.sh/@google/genai@0.2.0",
-    "resend": "https://esm.sh/resend@^6.6.0",
-    "std/": "https://esm.sh/std@^0.1.40/",
+    "resend": "https://esm.sh/resend@2.0.0",
     "xlsx": "https://esm.sh/xlsx@0.18.5"
   }
 }

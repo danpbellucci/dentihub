@@ -18,6 +18,7 @@ import FindClinicPage from './components/FindClinicPage';
 import SmartRecordPage from './components/SmartRecordPage';
 import MessagingPage from './components/MessagingPage';
 import GuidePage from './components/GuidePage';
+import InventoryPage from './components/InventoryPage'; // New Import
 import AppointmentActionPage from './components/AppointmentActionPage';
 import LearnMorePage from './components/LearnMorePage';
 import SuperAdminPage from './components/SuperAdminPage';
@@ -202,6 +203,7 @@ const App: React.FC = () => {
             <Route path="smart-record" element={<SmartRecordPage />} />
             <Route path="messaging" element={<MessagingPage />} />
             <Route path="finance" element={<FinancePage />} />
+            <Route path="inventory" element={<InventoryPage />} />
             <Route path="requests" element={<RequestsPage />} />
             <Route path="guide" element={<GuidePage />} />
             <Route path="settings" element={<SettingsPage />} />

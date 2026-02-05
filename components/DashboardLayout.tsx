@@ -19,10 +19,10 @@ import {
   BookOpen,
   AlertTriangle,
   ShieldAlert,
-  Activity
+  Activity,
+  Box
 } from 'lucide-react';
 import { UserProfile } from '../types';
-import AiHelpButton from './AiHelpButton';
 
 const DashboardLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -107,7 +107,7 @@ const DashboardLayout: React.FC = () => {
             setUserProfile(profileData);
             
             if (profileData.role === 'administrator') {
-                setAllowedModules(new Set(['calendar', 'clients', 'dentists', 'smart-record', 'messaging', 'finance', 'requests', 'guide', 'settings']));
+                setAllowedModules(new Set(['calendar', 'clients', 'dentists', 'smart-record', 'messaging', 'finance', 'inventory', 'requests', 'guide', 'settings']));
             } else {
                 const { data: rules } = await supabase
                     .from('role_permissions')
@@ -183,6 +183,7 @@ const DashboardLayout: React.FC = () => {
     { to: '/dashboard/smart-record', label: 'Prontuário IA', icon: Mic, key: 'smart-record' },
     { to: '/dashboard/messaging', label: 'Mensageria', icon: MessageSquare, key: 'messaging' },
     { to: '/dashboard/finance', label: 'Financeiro', icon: DollarSign, key: 'finance' },
+    { to: '/dashboard/inventory', label: 'Estoque', icon: Box, key: 'inventory' },
     { to: '/dashboard/requests', label: 'Solicitações', icon: BellRing, badge: true, key: 'requests' },
     { to: '/dashboard/guide', label: 'Guia Prático', icon: BookOpen, key: 'guide' },
     { to: '/dashboard/settings', label: 'Configurações', icon: Settings, key: 'settings' },
@@ -317,13 +318,9 @@ const DashboardLayout: React.FC = () => {
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-transparent p-4 sm:p-6 lg:p-8 custom-scrollbar">
           <Outlet context={{ userProfile, refreshProfile }} />
         </main>
-
-        {/* AI Help Button */}
-        <AiHelpButton />
       </div>
     </div>
   );
 };
 
 export default DashboardLayout;
-    

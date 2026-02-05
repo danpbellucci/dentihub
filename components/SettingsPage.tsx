@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import { UserProfile, ClinicRole } from '../types';
-import { Save, Loader2, Shield, Users, CreditCard, Trash2, AlertTriangle, CheckCircle, X, Building, Upload, Copy, Send, Zap, Settings, Lock, Plus, Pencil, Bell, Folder } from 'lucide-react';
+import { Save, Loader2, Shield, Users, CreditCard, Trash2, AlertTriangle, CheckCircle, X, Building, Upload, Copy, Send, Zap, Settings, Lock, Plus, Pencil, Bell, Folder, Box } from 'lucide-react';
 import Toast, { ToastType } from './Toast';
 import SubscriptionPaymentModal from './SubscriptionPaymentModal';
 import { useOutletContext, useNavigate, useLocation } from 'react-router-dom';
@@ -19,17 +19,20 @@ const sanitizeSlug = (text: string) => {
 const APP_MODULES = [
     { key: 'calendar', label: 'Agenda' }, { key: 'clients', label: 'Pacientes' }, { key: 'dentists', label: 'Dentistas' },
     { key: 'smart-record', label: 'Prontuário IA' }, { key: 'messaging', label: 'Mensageria' }, { key: 'finance', label: 'Financeiro' },
-    { key: 'requests', label: 'Solicitações' }, { key: 'guide', label: 'Guia Prático' }, { key: 'settings', label: 'Configurações' },
+    { key: 'inventory', label: 'Estoque' }, { key: 'requests', label: 'Solicitações' }, { key: 'guide', label: 'Guia Prático' }, { key: 'settings', label: 'Configurações' },
 ];
 const NOTIFICATION_TYPES = [
-    { key: 'agenda_daily', label: '📧 Resumo da Agenda (Dia Seguinte)' }, { key: 'finance_daily', label: '📧 Previsão Financeira (Dia Seguinte)' }, { key: 'system_campaigns', label: '📢 Campanhas e Avisos do Sistema' }
+    { key: 'agenda_daily', label: '📧 Resumo da Agenda (Dia Seguinte)' }, 
+    { key: 'finance_daily', label: '📧 Previsão Financeira (Dia Seguinte)' }, 
+    { key: 'stock_low', label: '📦 Alerta de Estoque Baixo' },
+    { key: 'system_campaigns', label: '📢 Campanhas e Avisos do Sistema' }
 ];
 const DEFAULT_ROLES: ClinicRole[] = [ { name: 'dentist', label: 'Dentista' }, { name: 'employee', label: 'Funcionário' } ];
 
 const SettingsPage: React.FC = () => {
   const { userProfile: contextProfile, refreshProfile } = useOutletContext<{ userProfile: UserProfile | null; refreshProfile?: () => Promise<void>; }>() || {};
   const navigate = useNavigate();
-  const location = useLocation(); // Hook para ler estado da navegação
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -65,7 +68,6 @@ const SettingsPage: React.FC = () => {
 
   useEffect(() => { 
       fetchData(); 
-      // Se vier redirecionado com pedido para abrir billing
       if (location.state && (location.state as any).openBilling) {
           setActiveTab('billing');
       }
@@ -86,7 +88,7 @@ const SettingsPage: React.FC = () => {
         setAvailableRoles(allRoles);
 
         const initialPerms: Record<string, Record<string, boolean>> = {};
-        APP_MODULES.forEach(mod => { initialPerms[mod.key] = {}; allRoles.forEach(role => { if (role.name === 'administrator') initialPerms[mod.key][role.name] = true; else { initialPerms[mod.key][role.name] = true; if (['finance', 'settings', 'messaging'].includes(mod.key) && ['dentist', 'employee'].includes(role.name)) initialPerms[mod.key][role.name] = false; } }); });
+        APP_MODULES.forEach(mod => { initialPerms[mod.key] = {}; allRoles.forEach(role => { if (role.name === 'administrator') initialPerms[mod.key][role.name] = true; else { initialPerms[mod.key][role.name] = true; if (['finance', 'settings', 'messaging', 'inventory'].includes(mod.key) && ['dentist', 'employee'].includes(role.name)) initialPerms[mod.key][role.name] = false; } }); });
         const { data: perms } = await supabase.from('role_permissions').select('*').eq('clinic_id', targetId);
         if (perms) perms.forEach(p => { if (initialPerms[p.module]) initialPerms[p.module][p.role] = p.is_allowed; });
         setPermissions(initialPerms);
@@ -103,6 +105,9 @@ const SettingsPage: React.FC = () => {
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
+  // ... (Restante do código igual, apenas substituindo a parte de renderização para garantir consistência)
+  // ... (Funções auxiliares omitidas para brevidade, mantendo a lógica existente)
+  
   const fetchSubscription = async () => {
     try { await supabase.functions.invoke('check-subscription'); const { data, error } = await supabase.functions.invoke('get-subscription-details'); if (!error && data) { setSubscription(data); if (data.hasSubscription && data.status === 'active' && refreshProfile) await refreshProfile(); } } catch (e) { console.error(e); }
   };
@@ -168,7 +173,6 @@ const SettingsPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto">
-      {/* ... (rest of the component remains unchanged) ... */}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <h1 className="text-2xl font-bold text-white mb-6">Configurações</h1>
       <div className="flex flex-col md:flex-row gap-6">
@@ -190,7 +194,6 @@ const SettingsPage: React.FC = () => {
         </div>
 
         <div className="flex-1">
-            {/* ... (Tab contents remain unchanged) ... */}
             {activeTab === 'profile' && (
                 <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow-sm p-6 animate-fade-in border border-white/5">
                     <h2 className="text-xl font-bold text-white mb-6 pb-2 border-b border-white/10">Dados da Clínica</h2>
@@ -234,8 +237,12 @@ const SettingsPage: React.FC = () => {
                 </div>
             )}
 
+            {/* ... Other Tabs (Team, Permissions, Security, Billing) ... */}
+            {/* Same content as before, just ensuring correct rendering */}
+            
             {activeTab === 'team' && (
                 <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow-sm p-6 animate-fade-in border border-white/5">
+                    {/* ... (Team Content) ... */}
                     <h2 className="text-xl font-bold text-white mb-6 pb-2 border-b border-white/10">Gestão de Acessos</h2>
                     <div className="mb-8">
                         <label className="block text-sm font-bold text-gray-400 mb-2">Convidar membro</label>
@@ -322,6 +329,7 @@ const SettingsPage: React.FC = () => {
 
             {activeTab === 'security' && (
                 <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow-sm p-6 animate-fade-in border border-white/5 flex flex-col gap-10">
+                    {/* ... (Security Content) ... */}
                     <div>
                         <h2 className="text-xl font-bold text-white mb-6 pb-2 border-b border-white/10">Alterar Senha</h2>
                         <form onSubmit={handlePasswordChange} className="max-w-md space-y-6">
@@ -343,6 +351,7 @@ const SettingsPage: React.FC = () => {
 
             {activeTab === 'billing' && (
                 <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow-sm p-6 animate-fade-in border border-white/5">
+                    {/* ... (Billing Content) ... */}
                     <div className="flex justify-between items-start mb-6">
                         <div><h2 className="text-xl font-bold text-white">Planos e Assinatura</h2><p className="text-gray-400 text-sm">Gerencie seu plano atual.</p></div>
                         <div className="text-right">
@@ -400,7 +409,7 @@ const SettingsPage: React.FC = () => {
                 </div>
             )}
 
-            {/* Role Edit Modal */}
+            {/* Modais omitidos para brevidade (RoleEdit, Payment, etc) permanecem iguais */}
             {roleToEdit && (
                 <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
                     <div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-6 w-full max-w-sm">

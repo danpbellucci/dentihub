@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, Loader2, HelpCircle } from 'lucide-react';
 import { supabase } from '../services/supabase';
+import { useLocation } from 'react-router-dom';
 
 interface Message {
   role: 'user' | 'ai';
@@ -16,6 +17,10 @@ const AiHelpButton: React.FC = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+
+  // Segurança: Garante que o botão SÓ apareça se a rota começar com /dashboard ou /super-admin
+  const isAllowedPath = location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/super-admin');
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -24,6 +29,9 @@ const AiHelpButton: React.FC = () => {
   useEffect(() => {
     if (isOpen) scrollToBottom();
   }, [messages, isOpen]);
+
+  // Se não estiver em rota permitida, não renderiza nada
+  if (!isAllowedPath) return null;
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     e?.preventDefault();

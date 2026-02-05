@@ -400,7 +400,7 @@ export interface Database {
         Row: {
           id: string
           clinic_id: string
-          type: 'reminder' | 'birthday' | 'agenda' | 'recall' | 'welcome'
+          type: 'reminder' | 'birthday' | 'agenda' | 'recall' | 'welcome' | 'urgent_reminder' | 'system' | 'marketing_campaign' | 'stock_alert'
           recipient_name: string
           recipient_email: string
           subject: string
@@ -411,7 +411,7 @@ export interface Database {
         Insert: {
           id?: string
           clinic_id: string
-          type: 'reminder' | 'birthday' | 'agenda' | 'recall' | 'welcome'
+          type: 'reminder' | 'birthday' | 'agenda' | 'recall' | 'welcome' | 'urgent_reminder' | 'system' | 'marketing_campaign' | 'stock_alert'
           recipient_name: string
           recipient_email: string
           subject: string
@@ -422,13 +422,48 @@ export interface Database {
         Update: {
           id?: string
           clinic_id?: string
-          type?: 'reminder' | 'birthday' | 'agenda' | 'recall' | 'welcome'
+          type?: 'reminder' | 'birthday' | 'agenda' | 'recall' | 'welcome' | 'urgent_reminder' | 'system' | 'marketing_campaign' | 'stock_alert'
           recipient_name?: string
           recipient_email?: string
           subject?: string
           status?: 'sent' | 'failed'
           sent_at?: string
           related_id?: string | null
+        }
+      }
+      inventory_items: {
+        Row: {
+          id: string
+          clinic_id: string
+          name: string
+          quantity: number
+          min_quantity: number
+          unit: string | null
+          category: string | null
+          updated_at: string
+          dentist_id?: string | null
+        }
+        Insert: {
+          id?: string
+          clinic_id: string
+          name: string
+          quantity: number
+          min_quantity?: number
+          unit?: string | null
+          category?: string | null
+          updated_at?: string
+          dentist_id?: string | null
+        }
+        Update: {
+          id?: string
+          clinic_id?: string
+          name?: string
+          quantity?: number
+          min_quantity?: number
+          unit?: string | null
+          category?: string | null
+          updated_at?: string
+          dentist_id?: string | null
         }
       }
     }
@@ -550,13 +585,25 @@ export interface ClinicalRecord {
 
 export interface Communication {
     id: string;
-    type: 'reminder' | 'birthday' | 'agenda' | 'recall' | 'welcome';
+    type: 'reminder' | 'birthday' | 'agenda' | 'recall' | 'welcome' | 'urgent_reminder' | 'system' | 'marketing_campaign' | 'stock_alert';
     recipient_name: string;
     recipient_email: string;
     subject: string;
     status: 'sent' | 'failed';
     sent_at: string;
     related_id?: string | null;
+}
+
+export interface InventoryItem {
+    id: string;
+    name: string;
+    quantity: number;
+    min_quantity: number;
+    unit: string;
+    category: string;
+    updated_at?: string;
+    dentist_id?: string | null;
+    dentist?: { name: string };
 }
 
 export interface UserProfile {
