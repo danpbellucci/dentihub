@@ -24,7 +24,6 @@ import SuperAdminPage from './components/SuperAdminPage';
 import SuperAdminCampaigns from './components/SuperAdminCampaigns';
 import SuperAdminLeads from './components/SuperAdminLeads';
 import UpdatePasswordPage from './components/UpdatePasswordPage';
-import MarketingKit from './components/MarketingKit';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Loader2 } from 'lucide-react';
 
@@ -188,7 +187,6 @@ const App: React.FC = () => {
           <Route path="/encontrar-clinica" element={<FindClinicPage />} />
           <Route path="/entenda" element={<LearnMorePage />} />
           <Route path="/auth" element={<AuthPage />} />
-          <Route path="/marketing-kit" element={<MarketingKit />} />
           
           {/* Rota de senha acessível diretamente */}
           <Route path="/update-password" element={<UpdatePasswordPage />} />

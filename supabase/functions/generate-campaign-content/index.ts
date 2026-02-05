@@ -20,10 +20,12 @@ serve(async (req) => {
 
   try {
     const { prompt, currentContent, contentType } = await req.json()
-    const apiKey = Deno.env.get('GEMINI_API_KEY') || Deno.env.get('API_KEY')
+    
+    // Tenta usar a chave específica de Admin primeiro, senão cai para as chaves gerais
+    const apiKey = Deno.env.get('ADMIN_GEMINI_KEY') || Deno.env.get('GEMINI_API_KEY') || Deno.env.get('API_KEY')
     
     if (!apiKey) {
-      throw new Error('Chave da API (GEMINI_API_KEY) não configurada no servidor.')
+      throw new Error('Chave da API (ADMIN_GEMINI_KEY ou GEMINI_API_KEY) não configurada no servidor.')
     }
 
     const ai = new GoogleGenAI({ apiKey })

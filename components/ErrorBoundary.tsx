@@ -12,8 +12,7 @@ interface State {
 }
 
 export class ErrorBoundary extends React.Component<Props, State> {
-  // Explicitly declare props to avoid TS error "Property 'props' does not exist on type 'ErrorBoundary'"
-  // This can happen in some strict TS configurations or environments where React types aren't fully inferring base properties.
+  // Explicitly declare props and state to avoid TS errors
   public props: Props;
   public state: State;
 

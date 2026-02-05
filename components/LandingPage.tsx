@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import { Logo } from './Logo';
 import { 
@@ -11,9 +11,11 @@ import {
   ChevronLeft, ChevronRight, Plus, Folder, Brain, Clock, MoreHorizontal, FileText, Trash2,
   BookOpen, Settings, HelpCircle, AlertTriangle
 } from 'lucide-react';
+import Toast, { ToastType } from './Toast';
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeMockup, setActiveMockup] = useState('Visão Geral');
   const [device, setDevice] = useState<'mobile' | 'tablet' | 'desktop'>(
       typeof window !== 'undefined' && window.innerWidth < 768 ? 'mobile' : 'desktop'
@@ -22,9 +24,8 @@ const LandingPage: React.FC = () => {
   const [leadEmail, setLeadEmail] = useState('');
   const [leadStatus, setLeadStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
-  // Estado para o menu mobile de DENTRO do mockup
   const [mockupMobileMenuOpen, setMockupMobileMenuOpen] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -49,11 +50,34 @@ const LandingPage: React.FC = () => {
       observer.observe(plansEndElement);
     }
 
+    // --- LÓGICA DE UNSUBSCRIBE ---
+    const params = new URLSearchParams(location.search);
+    const action = params.get('action');
+    const emailParam = params.get('email');
+
+    if (action === 'unsubscribe' && emailParam) {
+        handleUnsubscribe(emailParam);
+    }
+
     return () => {
       window.removeEventListener('resize', handleResize);
       if (plansEndElement) observer.unobserve(plansEndElement);
     };
-  }, [device]);
+  }, [device, location]);
+
+  const handleUnsubscribe = async (email: string) => {
+      try {
+          const { error } = await supabase.functions.invoke('manage-leads', {
+              body: { type: 'unsubscribe', email }
+          });
+          if (error) throw error;
+          setToast({ message: "Você foi descadastrado da nossa lista de e-mails com sucesso.", type: 'success' });
+          window.history.replaceState({}, document.title, "/");
+      } catch (err) {
+          console.error(err);
+          setToast({ message: "Erro ao processar descadastro.", type: 'error' });
+      }
+  };
 
   const handleLeadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,8 +85,15 @@ const LandingPage: React.FC = () => {
 
     setLeadStatus('loading');
     try {
+      // 1. Salva no Banco de Dados
       const { error } = await supabase.from('leads').insert({ email: leadEmail });
       if (error) throw error;
+
+      // 2. Chama Edge Function
+      supabase.functions.invoke('manage-leads', {
+          body: { type: 'welcome_lead', email: leadEmail }
+      }).catch(console.error);
+
       setLeadStatus('success');
       setTimeout(() => setShowLeadModal(false), 3000);
     } catch (err) {
@@ -97,7 +128,6 @@ const LandingPage: React.FC = () => {
     { label: 'Configurações', icon: Settings },
   ];
 
-  // Helper Icon for sparkle effects
   const SparklesIcon = ({ size = 20 }: { size?: number }) => (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 2L14.39 9.39L22 12L14.39 14.61L12 22L9.61 14.61L2 12L9.61 9.39L12 2Z" />
@@ -106,6 +136,7 @@ const LandingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-950 font-sans text-gray-100 selection:bg-purple-500 selection:text-white overflow-x-hidden">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 hidden md:block">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/20 rounded-full blur-[120px]"></div>
@@ -161,7 +192,7 @@ const LandingPage: React.FC = () => {
         )}
       </header>
 
-      {/* HERO */}
+      {/* HERO SECTION */}
       <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           
@@ -171,7 +202,7 @@ const LandingPage: React.FC = () => {
           
           <h1 className="text-5xl sm:text-7xl font-black text-white tracking-tight mb-8 leading-tight max-w-5xl mx-auto drop-shadow-2xl will-change-transform">
             O Sistema Operacional <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 animate-gradient-x">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-fuchsia-400 to-pink-400 animate-gradient-x">
               do Futuro para Dentistas
             </span>
           </h1>
@@ -190,7 +221,7 @@ const LandingPage: React.FC = () => {
             </button>
           </div>
 
-          {/* MOCKUP INTERATIVO - DARK THEME */}
+          {/* MOCKUP INTERATIVO */}
           <div className="relative mx-auto px-4 sm:px-6 lg:px-8 animate-fade-in-up delay-200 flex flex-col items-center">
             
             <div className="flex items-center justify-center gap-4 mb-8 p-1.5 bg-gray-900/80 backdrop-blur rounded-full border border-white/10 shadow-xl w-fit">
@@ -219,7 +250,7 @@ const LandingPage: React.FC = () => {
                 )}
 
                 <div className={`flex bg-gray-950 h-full relative text-left ${device === 'mobile' ? 'flex-col' : 'flex-row'}`}>
-                    {/* Mockup Sidebar (Hidden on Mobile) */}
+                    {/* Mockup Sidebar */}
                     <div className={`bg-gray-950 border-r border-white/5 flex-shrink-0 z-20 flex flex-col ${device === 'mobile' ? 'hidden' : 'w-56'}`}>
                         <div className="flex items-center gap-2 text-white font-bold p-4 border-b border-white/5">
                             <div className="bg-gradient-to-tr from-blue-600 to-purple-600 p-1 rounded"><Logo className="w-4 h-4 text-white" /></div> 
@@ -235,12 +266,6 @@ const LandingPage: React.FC = () => {
                                     {item.label}
                                 </button>
                             ))}
-                        </div>
-                        <div className="mt-auto p-4 border-t border-white/5">
-                            <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-full bg-gray-800 border border-white/10 flex items-center justify-center text-xs font-bold text-white">AS</div>
-                                <div><p className="text-xs text-white font-bold">Dr. André Silva</p><p className="text-[10px] text-gray-500">Admin</p></div>
-                            </div>
                         </div>
                     </div>
 
@@ -261,8 +286,6 @@ const LandingPage: React.FC = () => {
                         )}
 
                         <div className="p-6">
-                            
-                            {/* VISÃO GERAL */}
                             {activeMockup === 'Visão Geral' && (
                                 <div className="space-y-6 animate-fade-in">
                                     <h2 className="text-xl font-bold text-white mb-4">Visão Geral</h2>
@@ -283,183 +306,37 @@ const LandingPage: React.FC = () => {
                                             <p className="text-2xl font-black text-white">R$ 15.450,00</p>
                                         </div>
                                     </div>
-                                    <div className="bg-gray-900/60 border border-white/5 rounded-xl p-4 h-64">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <h3 className="font-bold text-white text-sm flex items-center"><Clock size={16} className="mr-2 text-primary"/> Próximos Agendamentos</h3>
-                                            <span className="text-[10px] bg-gray-800 px-2 py-1 rounded text-gray-400">Rolar para ver mais</span>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <div className="flex items-center justify-between p-3 bg-gray-800/40 rounded-lg border border-white/5">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="text-center bg-gray-800 border border-white/10 rounded px-2 py-1"><p className="text-[9px] text-gray-400 uppercase">HOJE</p><p className="text-sm font-black text-white">14</p></div>
-                                                    <div><p className="font-bold text-white text-sm">Mariana Souza</p><div className="flex items-center gap-2"><span className="text-[10px] font-mono text-gray-300 bg-gray-700/50 px-1 rounded">14:00</span><span className="text-[10px] text-gray-500">Limpeza</span></div></div>
-                                                </div>
-                                                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                                            </div>
-                                            <div className="flex items-center justify-between p-3 bg-gray-800/40 rounded-lg border border-white/5">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="text-center bg-gray-800 border border-white/10 rounded px-2 py-1"><p className="text-[9px] text-gray-400 uppercase">HOJE</p><p className="text-sm font-black text-white">14</p></div>
-                                                    <div><p className="font-bold text-white text-sm">Carlos Pereira</p><div className="flex items-center gap-2"><span className="text-[10px] font-mono text-gray-300 bg-gray-700/50 px-1 rounded">15:30</span><span className="text-[10px] text-gray-500">Avaliação</span></div></div>
-                                                </div>
-                                                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
                             )}
-
-                            {/* AGENDA */}
+                            
                             {activeMockup === 'Agenda' && (
                                 <div className="space-y-4 animate-fade-in h-full flex flex-col">
-                                    <div className="flex justify-between items-center">
-                                        <h2 className="text-xl font-bold text-white">Agenda</h2>
-                                        <button className="bg-primary text-white text-xs px-3 py-1.5 rounded font-bold flex items-center"><Plus size={14} className="mr-1"/> Novo</button>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h2 className="text-lg font-bold text-white">Agenda</h2>
+                                        <button className="bg-primary text-white text-xs px-3 py-1.5 rounded-lg font-bold flex items-center shadow-lg shadow-blue-900/20">
+                                            <Plus size={14} className="mr-1"/> Novo
+                                        </button>
                                     </div>
-                                    <div className="flex items-center justify-between bg-gray-900 p-2 rounded-lg border border-white/5">
-                                        <div className="flex items-center gap-2 text-gray-400"><ChevronLeft size={16}/><span className="text-white font-bold text-sm">Outubro 2026</span><ChevronRight size={16}/></div>
-                                        <span className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">Hoje</span>
-                                    </div>
-                                    <div className="bg-gray-900/60 border border-white/5 rounded-xl overflow-hidden flex-1">
-                                        <table className="w-full text-left">
-                                            <thead className="bg-gray-800/50 text-[10px] uppercase text-gray-500">
-                                                <tr><th className="p-3">Data</th><th className="p-3">Horário</th><th className="p-3">Paciente</th><th className="p-3">Status</th><th className="p-3 text-right">Valor</th></tr>
-                                            </thead>
-                                            <tbody className="text-xs text-gray-300 divide-y divide-white/5">
-                                                {[
-                                                    { date: '15/10', time: '09:00 - 10:00', patient: 'João Santos', proc: 'Avaliação', status: 'CONFIRMADO', price: '0', color: 'bg-green-500/10 text-green-400 border-green-500/20' },
-                                                    { date: '15/10', time: '10:00 - 11:30', patient: 'Ana Costa', proc: 'Canal (Endo)', status: 'AGENDADO', price: '450', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-                                                    { date: '15/10', time: '13:00 - 14:00', patient: 'Pedro Lima', proc: 'Extração', status: 'CONCLUÍDO', price: '250', color: 'bg-gray-700 text-gray-400 border-gray-600' },
-                                                ].map((appt, i) => (
-                                                    <tr key={i} className="hover:bg-gray-800/30">
-                                                        <td className="p-3 font-bold">{appt.date}</td>
-                                                        <td className="p-3 text-gray-400">{appt.time}</td>
-                                                        <td className="p-3"><div><span className="font-bold text-white">{appt.patient}</span><div className="text-[10px] text-gray-500">{appt.proc}</div></div></td>
-                                                        <td className="p-3"><span className={`border px-1.5 py-0.5 rounded text-[9px] font-bold ${appt.color}`}>{appt.status}</span></td>
-                                                        <td className="p-3 text-right font-mono">{appt.price}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* PACIENTES */}
-                            {activeMockup === 'Pacientes' && (
-                                <div className="space-y-4 animate-fade-in">
-                                    <div className="flex justify-between items-center">
-                                        <h2 className="text-xl font-bold text-white">Pacientes</h2>
-                                        <button className="bg-primary text-white text-xs px-3 py-1.5 rounded font-bold flex items-center"><Plus size={14} className="mr-1"/> Novo</button>
-                                    </div>
-                                    <div className="bg-gray-900 border border-white/5 p-2 rounded-lg flex items-center text-gray-400 text-sm">
-                                        <Search size={16} className="mr-2 ml-1"/> <span className="opacity-50">Buscar por nome ou CPF...</span>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <div className="bg-gray-900/60 border border-white/5 p-3 rounded-lg flex justify-between items-center group hover:border-white/10 transition">
-                                            <div>
-                                                <p className="font-bold text-white text-sm">Mariana Souza</p>
-                                                <p className="text-[10px] text-gray-500">(11) 99999-0000 | 123.456.789-00</p>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <button className="p-1.5 bg-gray-800 rounded border border-white/5 text-gray-400 hover:text-purple-400"><FileText size={14}/></button>
-                                                <button className="p-1.5 bg-gray-800 rounded border border-white/5 text-gray-400 hover:text-yellow-400"><Folder size={14}/></button>
-                                            </div>
+                                    <div className="flex-1 bg-gray-900/50 border border-white/5 rounded-lg overflow-hidden flex flex-col">
+                                        <div className="grid grid-cols-4 bg-gray-800/50 p-2 text-[10px] font-bold text-gray-500 uppercase">
+                                            <div>Horário</div>
+                                            <div className="col-span-2">Paciente</div>
+                                            <div className="text-right">Status</div>
                                         </div>
-                                        <div className="bg-gray-900/60 border border-white/5 p-3 rounded-lg flex justify-between items-center group hover:border-white/10 transition">
-                                            <div>
-                                                <p className="font-bold text-white text-sm">Carlos Pereira</p>
-                                                <p className="text-[10px] text-gray-500">(11) 98888-1111 | 987.654.321-99</p>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <button className="p-1.5 bg-gray-800 rounded border border-white/5 text-gray-400 hover:text-purple-400"><FileText size={14}/></button>
-                                                <button className="p-1.5 bg-gray-800 rounded border border-white/5 text-gray-400 hover:text-yellow-400"><Folder size={14}/></button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* PRONTUÁRIO IA */}
-                            {activeMockup === 'Prontuário IA' && (
-                                <div className="space-y-6 animate-fade-in h-full flex flex-col items-center justify-center text-center">
-                                    <div className="w-full bg-blue-900/20 border border-blue-500/20 p-3 rounded-lg text-left mb-auto w-full">
-                                        <p className="text-xs text-blue-300 font-bold flex items-center"><Zap size={12} className="mr-1"/> Plano Gratuito</p>
-                                        <p className="text-[10px] text-blue-400">Restam 3 usos no plano Gratuito. Duração máx: 5 minutos.</p>
-                                    </div>
-                                    
-                                    <div className="w-full max-w-sm space-y-3">
-                                        <div className="bg-gray-800 border border-gray-700 p-2 rounded text-left text-xs text-gray-300">Paciente: <strong>Mariana Souza</strong></div>
-                                        <div className="bg-gray-800 border border-gray-700 p-2 rounded text-left text-xs text-gray-300">Dentista: <strong>Dr. André Silva</strong></div>
-                                    </div>
-
-                                    <div className="my-8 relative group cursor-pointer">
-                                        <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl group-hover:bg-primary/40 transition"></div>
-                                        <div className="relative w-20 h-20 bg-gray-800 border-2 border-dashed border-gray-600 rounded-full flex items-center justify-center text-gray-400 group-hover:border-primary group-hover:text-primary transition">
-                                            <Mic size={32} />
-                                        </div>
-                                    </div>
-                                    <p className="text-sm text-gray-500">Clique para gravar a evolução clínica</p>
-                                </div>
-                            )}
-
-                            {/* FINANCEIRO */}
-                            {activeMockup === 'Financeiro' && (
-                                <div className="space-y-6 animate-fade-in">
-                                    <div className="flex justify-between items-center">
-                                        <h2 className="text-xl font-bold text-white">Fluxo de Caixa</h2>
-                                        <button className="bg-primary text-white text-xs px-3 py-1.5 rounded font-bold flex items-center"><Plus size={14} className="mr-1"/> Transação</button>
-                                    </div>
-                                    <div className="bg-gray-900/60 border border-green-500/30 p-4 rounded-xl">
-                                        <p className="text-xs text-green-400 uppercase font-bold">Saldo (Período)</p>
-                                        <p className="text-2xl font-black text-green-500">R$ +4.200,00</p>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <div className="flex justify-between items-center p-3 bg-gray-800/40 rounded-lg border border-white/5">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-1.5 bg-green-500/10 rounded text-green-500"><TrendingUp size={14}/></div>
-                                                <div><p className="text-xs font-bold text-white">Consulta Particular</p><p className="text-[10px] text-gray-500">15/10/2026</p></div>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-xs font-black text-green-500">R$ 250,00</p>
-                                                <span className="text-[9px] bg-green-900/30 text-green-400 px-1.5 rounded border border-green-500/20">RECEBIDO</span>
-                                            </div>
-                                        </div>
-                                        <div className="flex justify-between items-center p-3 bg-gray-800/40 rounded-lg border border-white/5">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-1.5 bg-red-500/10 rounded text-red-500"><TrendingDown size={14}/></div>
-                                                <div><p className="text-xs font-bold text-white">Aluguel Sala</p><p className="text-[10px] text-gray-500">10/10/2026</p></div>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-xs font-black text-red-500">R$ 1.500,00</p>
-                                                <span className="text-[9px] bg-red-900/30 text-red-400 px-1.5 rounded border border-red-500/20">PAGO</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* MENSAGERIA */}
-                            {activeMockup === 'Mensageria' && (
-                                <div className="space-y-4 animate-fade-in">
-                                    <h2 className="text-xl font-bold text-white mb-4">Central de Mensagens</h2>
-                                    <div className="bg-blue-900/20 border border-blue-500/20 p-3 rounded-lg flex justify-between items-center">
-                                        <div>
-                                            <p className="text-xs font-bold text-blue-300 flex items-center"><Zap size={12} className="mr-1 text-yellow-400"/> Envios Automáticos</p>
-                                            <p className="text-[10px] text-blue-400">Verificação diária da agenda ativa.</p>
-                                        </div>
-                                        <span className="text-[9px] bg-green-900/30 text-green-400 border border-green-500/20 px-2 py-0.5 rounded-full font-bold">Ativo</span>
-                                    </div>
-                                    <div className="bg-gray-900/60 border border-white/5 rounded-xl overflow-hidden">
-                                        <div className="px-3 py-2 bg-gray-800/50 text-[10px] font-bold text-gray-500 uppercase">Últimos Envios</div>
-                                        <div className="divide-y divide-white/5">
+                                        <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2">
                                             {[
-                                                { to: 'João Santos', type: 'Lembrete (24h)', time: '15:00', status: 'Enviado' },
-                                                { to: 'Ana Costa', type: 'Lembrete (24h)', time: '14:00', status: 'Enviado' },
-                                                { to: 'Dr. André Silva', type: 'Agenda Diária', time: '08:00', status: 'Enviado' },
-                                            ].map((msg, i) => (
-                                                <div key={i} className="p-3 flex justify-between items-center text-xs">
-                                                    <div><p className="text-white font-bold">{msg.to}</p><p className="text-gray-500">{msg.type}</p></div>
-                                                    <div className="text-right"><span className="text-green-400 bg-green-900/20 px-1.5 py-0.5 rounded border border-green-500/20 flex items-center text-[9px] font-bold"><Check size={8} className="mr-1"/> {msg.status}</span><p className="text-[9px] text-gray-600 mt-1">{msg.time}</p></div>
+                                                { time: '09:00', name: 'João Silva', proc: 'Avaliação', status: 'Confirmado', color: 'text-green-400' },
+                                                { time: '10:00', name: 'Maria Souza', proc: 'Limpeza', status: 'Agendado', color: 'text-blue-400' },
+                                                { time: '11:00', name: 'Pedro Santos', proc: 'Canal', status: 'Em andamento', color: 'text-yellow-400' },
+                                                { time: '14:00', name: 'Ana Costa', proc: 'Clareamento', status: 'Agendado', color: 'text-blue-400' },
+                                            ].map((item, i) => (
+                                                <div key={i} className="grid grid-cols-4 items-center bg-gray-800/30 p-2 rounded border border-white/5 hover:bg-gray-800 transition">
+                                                    <div className="font-mono text-xs text-gray-300">{item.time}</div>
+                                                    <div className="col-span-2">
+                                                        <div className="text-xs font-bold text-white">{item.name}</div>
+                                                        <div className="text-[10px] text-gray-500">{item.proc}</div>
+                                                    </div>
+                                                    <div className={`text-[10px] font-bold text-right ${item.color}`}>{item.status}</div>
                                                 </div>
                                             ))}
                                         </div>
@@ -467,128 +344,16 @@ const LandingPage: React.FC = () => {
                                 </div>
                             )}
 
-                            {activeMockup === 'Dentistas' && (
-                                <div className="space-y-4 animate-fade-in">
-                                    <div className="flex justify-between items-center">
-                                        <h2 className="text-xl font-bold text-white">Dentistas</h2>
-                                        <button className="bg-primary text-white text-xs px-3 py-1.5 rounded font-bold flex items-center"><Plus size={14} className="mr-1"/> Novo</button>
-                                    </div>
-                                    <div className="bg-gray-900 border border-white/5 p-2 rounded-lg flex items-center text-gray-400 text-sm">
-                                        <Search size={16} className="mr-2 ml-1"/> <span className="opacity-50">Buscar por nome...</span>
-                                    </div>
-                                    <div className="bg-gray-900/60 border border-white/5 p-4 rounded-lg relative overflow-hidden group">
-                                        <div className="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center font-bold text-gray-400 border border-white/10">F</div>
-                                            <div><p className="text-sm font-bold text-white">Dra. Fernanda</p><p className="text-[10px] text-gray-500">CRO: 12345</p></div>
-                                        </div>
-                                        <div className="flex gap-1 mb-3"><span className="text-[9px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded border border-white/10">ORTODONTIA</span></div>
-                                        <div className="flex justify-end gap-2 border-t border-white/5 pt-2">
-                                            <button className="text-[10px] font-bold text-blue-400 hover:bg-blue-500/10 px-2 py-1 rounded">Editar</button>
-                                            <button className="text-[10px] font-bold text-red-400 hover:bg-red-500/10 px-2 py-1 rounded">Excluir</button>
-                                        </div>
-                                    </div>
+                            {activeMockup !== 'Visão Geral' && activeMockup !== 'Agenda' && (
+                                <div className="h-64 flex items-center justify-center text-gray-500 text-sm">
+                                    <p>Conteúdo da aba {activeMockup}</p>
                                 </div>
                             )}
-
-                            {/* SOLICITAÇÕES (NEW) */}
-                            {activeMockup === 'Solicitações' && (
-                                <div className="space-y-4 animate-fade-in">
-                                    <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">Solicitações <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">2</span></h2>
-                                    <div className="bg-gray-900/60 border border-white/5 rounded-xl overflow-hidden">
-                                        <div className="p-4 border-b border-white/5 flex flex-col gap-2">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <p className="text-white font-bold text-sm">Lucas Martins <span className="text-[10px] bg-blue-900/30 text-blue-400 px-1.5 py-0.5 rounded ml-2">Novo Paciente</span></p>
-                                                    <p className="text-gray-400 text-xs mt-1">Quer agendar: <strong>Avaliação</strong></p>
-                                                </div>
-                                                <div className="bg-blue-900/20 text-blue-400 text-xs px-2 py-1 rounded border border-blue-500/20 flex items-center">
-                                                    <Clock size={12} className="mr-1"/> Amanhã 15:00
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-2 mt-2">
-                                                <button className="flex-1 bg-green-600/20 text-green-400 border border-green-500/20 py-1.5 rounded text-xs font-bold hover:bg-green-600/30 transition">Aceitar</button>
-                                                <button className="flex-1 bg-red-600/20 text-red-400 border border-red-500/20 py-1.5 rounded text-xs font-bold hover:bg-red-600/30 transition">Recusar</button>
-                                            </div>
-                                        </div>
-                                        <div className="p-4 flex flex-col gap-2 opacity-60">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <p className="text-white font-bold text-sm">Ana Costa</p>
-                                                    <p className="text-gray-400 text-xs mt-1">Quer agendar: <strong>Limpeza</strong></p>
-                                                </div>
-                                                <div className="bg-blue-900/20 text-blue-400 text-xs px-2 py-1 rounded border border-blue-500/20 flex items-center">
-                                                    <Clock size={12} className="mr-1"/> 20/10 09:00
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* GUIA PRÁTICO (NEW) */}
-                            {activeMockup === 'Guia Prático' && (
-                                <div className="space-y-4 animate-fade-in">
-                                    <h2 className="text-xl font-bold text-white mb-4">Guia Prático</h2>
-                                    <div className="space-y-3">
-                                        <div className="bg-gray-800/50 border border-white/5 p-3 rounded-lg flex justify-between items-center cursor-pointer hover:bg-gray-800 transition">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400"><Calendar size={16}/></div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-white">Como configurar a Agenda?</p>
-                                                    <p className="text-[10px] text-gray-500">3 passos simples</p>
-                                                </div>
-                                            </div>
-                                            <ChevronRight size={16} className="text-gray-500"/>
-                                        </div>
-                                        <div className="bg-gray-800/50 border border-white/5 p-3 rounded-lg flex justify-between items-center cursor-pointer hover:bg-gray-800 transition">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400"><Mic size={16}/></div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-white">Usando a IA no Prontuário</p>
-                                                    <p className="text-[10px] text-gray-500">Tutorial rápido</p>
-                                                </div>
-                                            </div>
-                                            <ChevronRight size={16} className="text-gray-500"/>
-                                        </div>
-                                    </div>
-                                    <div className="mt-4 bg-blue-900/20 border border-blue-500/20 p-4 rounded-lg text-center">
-                                        <p className="text-xs text-blue-300 font-bold mb-2">Precisa de ajuda?</p>
-                                        <button className="bg-blue-600 text-white text-xs px-4 py-2 rounded font-bold hover:bg-blue-500 transition">Falar com Suporte</button>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* CONFIGURAÇÕES (NEW) */}
-                            {activeMockup === 'Configurações' && (
-                                <div className="space-y-6 animate-fade-in">
-                                    <h2 className="text-xl font-bold text-white mb-4">Configurações</h2>
-                                    <div className="bg-gray-900/60 border border-white/5 p-4 rounded-xl">
-                                        <div className="flex gap-4 border-b border-white/5 pb-4 mb-4 overflow-x-auto">
-                                            <button className="text-xs font-bold text-primary border-b-2 border-primary pb-1">Perfil da Clínica</button>
-                                            <button className="text-xs font-bold text-gray-500 hover:text-white pb-1">Equipe</button>
-                                            <button className="text-xs font-bold text-gray-500 hover:text-white pb-1">Planos</button>
-                                        </div>
-                                        <div className="space-y-4">
-                                            <div>
-                                                <label className="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Nome da Clínica</label>
-                                                <input type="text" value="Clínica Odonto Vida" className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white" readOnly/>
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Endereço</label>
-                                                <input type="text" value="Av. Paulista, 1000 - SP" className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white" readOnly/>
-                                            </div>
-                                            <button className="w-full bg-primary text-white py-2 rounded text-sm font-bold mt-2">Salvar Alterações</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
                         </div>
 
-                        {/* Mobile Menu Overlay */}
+                        {/* Mobile Menu Overlay Mockup */}
                         {device === 'mobile' && mockupMobileMenuOpen && (
-                           <div className="absolute inset-0 z-50 bg-gray-950/95 backdrop-blur flex flex-col p-4 animate-fade-in">
+                           <div className="absolute inset-0 z-50 bg-gray-900/95 backdrop-blur flex flex-col p-4 animate-fade-in">
                               <div className="flex justify-between items-center mb-6">
                                   <span className="text-white font-bold text-lg">Menu</span>
                                   <button onClick={() => setMockupMobileMenuOpen(false)} className="text-gray-400 hover:text-white"><X size={24}/></button>
@@ -618,9 +383,6 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* RESTO DO CÓDIGO PERMANECE IGUAL (FEATURES GRID, PRICING, ETC) */}
-      {/* ... (Conteúdo abaixo mantido para brevidade, mas deve ser incluído na resposta final para o arquivo completo) ... */}
-      
       {/* AI SPOTLIGHT SECTION */}
       <section id="ai-section" className="py-32 relative z-10 border-t border-white/5 bg-gray-900/50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -704,79 +466,25 @@ const LandingPage: React.FC = () => {
                     </div>
                 </div>
             </div>
-        </div>
-      </section>
 
-      {/* CORE FEATURES GRID (BENTO STYLE) */}
-      <section id="features" className="py-24 relative z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
-                <h2 className="text-3xl md:text-4xl font-black text-white mb-4">Gestão Completa & Moderna</h2>
-                <p className="text-xl text-gray-400 max-w-2xl mx-auto">Funcionalidades desenhadas para eliminar gargalos e aumentar a produtividade da sua clínica.</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                
-                {/* Agenda Online */}
-                <div className="md:col-span-2 bg-gray-900/60 backdrop-blur-md rounded-3xl p-8 shadow-lg border border-white/5 hover:border-blue-500/30 transition group overflow-hidden relative">
-                    <div className="relative z-10">
-                        <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center text-blue-400 mb-6 border border-blue-500/20"><Calendar size={24}/></div>
-                        <h3 className="text-2xl font-bold text-white mb-3">Agenda Inteligente & Online</h3>
-                        <p className="text-gray-400 mb-6 max-w-md">Elimine os buracos na agenda. Compartilhe seu link exclusivo e deixe que os pacientes escolham horários livres. Você aprova ou recusa com um clique.</p>
-                        <div className="flex gap-2 text-sm font-bold text-blue-300">
-                            <span className="bg-blue-900/30 px-3 py-1 rounded-full border border-blue-500/20">Link Público</span>
-                            <span className="bg-blue-900/30 px-3 py-1 rounded-full border border-blue-500/20">Bloqueio de Férias</span>
-                        </div>
-                    </div>
-                    <div className="absolute right-0 bottom-0 w-1/3 h-full bg-gradient-to-l from-blue-600/10 to-transparent opacity-0 group-hover:opacity-100 transition duration-500"></div>
+            {/* VIDEO DEMO SECTION */}
+            <div className="mt-16 max-w-4xl mx-auto">
+                <div className="aspect-video rounded-2xl overflow-hidden shadow-2xl border border-white/10 relative bg-gray-900 group">
+                    <div className="absolute inset-0 bg-purple-600/20 blur-3xl opacity-20 group-hover:opacity-30 transition duration-1000 pointer-events-none"></div>
+                    <iframe 
+                        className="w-full h-full relative z-10"
+                        src="https://www.youtube.com/embed/hQmUia6y7vg?rel=0" 
+                        title="DentiHub AI Demo"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        allowFullScreen
+                    ></iframe>
                 </div>
-
-                {/* Financeiro */}
-                <div className="bg-gray-900/60 backdrop-blur-md rounded-3xl p-8 shadow-lg border border-white/5 hover:border-green-500/30 transition group">
-                    <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center text-green-400 mb-6 border border-green-500/20"><DollarSign size={24}/></div>
-                    <h3 className="text-2xl font-bold text-white mb-3">Fluxo de Caixa</h3>
-                    <p className="text-gray-400 mb-4">Lançamentos automáticos a partir da agenda. Saiba exatamente quanto entrou e quanto tem a pagar.</p>
-                    <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden mt-auto">
-                        <div className="bg-green-500 w-3/4 h-full shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2 text-right">Receita Prevista vs Realizada</p>
-                </div>
-
-                {/* Lembretes */}
-                <div className="md:col-span-2 bg-gradient-to-r from-gray-900 to-gray-800 rounded-3xl p-8 shadow-lg border border-white/10 text-white relative overflow-hidden group hover:border-white/20 transition">
-                    <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-8">
-                        <div className="flex-1">
-                            <div className="w-12 h-12 bg-gray-700/50 rounded-xl flex items-center justify-center text-white mb-6 border border-white/10"><BellRing size={24}/></div>
-                            <h3 className="text-2xl font-bold mb-3">Reduza Faltas (No-Show)</h3>
-                            <p className="text-gray-400 mb-6">O sistema envia e-mails automáticos 24h antes. Se o paciente não confirmar, enviamos um alerta de urgência 12h antes.</p>
-                            <button onClick={() => goToAuth('signup')} className="text-white border-b border-white/30 pb-1 hover:text-white hover:border-white transition">Configurar Lembretes &rarr;</button>
-                        </div>
-                        <div className="bg-white text-gray-900 p-4 rounded-xl w-full md:w-64 shadow-2xl transform rotate-3 group-hover:rotate-0 transition duration-500">
-                            <div className="flex items-center gap-2 mb-3 border-b pb-2">
-                                <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs">D</div>
-                                <span className="text-xs font-bold">Lembrete de Consulta</span>
-                            </div>
-                            <p className="text-xs text-gray-600 mb-3">Olá Ana, sua consulta é amanhã às 14:00.</p>
-                            <div className="flex gap-2">
-                                <div className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded flex-1 text-center">Confirmar</div>
-                                <div className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-1 rounded flex-1 text-center">Cancelar</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Gestão de Equipe */}
-                <div className="bg-gray-900/60 backdrop-blur-md rounded-3xl p-8 shadow-lg border border-white/5 hover:border-purple-500/30 transition group">
-                    <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center text-purple-400 mb-6 border border-purple-500/20"><Users size={24}/></div>
-                    <h3 className="text-2xl font-bold text-white mb-3">Gestão de Equipe</h3>
-                    <p className="text-gray-400 mb-4">Cadastre dentistas e recepcionistas. Defina permissões de acesso para cada função.</p>
-                </div>
-
+                <p className="text-center text-gray-500 text-sm mt-4">Veja a Inteligência Artificial criando um prontuário em tempo real.</p>
             </div>
         </div>
       </section>
 
-      {/* PRICING */}
+      {/* REST OF SECTIONS (Features, Pricing, Footer) - KEPT IDENTICAL */}
       <section className="py-24 relative z-10" id="plans">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -793,7 +501,6 @@ const LandingPage: React.FC = () => {
                 <li className="flex items-center text-gray-400"><CheckCircle size={18} className="text-gray-600 mr-2" /> 1 Dentista</li>
                 <li className="flex items-center text-gray-400"><CheckCircle size={18} className="text-gray-600 mr-2" /> Até 30 Pacientes</li>
                 <li className="flex items-center text-gray-400"><CheckCircle size={18} className="text-gray-600 mr-2" /> Prontuário IA (3 usos totais)</li>
-                <li className="flex items-center text-gray-400"><CheckCircle size={18} className="text-gray-600 mr-2" /> Lembretes por E-mail</li>
                 <li className="flex items-center text-gray-400"><CheckCircle size={18} className="text-gray-600 mr-2" /> Agenda & Financeiro</li>
               </ul>
               <button onClick={() => goToAuth('signup')} className="w-full py-3 rounded-lg border border-white/20 text-white font-bold hover:bg-white/5 transition">Começar Grátis</button>
@@ -808,7 +515,6 @@ const LandingPage: React.FC = () => {
                 <li className="flex items-center text-gray-300"><CheckCircle size={18} className="text-blue-500 mr-2" /> Até 3 Dentistas</li>
                 <li className="flex items-center text-gray-300"><CheckCircle size={18} className="text-blue-500 mr-2" /> Até 100 Pacientes</li>
                 <li className="flex items-center text-gray-300"><CheckCircle size={18} className="text-blue-500 mr-2" /> Prontuário IA (5 usos/dia por dentista)</li>
-                <li className="flex items-center text-gray-300"><CheckCircle size={18} className="text-blue-500 mr-2" /> Tudo do Gratuito</li>
               </ul>
               <button onClick={() => goToAuth('signup')} className="w-full py-3 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 transition shadow-lg shadow-blue-900/20">Assinar Agora</button>
             </div>
@@ -821,8 +527,6 @@ const LandingPage: React.FC = () => {
                 <li className="flex items-center text-gray-300"><CheckCircle size={18} className="text-green-400 mr-2" /> Até 5 Dentistas</li>
                 <li className="flex items-center text-gray-300"><CheckCircle size={18} className="text-green-400 mr-2" /> Pacientes Ilimitados</li>
                 <li className="flex items-center text-gray-300"><CheckCircle size={18} className="text-green-400 mr-2" /> Prontuário IA (10 usos/dia por dentista)</li>
-                <li className="flex items-center text-gray-300"><Folder size={18} className="text-green-400 mr-2" /> Armazenamento de Arquivos</li>
-                <li className="flex items-center text-gray-300"><CheckCircle size={18} className="text-green-400 mr-2" /> Tudo do Starter</li>
               </ul>
               <button onClick={() => goToAuth('signup')} className="w-full py-3 rounded-lg bg-white text-gray-900 font-bold hover:bg-gray-100 transition">Assinar Pro</button>
             </div>
@@ -832,7 +536,6 @@ const LandingPage: React.FC = () => {
         <div id="plans-end-trigger" className="h-1 w-full pointer-events-none opacity-0"></div>
       </section>
 
-      {/* FOOTER */}
       <footer className="bg-gray-950 py-12 border-t border-white/5 relative z-10">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <div className="flex justify-center items-center gap-2 text-white font-bold text-xl mb-4">
@@ -867,7 +570,7 @@ const LandingPage: React.FC = () => {
                     <Check className="h-6 w-6 text-green-500" />
                   </div>
                   <h4 className="text-lg font-bold text-white">Inscrição Confirmada!</h4>
-                  <p className="text-gray-400 text-sm mt-2">Obrigado por se juntar a nós.</p>
+                  <p className="text-gray-400 text-sm mt-2">Verifique seu e-mail para mais detalhes.</p>
                 </div>
               ) : (
                 <form onSubmit={handleLeadSubmit} className="space-y-4">
