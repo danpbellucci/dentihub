@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Loader2, User, HelpCircle } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, HelpCircle } from 'lucide-react';
 import { supabase } from '../services/supabase';
 
 interface Message {
@@ -46,10 +46,14 @@ const AiHelpButton: React.FC = () => {
 
       if (error) throw error;
 
-      setMessages(prev => [...prev, { role: 'ai', content: data.reply }]);
+      if (data && data.reply) {
+        setMessages(prev => [...prev, { role: 'ai', content: data.reply }]);
+      } else {
+        throw new Error("Resposta vazia da IA");
+      }
     } catch (err) {
       console.error(err);
-      setMessages(prev => [...prev, { role: 'ai', content: 'Desculpe, tive um erro de conexão. Tente novamente mais tarde.' }]);
+      setMessages(prev => [...prev, { role: 'ai', content: 'Desculpe, tive um problema de conexão. Verifique sua internet ou tente novamente mais tarde.' }]);
     } finally {
       setLoading(false);
     }
