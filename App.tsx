@@ -24,6 +24,7 @@ import LearnMorePage from './components/LearnMorePage';
 import SuperAdminPage from './components/SuperAdminPage';
 import SuperAdminCampaigns from './components/SuperAdminCampaigns';
 import SuperAdminLeads from './components/SuperAdminLeads';
+import SuperAdminSubscriptions from './components/SuperAdminSubscriptions'; // New Import
 import UpdatePasswordPage from './components/UpdatePasswordPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Loader2 } from 'lucide-react';
@@ -231,12 +232,13 @@ const App: React.FC = () => {
                   </SuperAdminRoute>
               </PrivateRoute>
           } />
-
-          {/* 
-             Public Booking Page (Dynamic Slug at Root) 
-             IMPORTANTE: Esta rota deve ser a ÚLTIMA.
-          */}
-          <Route path="/:slug" element={<PublicBookingPage />} />
+          <Route path="/super-admin/subscriptions" element={
+              <PrivateRoute>
+                  <SuperAdminRoute>
+                      <SuperAdminSubscriptions />
+                  </SuperAdminRoute>
+              </PrivateRoute>
+          } />
         </Routes>
       </HashRouter>
     </ErrorBoundary>

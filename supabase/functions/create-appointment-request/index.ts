@@ -36,8 +36,9 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
 
-    if (!supabaseUrl || !serviceRoleKey) throw new Error('Configuração incompleta.');
+    if (!supabaseUrl || !serviceRoleKey || !anonKey) throw new Error('Configuração incompleta.');
 
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
     const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
@@ -85,6 +86,64 @@ Deno.serve(async (req) => {
         .select().single();
 
     if (insertError) throw new Error("Erro ao salvar solicitação.");
+
+    // --- NOTIFICAÇÃO POR E-MAIL PARA A CLÍNICA ---
+    try {
+        // 1. Busca quais papéis (roles) devem ser notificados
+        const { data: activeConfigs } = await supabaseAdmin
+            .from('role_notifications')
+            .select('role')
+            .eq('clinic_id', clinic_id)
+            .eq('notification_type', 'new_request_alert')
+            .eq('is_enabled', true);
+
+        if (activeConfigs && activeConfigs.length > 0) {
+            const rolesToNotify = activeConfigs.map(c => c.role);
+
+            // 2. Busca os usuários com esses papéis
+            const { data: usersToNotify } = await supabaseAdmin
+                .from('user_profiles')
+                .select('email, role')
+                .eq('clinic_id', clinic_id)
+                .in('role', rolesToNotify);
+
+            if (usersToNotify && usersToNotify.length > 0) {
+                // 3. Busca nome do dentista (para o email)
+                const { data: dentist } = await supabaseAdmin.from('dentists').select('name').eq('id', dentist_id).single();
+                const dentistName = dentist?.name || 'Não especificado';
+
+                // 4. Envia os e-mails
+                // Usamos o endpoint send-emails para centralizar o layout e lógica do Resend
+                const recipients = usersToNotify.map(u => ({ email: u.email }));
+                
+                // Chamada interna para a função de email
+                // Nota: Usamos fetch para chamar a outra função edge
+                const emailFunctionUrl = `${supabaseUrl}/functions/v1/send-emails`;
+                
+                await fetch(emailFunctionUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${serviceRoleKey}`, // Usa Service Key para bypassar RLS na outra ponta
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        type: 'new_request_notification',
+                        recipients: recipients,
+                        requestDetails: {
+                            patientName: patient_name,
+                            serviceName: service_name,
+                            requestedTime: requested_time,
+                            dentistName: dentistName,
+                            patientPhone: patient_phone
+                        }
+                    })
+                });
+            }
+        }
+    } catch (notifError) {
+        console.error("Erro ao enviar notificação de nova solicitação:", notifError);
+        // Não falha a requisição principal, apenas loga o erro
+    }
 
     // LOG DE USO
     await supabaseAdmin.from('edge_function_logs').insert({

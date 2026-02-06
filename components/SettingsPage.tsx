@@ -22,6 +22,7 @@ const APP_MODULES = [
     { key: 'inventory', label: 'Estoque' }, { key: 'requests', label: 'Solicitações' }, { key: 'guide', label: 'Guia Prático' }, { key: 'settings', label: 'Configurações' },
 ];
 const NOTIFICATION_TYPES = [
+    { key: 'new_request_alert', label: '🔔 Novas Solicitações Online' },
     { key: 'agenda_daily', label: '📧 Resumo da Agenda (Dia Seguinte)' }, 
     { key: 'finance_daily', label: '📧 Previsão Financeira (Dia Seguinte)' }, 
     { key: 'stock_low', label: '📦 Alerta de Estoque Baixo' },
@@ -105,9 +106,6 @@ const SettingsPage: React.FC = () => {
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
-  // ... (Restante do código igual, apenas substituindo a parte de renderização para garantir consistência)
-  // ... (Funções auxiliares omitidas para brevidade, mantendo a lógica existente)
-  
   const fetchSubscription = async () => {
     try { await supabase.functions.invoke('check-subscription'); const { data, error } = await supabase.functions.invoke('get-subscription-details'); if (!error && data) { setSubscription(data); if (data.hasSubscription && data.status === 'active' && refreshProfile) await refreshProfile(); } } catch (e) { console.error(e); }
   };
@@ -238,7 +236,6 @@ const SettingsPage: React.FC = () => {
             )}
 
             {/* ... Other Tabs (Team, Permissions, Security, Billing) ... */}
-            {/* Same content as before, just ensuring correct rendering */}
             
             {activeTab === 'team' && (
                 <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow-sm p-6 animate-fade-in border border-white/5">
@@ -327,9 +324,10 @@ const SettingsPage: React.FC = () => {
                 </div>
             )}
 
+            {/* Resto dos componentes e modais (Security, Billing, Modais) mantidos idênticos */}
+            {/* ... (Security Content) ... */}
             {activeTab === 'security' && (
                 <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow-sm p-6 animate-fade-in border border-white/5 flex flex-col gap-10">
-                    {/* ... (Security Content) ... */}
                     <div>
                         <h2 className="text-xl font-bold text-white mb-6 pb-2 border-b border-white/10">Alterar Senha</h2>
                         <form onSubmit={handlePasswordChange} className="max-w-md space-y-6">
@@ -338,7 +336,6 @@ const SettingsPage: React.FC = () => {
                             <div><button type="submit" disabled={saving} className="bg-primary text-white px-6 py-2.5 rounded font-bold hover:bg-sky-600 transition flex items-center shadow-md disabled:opacity-50">{saving ? <Loader2 className="animate-spin mr-2" size={18} /> : <CheckCircle className="mr-2" size={18} />}Atualizar Senha</button></div>
                         </form>
                     </div>
-                    
                     <div className="border-t border-white/10 pt-8">
                         <h3 className="text-lg font-bold text-red-500 mb-4 flex items-center"><AlertTriangle className="mr-2" size={20}/> Zona de Perigo</h3>
                         <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -349,9 +346,9 @@ const SettingsPage: React.FC = () => {
                 </div>
             )}
 
+            {/* ... (Billing Content) ... */}
             {activeTab === 'billing' && (
                 <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow-sm p-6 animate-fade-in border border-white/5">
-                    {/* ... (Billing Content) ... */}
                     <div className="flex justify-between items-start mb-6">
                         <div><h2 className="text-xl font-bold text-white">Planos e Assinatura</h2><p className="text-gray-400 text-sm">Gerencie seu plano atual.</p></div>
                         <div className="text-right">
@@ -364,8 +361,6 @@ const SettingsPage: React.FC = () => {
                         </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        
-                        {/* Free Card */}
                         <div className="border border-white/10 rounded-xl p-6 bg-gray-800/50 flex flex-col relative overflow-hidden">
                             <h4 className="font-bold text-white text-lg">Gratuito</h4>
                             <div className="my-4"><span className="text-3xl font-black text-white">R$ 0</span><span className="text-sm text-gray-500">/mês</span></div>
@@ -377,8 +372,6 @@ const SettingsPage: React.FC = () => {
                             </ul>
                             <button disabled className="w-full py-2 bg-gray-700 text-gray-400 rounded font-bold">Plano Atual</button>
                         </div>
-
-                        {/* Starter Card */}
                         <div className="border border-blue-500/30 rounded-xl p-6 bg-gray-800/50 flex flex-col relative overflow-hidden">
                             <div className="absolute top-0 right-0 bg-blue-500/20 text-blue-400 text-[10px] font-bold px-2 py-1 rounded-bl-lg border-l border-b border-blue-500/30">POPULAR</div>
                             <h4 className="font-bold text-blue-400 text-lg">Starter</h4>
@@ -391,8 +384,6 @@ const SettingsPage: React.FC = () => {
                             </ul>
                             {currentTier === 'starter' ? <button disabled className="w-full py-2 bg-blue-900/30 text-blue-400 rounded font-bold">Plano Atual</button> : <button onClick={() => openPaymentModal('Starter', 'R$ 100,00', 'price_1SlMYr2Obfcu36b5HzK9JQPO')} className="w-full py-2 bg-primary text-white rounded font-bold hover:bg-sky-600 shadow-lg shadow-blue-900/20">Assinar Starter</button>}
                         </div>
-
-                        {/* Pro Card */}
                         <div className="border border-yellow-500/30 rounded-xl p-6 bg-gray-800/50 flex flex-col relative overflow-hidden">
                             <div className="absolute top-0 right-0 p-4 opacity-10"><Zap size={100} className="text-yellow-500"/></div>
                             <h4 className="font-bold text-yellow-400 text-lg flex items-center gap-2"><Zap size={18} fill="currentColor"/> Pro</h4>
@@ -409,7 +400,7 @@ const SettingsPage: React.FC = () => {
                 </div>
             )}
 
-            {/* Modais omitidos para brevidade (RoleEdit, Payment, etc) permanecem iguais */}
+            {/* Role Edit Modal */}
             {roleToEdit && (
                 <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
                     <div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-6 w-full max-w-sm">
@@ -426,6 +417,7 @@ const SettingsPage: React.FC = () => {
                 </div>
             )}
 
+            {/* Other Modals (Payment, Cancel, Delete Member/Account) */}
             {showPaymentModal && selectedPlan && clientSecret && <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'night' } }}><SubscriptionPaymentModal planName={selectedPlan.name} price={selectedPlan.price} onClose={() => setShowPaymentModal(false)} /></Elements>}
             {showSubscriptionDetails && subscription && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"><div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl w-full max-w-md p-6 relative"><button onClick={() => setShowSubscriptionDetails(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white"><X size={24} /></button><h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><CreditCard className="text-primary" /> Detalhes</h3><div className="p-4 bg-gray-800 rounded-lg border border-white/5 mb-4"><p className="text-sm text-gray-400 mb-1">Plano Atual</p><p className="font-bold text-lg text-white">{subscription.product_name}</p></div>{!subscription.cancel_at_period_end && <button onClick={() => {setShowSubscriptionDetails(false);setShowCancelConfirmation(true);}} className="w-full py-2.5 border border-red-500/30 text-red-400 rounded-lg font-bold hover:bg-red-900/20 flex justify-center items-center gap-2"><X size={16} /> Cancelar Assinatura</button>}</div></div>}
             {showCancelConfirmation && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"><div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-6 w-full max-w-sm text-center"><h3 className="text-xl font-bold text-white mb-2">Cancelar Assinatura?</h3><p className="text-gray-400 mb-6 text-sm">Você tem certeza?</p><div className="flex flex-col gap-3"><button onClick={processCancellation} disabled={processing} className="w-full bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition shadow-md">{processing ? <Loader2 className="animate-spin mr-2" size={18}/> : 'Sim, Cancelar'}</button><button onClick={() => setShowCancelConfirmation(false)} disabled={processing} className="w-full bg-gray-800 text-gray-300 py-3 rounded-lg font-bold hover:bg-gray-700 transition">Manter</button></div></div></div>}

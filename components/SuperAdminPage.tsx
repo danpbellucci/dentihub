@@ -5,7 +5,8 @@ import { supabase } from '../services/supabase';
 import { 
   Users, Building2, Calendar, Mic, Mail, Activity, 
   FileText, CalendarRange, Filter, RefreshCw,
-  BarChart3, ArrowLeft, Server, Megaphone, PenTool, Instagram, Linkedin, MessageCircle, Copy, Check, Loader2, Sparkles, Image as ImageIcon, Zap
+  BarChart3, ArrowLeft, Server, Megaphone, PenTool, Instagram, Linkedin, MessageCircle, Copy, Check, Loader2, Sparkles, Image as ImageIcon, Zap, CreditCard,
+  Target, Monitor, MousePointer
 } from 'lucide-react';
 import { format, subDays, startOfDay, endOfDay, parseISO } from 'date-fns';
 import Toast, { ToastType } from './Toast';
@@ -39,7 +40,7 @@ interface FunctionMetric {
 
 const SuperAdminPage: React.FC = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'social-copy'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'marketing'>('dashboard');
   const [loading, setLoading] = useState(true);
   const [testingCampaigns, setTestingCampaigns] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
@@ -69,12 +70,26 @@ const SuperAdminPage: React.FC = () => {
       totals: Record<string, FunctionMetric>;
   }>({ days: [], functions: [], matrix: {}, totals: {} });
 
-  // --- SOCIAL COPY STATES ---
+  // --- MARKETING AGENT STATES ---
+  const [marketingSubTab, setMarketingSubTab] = useState<'social' | 'image' | 'ads'>('social');
+  
+  // Social Copy
   const [copyPlatform, setCopyPlatform] = useState('Instagram');
   const [copyTopic, setCopyTopic] = useState('');
   const [copyTone, setCopyTone] = useState('Profissional e Educativo');
   const [generatedCopy, setGeneratedCopy] = useState<any>(null);
-  const [generatingCopy, setGeneratingCopy] = useState(false);
+  
+  // Image Prompt
+  const [imgDesc, setImgDesc] = useState('');
+  const [imgStyle, setImgStyle] = useState('Fotorealista / Estúdio');
+  const [generatedPrompt, setGeneratedPrompt] = useState<any>(null);
+
+  // Ads Strategy
+  const [adsProduct, setAdsProduct] = useState('');
+  const [adsObjective, setAdsObjective] = useState('Leads (Agendamentos)');
+  const [generatedAds, setGeneratedAds] = useState<any>(null);
+
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     if (activeTab === 'dashboard') {
@@ -214,45 +229,59 @@ const SuperAdminPage: React.FC = () => {
       }
   };
 
-  const handleGenerateCopy = async () => {
-      if (!copyTopic.trim()) {
-          setToast({ message: "Digite um tópico para o post.", type: 'warning' });
-          return;
+  // --- GENERIC MARKETING HANDLER ---
+  const handleMarketingGenerate = async () => {
+      let prompt = '';
+      let taskType = '';
+      let contextData = {};
+
+      if (marketingSubTab === 'social') {
+          if (!copyTopic) return setToast({ message: "Defina o tópico.", type: 'warning' });
+          taskType = 'social';
+          prompt = `Criar post para ${copyPlatform} sobre: ${copyTopic}. Tom: ${copyTone}.`;
+          contextData = { platform: copyPlatform, tone: copyTone };
+      } 
+      else if (marketingSubTab === 'image') {
+          if (!imgDesc) return setToast({ message: "Descreva a imagem.", type: 'warning' });
+          taskType = 'image_prompt';
+          prompt = `Criar prompt de imagem: ${imgDesc}. Estilo: ${imgStyle}.`;
+          contextData = { style: imgStyle };
+      } 
+      else if (marketingSubTab === 'ads') {
+          if (!adsProduct) return setToast({ message: "Defina o produto/serviço.", type: 'warning' });
+          taskType = 'ads_strategy';
+          prompt = `Criar estratégia de ads para: ${adsProduct}. Objetivo: ${adsObjective}.`;
+          contextData = { objective: adsObjective };
       }
 
-      setGeneratingCopy(true);
-      setGeneratedCopy(null);
-
-      const prompt = `Crie um post para ${copyPlatform}.
-      Tópico: ${copyTopic}.
-      Tom de voz: ${copyTone}.
-      Público: Dentistas que querem modernizar a clínica.`;
+      setGenerating(true);
+      setGeneratedCopy(null); setGeneratedPrompt(null); setGeneratedAds(null);
 
       try {
           const { data, error } = await supabase.functions.invoke('generate-campaign-content', {
-              body: { 
-                  prompt: prompt,
-                  contentType: 'social'
-              }
+              body: { prompt, taskType, contextData }
           });
 
           if (error) throw error;
           if (data && data.error) throw new Error(data.error);
 
-          setGeneratedCopy(data);
-          setToast({ message: "Copy gerada com sucesso!", type: 'success' });
+          if (marketingSubTab === 'social') setGeneratedCopy(data);
+          else if (marketingSubTab === 'image') setGeneratedPrompt(data);
+          else if (marketingSubTab === 'ads') setGeneratedAds(data);
+
+          setToast({ message: "Conteúdo gerado com sucesso!", type: 'success' });
 
       } catch (err: any) {
           console.error(err);
-          setToast({ message: "Erro ao gerar copy: " + err.message, type: 'error' });
+          setToast({ message: "Erro ao gerar: " + err.message, type: 'error' });
       } finally {
-          setGeneratingCopy(false);
+          setGenerating(false);
       }
   };
 
   const copyToClipboard = (text: string) => {
       navigator.clipboard.writeText(text);
-      setToast({ message: "Copiado para área de transferência!", type: 'success' });
+      setToast({ message: "Copiado!", type: 'success' });
   };
 
   return (
@@ -288,16 +317,22 @@ const SuperAdminPage: React.FC = () => {
                     <BarChart3 size={16} /> Visão Geral
                 </button>
                 <button 
-                    onClick={() => setActiveTab('social-copy')}
-                    className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition whitespace-nowrap ${activeTab === 'social-copy' ? 'bg-purple-100 text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    onClick={() => setActiveTab('marketing')}
+                    className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition whitespace-nowrap ${activeTab === 'marketing' ? 'bg-purple-100 text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                 >
-                    <PenTool size={16} /> Gerador de Copy
+                    <Sparkles size={16} /> Agente de Marketing
                 </button>
                 <button 
                     onClick={() => navigate('/super-admin/leads')}
                     className="px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition whitespace-nowrap text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                 >
                     <Users size={16} /> Gestão de Leads
+                </button>
+                <button 
+                    onClick={() => navigate('/super-admin/subscriptions')}
+                    className="px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition whitespace-nowrap text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                >
+                    <CreditCard size={16} /> Assinaturas
                 </button>
             </div>
         </div>
@@ -490,76 +525,102 @@ const SuperAdminPage: React.FC = () => {
             </div>
         )}
 
-        {/* --- TAB: SOCIAL COPY --- */}
-        {activeTab === 'social-copy' && (
-            <div className="flex flex-col lg:flex-row gap-6 animate-fade-in-up h-[calc(100vh-200px)]">
+        {/* --- TAB: MARKETING AGENT --- */}
+        {activeTab === 'marketing' && (
+            <div className="flex flex-col lg:flex-row gap-6 animate-fade-in-up min-h-[calc(100vh-200px)]">
                 
-                {/* CONFIGURATION PANEL */}
+                {/* CONFIGURAÇÃO */}
                 <div className="w-full lg:w-1/3 bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col">
-                    <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                        <Sparkles className="text-purple-600 mr-2" size={20}/> Configurar Post
+                    <h2 className="text-lg font-bold text-gray-800 mb-6 flex items-center">
+                        <Sparkles className="text-purple-600 mr-2" size={20}/> Agente de Marketing
                     </h2>
+
+                    {/* Sub-Tabs Navigation */}
+                    <div className="flex p-1 bg-gray-100 rounded-lg mb-6">
+                        <button onClick={() => setMarketingSubTab('social')} className={`flex-1 py-2 text-xs font-bold rounded-md transition ${marketingSubTab === 'social' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Redes Sociais</button>
+                        <button onClick={() => setMarketingSubTab('image')} className={`flex-1 py-2 text-xs font-bold rounded-md transition ${marketingSubTab === 'image' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Gerar Imagens</button>
+                        <button onClick={() => setMarketingSubTab('ads')} className={`flex-1 py-2 text-xs font-bold rounded-md transition ${marketingSubTab === 'ads' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Google/Meta Ads</button>
+                    </div>
                     
+                    {/* CONTENT FORMS */}
                     <div className="space-y-4 flex-1">
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">Plataforma</label>
-                            <div className="flex gap-2">
-                                <button 
-                                    onClick={() => setCopyPlatform('Instagram')}
-                                    className={`flex-1 py-3 rounded-lg border flex flex-col items-center justify-center transition-all ${copyPlatform === 'Instagram' ? 'border-pink-500 bg-pink-50 text-pink-700 shadow-sm' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
-                                >
-                                    <Instagram size={20} className="mb-1"/>
-                                    <span className="text-xs font-bold">Instagram</span>
-                                </button>
-                                <button 
-                                    onClick={() => setCopyPlatform('LinkedIn')}
-                                    className={`flex-1 py-3 rounded-lg border flex flex-col items-center justify-center transition-all ${copyPlatform === 'LinkedIn' ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
-                                >
-                                    <Linkedin size={20} className="mb-1"/>
-                                    <span className="text-xs font-bold">LinkedIn</span>
-                                </button>
-                                <button 
-                                    onClick={() => setCopyPlatform('WhatsApp')}
-                                    className={`flex-1 py-3 rounded-lg border flex flex-col items-center justify-center transition-all ${copyPlatform === 'WhatsApp' ? 'border-green-500 bg-green-50 text-green-700 shadow-sm' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
-                                >
-                                    <MessageCircle size={20} className="mb-1"/>
-                                    <span className="text-xs font-bold">WhatsApp</span>
-                                </button>
+                        
+                        {/* SOCIAL FORM */}
+                        {marketingSubTab === 'social' && (
+                            <div className="animate-fade-in space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Plataforma</label>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => setCopyPlatform('Instagram')} className={`flex-1 py-2 rounded border flex items-center justify-center gap-1 text-xs font-bold transition ${copyPlatform === 'Instagram' ? 'bg-pink-50 border-pink-300 text-pink-700' : 'border-gray-200 text-gray-500'}`}><Instagram size={14}/> Instagram</button>
+                                        <button onClick={() => setCopyPlatform('LinkedIn')} className={`flex-1 py-2 rounded border flex items-center justify-center gap-1 text-xs font-bold transition ${copyPlatform === 'LinkedIn' ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-200 text-gray-500'}`}><Linkedin size={14}/> LinkedIn</button>
+                                        <button onClick={() => setCopyPlatform('Blog')} className={`flex-1 py-2 rounded border flex items-center justify-center gap-1 text-xs font-bold transition ${copyPlatform === 'Blog' ? 'bg-gray-100 border-gray-400 text-gray-800' : 'border-gray-200 text-gray-500'}`}><PenTool size={14}/> Blog</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Tom de Voz</label>
+                                    <select value={copyTone} onChange={(e) => setCopyTone(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none bg-white">
+                                        <option>Profissional e Educativo</option>
+                                        <option>Descontraído e Divertido</option>
+                                        <option>Urgente e Promocional</option>
+                                        <option>Empático e Acolhedor</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Tópico</label>
+                                    <textarea className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-purple-500 outline-none resize-none h-32" placeholder="Ex: Importância da limpeza dental a cada 6 meses..." value={copyTopic} onChange={(e) => setCopyTopic(e.target.value)}/>
+                                </div>
                             </div>
-                        </div>
+                        )}
 
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">Tom de Voz</label>
-                            <select 
-                                value={copyTone} 
-                                onChange={(e) => setCopyTone(e.target.value)}
-                                className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-purple-500 outline-none bg-white"
-                            >
-                                <option>Profissional e Educativo</option>
-                                <option>Descontraído e Divertido</option>
-                                <option>Urgente e Promocional</option>
-                                <option>Empático e Acolhedor</option>
-                            </select>
-                        </div>
+                        {/* IMAGE FORM */}
+                        {marketingSubTab === 'image' && (
+                            <div className="animate-fade-in space-y-4">
+                                <div className="bg-yellow-50 p-3 rounded border border-yellow-200 text-xs text-yellow-800 mb-2">
+                                    A IA irá gerar <strong>PROMPTS</strong> (instruções de texto) otimizados para usar no Midjourney ou DALL-E.
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Descrição da Cena</label>
+                                    <textarea className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-purple-500 outline-none resize-none h-32" placeholder="Ex: Um dentista sorrindo atendendo uma criança feliz..." value={imgDesc} onChange={(e) => setImgDesc(e.target.value)}/>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Estilo Visual</label>
+                                    <select value={imgStyle} onChange={(e) => setImgStyle(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none bg-white">
+                                        <option>Fotorealista / Estúdio</option>
+                                        <option>Cinematográfico (4k, dramatic lighting)</option>
+                                        <option>Ilustração 3D (Pixar Style)</option>
+                                        <option>Minimalista / Vetorial</option>
+                                    </select>
+                                </div>
+                            </div>
+                        )}
 
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">Tópico / Ideia</label>
-                            <textarea 
-                                className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-purple-500 outline-none resize-none h-32"
-                                placeholder="Ex: Dicas para quem tem medo de dentista, promoção de clareamento, ou novidade no sistema..."
-                                value={copyTopic}
-                                onChange={(e) => setCopyTopic(e.target.value)}
-                            />
-                        </div>
+                        {/* ADS FORM */}
+                        {marketingSubTab === 'ads' && (
+                            <div className="animate-fade-in space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Produto / Serviço</label>
+                                    <input type="text" className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none" placeholder="Ex: Implante Dentário, Clareamento" value={adsProduct} onChange={(e) => setAdsProduct(e.target.value)}/>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Objetivo da Campanha</label>
+                                    <select value={adsObjective} onChange={(e) => setAdsObjective(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none bg-white">
+                                        <option>Leads (Agendamentos)</option>
+                                        <option>Tráfego (Visitas ao Site)</option>
+                                        <option>Reconhecimento de Marca</option>
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+
                     </div>
 
                     <button 
-                        onClick={handleGenerateCopy}
-                        disabled={generatingCopy || !copyTopic}
+                        onClick={handleMarketingGenerate}
+                        disabled={generating}
                         className="w-full py-3 bg-purple-600 text-white rounded-lg font-bold hover:bg-purple-700 transition flex items-center justify-center disabled:opacity-50 mt-6 shadow-md"
                     >
-                        {generatingCopy ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="mr-2" size={18}/>}
-                        {generatingCopy ? 'Criando Mágica...' : 'Gerar Copy'}
+                        {generating ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="mr-2" size={18}/>}
+                        {generating ? 'Criando Mágica...' : 'Gerar Conteúdo'}
                     </button>
                 </div>
 
@@ -567,58 +628,128 @@ const SuperAdminPage: React.FC = () => {
                 <div className="w-full lg:w-2/3 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
                     <div className="px-6 py-4 border-b bg-gray-50 flex justify-between items-center">
                         <h3 className="font-bold text-gray-700">Resultado Gerado</h3>
-                        {generatedCopy && (
+                        {(generatedCopy || generatedPrompt || generatedAds) && (
                             <div className="flex gap-2">
-                                <button onClick={() => setGeneratedCopy(null)} className="text-xs text-gray-500 hover:text-red-500">Limpar</button>
+                                <button onClick={() => { setGeneratedCopy(null); setGeneratedPrompt(null); setGeneratedAds(null); }} className="text-xs text-gray-500 hover:text-red-500">Limpar</button>
                             </div>
                         )}
                     </div>
 
-                    <div className="flex-1 p-6 overflow-y-auto bg-gray-50/50">
-                        {!generatedCopy ? (
+                    <div className="flex-1 p-6 overflow-y-auto bg-gray-50/50 custom-scrollbar">
+                        {!generatedCopy && !generatedPrompt && !generatedAds ? (
                             <div className="h-full flex flex-col items-center justify-center text-gray-400">
-                                <PenTool size={48} className="mb-4 opacity-20" />
-                                <p className="text-center text-sm">Configure o post ao lado e clique em "Gerar Copy".<br/>O resultado aparecerá aqui.</p>
+                                <Sparkles size={48} className="mb-4 opacity-20" />
+                                <p className="text-center text-sm">Configure o agente ao lado e clique em "Gerar Conteúdo".<br/>O resultado aparecerá aqui.</p>
                             </div>
                         ) : (
                             <div className="space-y-6 animate-fade-in">
                                 
-                                {/* CAPTION */}
-                                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative group">
-                                    <h4 className="text-xs font-bold text-gray-400 uppercase mb-2">Legenda</h4>
-                                    <p className="text-gray-800 whitespace-pre-wrap leading-relaxed text-sm">{generatedCopy.caption}</p>
-                                    <button 
-                                        onClick={() => copyToClipboard(generatedCopy.caption)}
-                                        className="absolute top-2 right-2 p-2 bg-gray-100 rounded-md hover:bg-purple-100 hover:text-purple-700 text-gray-500 opacity-0 group-hover:opacity-100 transition-all"
-                                        title="Copiar Legenda"
-                                    >
-                                        <Copy size={16} />
-                                    </button>
-                                </div>
+                                {/* SOCIAL RESULT */}
+                                {generatedCopy && (
+                                    <>
+                                        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative group">
+                                            <h4 className="text-xs font-bold text-gray-400 uppercase mb-3">Legenda / Texto</h4>
+                                            <h3 className="text-lg font-bold text-gray-800 mb-4">{generatedCopy.title}</h3>
+                                            <p className="text-gray-700 whitespace-pre-wrap leading-relaxed text-sm">{generatedCopy.content}</p>
+                                            <div className="mt-4 pt-4 border-t border-gray-100">
+                                                <p className="text-blue-600 text-sm font-medium">{generatedCopy.hashtags}</p>
+                                            </div>
+                                            <button onClick={() => copyToClipboard(`${generatedCopy.title}\n\n${generatedCopy.content}\n\n${generatedCopy.hashtags}`)} className="absolute top-4 right-4 p-2 bg-gray-100 rounded-md hover:bg-purple-100 hover:text-purple-700 text-gray-500 opacity-0 group-hover:opacity-100 transition-all"><Copy size={16} /></button>
+                                        </div>
+                                        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-4 rounded-xl border border-purple-100 shadow-sm flex items-start gap-4">
+                                            <div className="p-2 bg-white rounded-lg shadow-sm text-purple-600 mt-1"><ImageIcon size={20} /></div>
+                                            <div><h4 className="text-xs font-bold text-purple-800 uppercase mb-1">Ideia Visual</h4><p className="text-sm text-purple-900">{generatedCopy.image_suggestion}</p></div>
+                                        </div>
+                                    </>
+                                )}
 
-                                {/* HASHTAGS */}
-                                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative group">
-                                    <h4 className="text-xs font-bold text-gray-400 uppercase mb-2">Hashtags</h4>
-                                    <p className="text-blue-600 text-sm font-medium">{generatedCopy.hashtags}</p>
-                                    <button 
-                                        onClick={() => copyToClipboard(generatedCopy.hashtags)}
-                                        className="absolute top-2 right-2 p-2 bg-gray-100 rounded-md hover:bg-blue-100 hover:text-blue-700 text-gray-500 opacity-0 group-hover:opacity-100 transition-all"
-                                        title="Copiar Hashtags"
-                                    >
-                                        <Copy size={16} />
-                                    </button>
-                                </div>
+                                {/* IMAGE PROMPT RESULT */}
+                                {generatedPrompt && (
+                                    <>
+                                        <div className="bg-gray-900 p-6 rounded-xl border border-gray-700 shadow-sm relative group">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <h4 className="text-xs font-bold text-green-400 uppercase">Midjourney Prompt</h4>
+                                                <button onClick={() => copyToClipboard(generatedPrompt.midjourney_prompt)} className="text-xs text-gray-400 hover:text-white flex items-center"><Copy size={12} className="mr-1"/> Copiar</button>
+                                            </div>
+                                            <code className="text-sm text-gray-300 font-mono block bg-black/30 p-3 rounded">{generatedPrompt.midjourney_prompt}</code>
+                                        </div>
+                                        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative group">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <h4 className="text-xs font-bold text-blue-600 uppercase">DALL-E 3 Prompt</h4>
+                                                <button onClick={() => copyToClipboard(generatedPrompt.dalle_prompt)} className="text-xs text-gray-400 hover:text-blue-600 flex items-center"><Copy size={12} className="mr-1"/> Copiar</button>
+                                            </div>
+                                            <p className="text-sm text-gray-700 leading-relaxed">{generatedPrompt.dalle_prompt}</p>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="bg-red-50 p-4 rounded-xl border border-red-100">
+                                                <h4 className="text-xs font-bold text-red-800 uppercase mb-1">Prompt Negativo (Evitar)</h4>
+                                                <p className="text-xs text-red-600">{generatedPrompt.negative_prompt}</p>
+                                            </div>
+                                            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                                <h4 className="text-xs font-bold text-blue-800 uppercase mb-1">Conceito (PT-BR)</h4>
+                                                <p className="text-xs text-blue-600">{generatedPrompt.pt_description}</p>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
 
-                                {/* VISUAL SUGGESTION */}
-                                <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-4 rounded-xl border border-purple-100 shadow-sm flex items-start gap-4">
-                                    <div className="p-2 bg-white rounded-lg shadow-sm text-purple-600 mt-1">
-                                        <ImageIcon size={20} />
-                                    </div>
-                                    <div>
-                                        <h4 className="text-xs font-bold text-purple-800 uppercase mb-1">Ideia Visual</h4>
-                                        <p className="text-sm text-purple-900">{generatedCopy.image_idea}</p>
-                                    </div>
-                                </div>
+                                {/* ADS STRATEGY RESULT */}
+                                {generatedAds && (
+                                    <>
+                                        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                                            <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center"><Target className="text-red-500 mr-2"/> Estratégia: {generatedAds.campaign_name}</h3>
+                                            
+                                            <div className="mb-6">
+                                                <h4 className="text-sm font-bold text-gray-500 uppercase mb-2 flex items-center"><Users size={14} className="mr-2"/> Público Alvo</h4>
+                                                <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-100">{generatedAds.target_audience}</p>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                {/* Google Ads Col */}
+                                                <div className="border border-blue-100 rounded-xl overflow-hidden">
+                                                    <div className="bg-blue-50 p-3 border-b border-blue-100 flex items-center text-blue-700 font-bold text-sm"><Monitor size={16} className="mr-2"/> Google Ads (Search)</div>
+                                                    <div className="p-4 space-y-4">
+                                                        <div>
+                                                            <p className="text-xs font-bold text-gray-500 uppercase mb-1">Palavras-Chave</p>
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {generatedAds.keywords?.map((k: string, i: number) => (
+                                                                    <span key={i} className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600 border border-gray-200">{k}</span>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs font-bold text-gray-500 uppercase mb-1">Títulos (Headlines)</p>
+                                                            <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+                                                                {generatedAds.headlines?.map((h: string, i: number) => <li key={i}>{h}</li>)}
+                                                            </ul>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs font-bold text-gray-500 uppercase mb-1">Descrições</p>
+                                                            <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+                                                                {generatedAds.descriptions?.map((d: string, i: number) => <li key={i}>{d}</li>)}
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Meta Ads Col */}
+                                                <div className="border border-indigo-100 rounded-xl overflow-hidden">
+                                                    <div className="bg-indigo-50 p-3 border-b border-indigo-100 flex items-center text-indigo-700 font-bold text-sm"><MousePointer size={16} className="mr-2"/> Meta Ads (FB/IG)</div>
+                                                    <div className="p-4 space-y-4">
+                                                        <div>
+                                                            <p className="text-xs font-bold text-gray-500 uppercase mb-1">Texto Principal (Copy)</p>
+                                                            <p className="text-sm text-gray-700 whitespace-pre-wrap">{generatedAds.primary_text}</p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs font-bold text-gray-500 uppercase mb-1">Chamada para Ação (CTA)</p>
+                                                            <span className="inline-block bg-indigo-100 text-indigo-700 px-3 py-1 rounded text-xs font-bold border border-indigo-200">{generatedAds.call_to_action}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
 
                             </div>
                         )}

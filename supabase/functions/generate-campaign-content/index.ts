@@ -19,84 +19,103 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, currentContent, contentType } = await req.json()
+    const { prompt, taskType, contextData } = await req.json()
     
-    // Tenta usar a chave específica de Admin primeiro, senão cai para as chaves gerais
+    // Prioriza a chave de Admin
     const apiKey = Deno.env.get('ADMIN_GEMINI_KEY') || Deno.env.get('GEMINI_API_KEY') || Deno.env.get('API_KEY')
     
     if (!apiKey) {
-      throw new Error('Chave da API (ADMIN_GEMINI_KEY ou GEMINI_API_KEY) não configurada no servidor.')
+      throw new Error('Chave da API (ADMIN_GEMINI_KEY) não configurada.')
     }
 
     const ai = new GoogleGenAI({ apiKey })
+    // Usando modelo de alta performance para texto conforme guidelines
     const MODEL_NAME = "gemini-3-flash-preview"
 
     let systemContext = '';
     let responseSchema: any = {};
 
-    // --- LÓGICA PARA E-MAIL MARKETING ---
-    if (!contentType || contentType === 'email') {
+    // 1. COPY PARA REDES SOCIAIS / BLOG
+    if (taskType === 'social') {
         responseSchema = {
           type: Type.OBJECT,
           properties: {
-            subject: { type: Type.STRING, description: "O assunto do e-mail (Curto e atrativo)." },
-            html_content: { type: Type.STRING, description: "O corpo do e-mail em HTML com CSS inline simples." },
-            rationale: { type: Type.STRING, description: "Explicação curta da estratégia usada." }
+            title: { type: Type.STRING, description: "Título chamativo ou Headline." },
+            content: { type: Type.STRING, description: "O corpo do texto completo (post ou artigo)." },
+            hashtags: { type: Type.STRING, description: "Lista de hashtags separadas por espaço." },
+            image_suggestion: { type: Type.STRING, description: "Sugestão visual para acompanhar o texto." }
           },
-          required: ["subject", "html_content"],
+          required: ["title", "content", "hashtags"],
         };
 
         systemContext = `
-          Você é um especialista em Marketing Digital focado no SaaS "DentiHub".
-          Seu objetivo é criar copy para e-mails de marketing.
-          
-          IMPORTANTE: Baseie-se APENAS nas funcionalidades reais: Agenda Inteligente, Prontuário com IA (Voz para Texto), Gestão Financeira, Lembretes Automáticos, Campanhas de Retorno.
-          
+          Você é um Especialista em Content Marketing e Copywriting para Odontologia.
+          Objetivo: Criar conteúdo engajador para redes sociais ou blogs de clínicas.
           Diretrizes:
-          - HTML simples com CSS inline.
-          - Tom profissional e persuasivo.
-          - Cores: #0ea5e9 (Azul Principal).
-          
-          Contexto: ${currentContent ? `Refinar e-mail existente: "${currentContent.subject}"` : "Criar novo."}
+          - Use técnica AIDA (Atenção, Interesse, Desejo, Ação).
+          - Use emojis moderadamente.
+          - Foque nas dores e desejos dos pacientes (estética, saúde, medo de dentista).
+          - Texto escaneável.
         `;
     } 
     
-    // --- LÓGICA PARA REDES SOCIAIS ---
-    else if (contentType === 'social') {
+    // 2. PROMPT PARA IMAGENS
+    else if (taskType === 'image_prompt') {
         responseSchema = {
           type: Type.OBJECT,
           properties: {
-            caption: { type: Type.STRING, description: "A legenda do post, formatada com quebras de linha." },
-            hashtags: { type: Type.STRING, description: "Lista de hashtags relevantes separadas por espaço." },
-            image_idea: { type: Type.STRING, description: "Descrição detalhada para criar uma imagem ou sugerir uma foto." },
-            hook: { type: Type.STRING, description: "A primeira frase (gancho) para prender a atenção." }
+            midjourney_prompt: { type: Type.STRING, description: "Prompt detalhado otimizado para Midjourney (em inglês)." },
+            dalle_prompt: { type: Type.STRING, description: "Prompt descritivo otimizado para DALL-E 3 (em inglês)." },
+            negative_prompt: { type: Type.STRING, description: "O que evitar na imagem (ex: deformed teeth, scary tools)." },
+            pt_description: { type: Type.STRING, description: "Explicação da ideia da imagem em português." }
           },
-          required: ["caption", "hashtags", "image_idea"],
+          required: ["midjourney_prompt", "dalle_prompt", "pt_description"],
         };
 
         systemContext = `
-          Você é um Social Media Manager especializado em Odontologia e Gestão de Clínicas.
-          Seu objetivo é criar posts para o DentiHub (SaaS para dentistas).
-          
-          Público: Dentistas, Donos de Clínicas e Secretárias.
-          Dores do público: Falta de tempo, pacientes que faltam, burocracia, glosas de convênio.
-          Solução DentiHub: Automação, IA no prontuário, Agenda organizada.
-
+          Você é um Engenheiro de Prompt especialista em IA Generativa de Imagens (Midjourney, DALL-E, Stable Diffusion).
+          Objetivo: Criar prompts para gerar imagens de alta qualidade para marketing odontológico.
           Diretrizes:
-          - Use emojis moderadamente.
-          - Texto escaneável (parágrafos curtos).
-          - Foco em benefícios (ganhar tempo, ganhar dinheiro) e não apenas funcionalidades.
-          - Se for Instagram: Tom visual e inspirador.
-          - Se for LinkedIn: Tom profissional e focado em negócios/gestão.
-          - Se for WhatsApp: Tom direto, curto e conversacional.
+          - Evite "Uncanny Valley" (dentes deformados, muitos dedos).
+          - Estilo: Fotorealista, Cinematográfico, Iluminação de Estúdio ou Ilustração 3D (conforme pedido).
+          - Os prompts devem ser em INGLÊS técnico.
         `;
+    }
+
+    // 3. GOOGLE ADS E META ADS
+    else if (taskType === 'ads_strategy') {
+        responseSchema = {
+          type: Type.OBJECT,
+          properties: {
+            campaign_name: { type: Type.STRING },
+            target_audience: { type: Type.STRING, description: "Segmentação de público detalhada." },
+            keywords: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Lista de 10-20 palavras-chave (Google Ads)." },
+            headlines: { type: Type.ARRAY, items: { type: Type.STRING }, description: "5 opções de títulos chamativos (30 chars max para Google)." },
+            descriptions: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 opções de descrições persuasivas (90 chars max para Google)." },
+            primary_text: { type: Type.STRING, description: "Texto principal para Meta Ads (Facebook/Instagram)." },
+            call_to_action: { type: Type.STRING, description: "Melhor CTA para usar." }
+          },
+          required: ["campaign_name", "keywords", "headlines", "descriptions", "primary_text"],
+        };
+
+        systemContext = `
+          Você é um Gestor de Tráfego Pago Senior (Google Ads & Meta Ads) focado em clínicas odontológicas.
+          Objetivo: Estruturar uma campanha de alta conversão.
+          Diretrizes:
+          - Google Ads: Foco em intenção de busca (fundo de funil). Títulos curtos e diretos.
+          - Meta Ads: Foco em interrupção e desejo visual. Texto persuasivo.
+          - Segmentação: Geográfica (raio da clínica), Idade, Interesses.
+        `;
+    } else {
+        throw new Error("Tipo de tarefa desconhecido.");
     }
 
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
       contents: {
         parts: [
-          { text: `Solicitação do usuário: ${prompt}` }
+          { text: `Contexto/Dados do Usuário: ${JSON.stringify(contextData || {})}` },
+          { text: `Solicitação Principal: ${prompt}` }
         ]
       },
       config: {

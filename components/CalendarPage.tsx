@@ -40,7 +40,8 @@ import {
   CreditCard,
   UserCheck,
   Activity,
-  CheckCircle
+  CheckCircle,
+  Search
 } from 'lucide-react';
 import Toast, { ToastType } from './Toast';
 
@@ -77,6 +78,10 @@ const CalendarPage: React.FC = () => {
     amount: 0
   });
   
+  // Estado para busca de pacientes (Combobox)
+  const [patientSearchTerm, setPatientSearchTerm] = useState('');
+  const [showPatientList, setShowPatientList] = useState(false);
+
   // Estado para controlar a exibição do input "Outro" serviço
   const [isCustomService, setIsCustomService] = useState(false);
   // Estado para armazenar os horários disponíveis gerados
@@ -127,6 +132,19 @@ const CalendarPage: React.FC = () => {
         generateTimeSlots();
     }
   }, [formData.dentist_id, formData.date, formData.duration, isModalOpen]);
+
+  // Sincroniza o input de busca com o paciente selecionado ao abrir modal ou editar
+  useEffect(() => {
+    if (isModalOpen) {
+        if (formData.client_id) {
+            const client = clients.find(c => c.id === formData.client_id);
+            setPatientSearchTerm(client ? client.name : '');
+        } else {
+            setPatientSearchTerm('');
+        }
+        setShowPatientList(false);
+    }
+  }, [isModalOpen, formData.client_id, clients]);
 
   const initialize = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -1004,22 +1022,49 @@ const CalendarPage: React.FC = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Client Selection */}
+              {/* Client Selection (Custom Searchable Combobox) */}
               <div>
                 <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Paciente</label>
                 <div className="relative">
-                  <select 
-                    required 
-                    className="w-full border border-gray-700 bg-gray-800 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-primary appearance-none hover:bg-gray-750 transition"
-                    value={formData.client_id}
-                    onChange={e => setFormData({...formData, client_id: e.target.value})}
-                  >
-                    <option value="">Selecione um paciente...</option>
-                    {clients.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                  <User className="absolute right-3 top-3 text-gray-500 pointer-events-none" size={16} />
+                    <input
+                        type="text"
+                        required
+                        className="w-full border border-gray-700 bg-gray-800 text-white p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-primary hover:bg-gray-750 transition"
+                        placeholder="Buscar paciente..."
+                        value={patientSearchTerm}
+                        onChange={(e) => {
+                            setPatientSearchTerm(e.target.value);
+                            setFormData({...formData, client_id: ''}); // Clear ID on type to force selection
+                            setShowPatientList(true);
+                        }}
+                        onFocus={() => setShowPatientList(true)}
+                        onBlur={() => setTimeout(() => setShowPatientList(false), 200)} // Delay to allow click
+                    />
+                    <div className="absolute right-3 top-3 text-gray-500 pointer-events-none">
+                        <Search size={16} />
+                    </div>
+                    {showPatientList && (
+                        <div className="absolute z-20 w-full bg-gray-800 border border-gray-700 rounded-lg mt-1 max-h-48 overflow-y-auto shadow-xl custom-scrollbar">
+                            {clients.filter(c => c.name.toLowerCase().includes(patientSearchTerm.toLowerCase())).length > 0 ? (
+                                clients.filter(c => c.name.toLowerCase().includes(patientSearchTerm.toLowerCase())).map(c => (
+                                    <div
+                                        key={c.id}
+                                        className="px-4 py-2 hover:bg-gray-700 cursor-pointer text-sm text-gray-200 border-b border-gray-700/50 last:border-0"
+                                        onClick={() => {
+                                            setFormData({...formData, client_id: c.id});
+                                            setPatientSearchTerm(c.name);
+                                            setShowPatientList(false);
+                                        }}
+                                    >
+                                        <div className="font-bold">{c.name}</div>
+                                        <div className="text-xs text-gray-500">{c.cpf || 'Sem CPF'}</div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="px-4 py-2 text-sm text-gray-500">Nenhum paciente encontrado.</div>
+                            )}
+                        </div>
+                    )}
                 </div>
               </div>
 
