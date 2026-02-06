@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     const body = await req.json();
-    const { type, recipients, appointment, client, userName, contactEmail, message, subject: reqSubject, htmlContent: reqHtmlContent, attachments, item, requestDetails } = body;
+    const { type, recipients, appointment, client, userName, contactEmail, message, subject: reqSubject, htmlContent: reqHtmlContent, attachments, item, requestDetails, clinicName: bodyClinicName, clinicEmail: bodyClinicEmail } = body;
     
     // Captura o subtipo (created, updated, deleted)
     const subtype = body.subtype; 
@@ -83,12 +83,14 @@ Deno.serve(async (req) => {
 
     if (!user) throw new Error("Usuário não autenticado");
 
-    // Para chamadas internas que não têm um usuário logado real (ex: cron jobs ou trigger de request),
-    // definimos clinicName genérico ou passamos no body.
     let clinicName = 'DentiHub';
     let clinicEmail = 'contato@dentihub.com.br';
 
-    if (user.id !== 'system') {
+    // Prioridade: Dados do Body > Dados do Usuário Logado
+    if (bodyClinicName) {
+        clinicName = bodyClinicName;
+        if (bodyClinicEmail) clinicEmail = bodyClinicEmail;
+    } else if (user.id !== 'system') {
         const { data: clinic } = await supabaseAdmin.from('clinics').select('*').eq('id', user.id).single();
         if (clinic) {
             clinicName = clinic.name || 'DentiHub';
@@ -127,7 +129,6 @@ Deno.serve(async (req) => {
         let htmlContent = '';
 
         if (subtype === 'deleted') {
-            // LÓGICA DE CANCELAMENTO
             subject = `Cancelamento - ${clinicName}`;
             htmlContent = `
                 <div style="font-family: Helvetica, Arial, sans-serif; padding: 20px; color: #333;">
@@ -140,11 +141,10 @@ Deno.serve(async (req) => {
                         <p style="margin: 5px 0;"><strong>Profissional:</strong> ${appointment.dentist_name}</p>
                         <p style="margin: 5px 0;"><strong>Procedimento:</strong> ${appointment.service_name}</p>
                     </div>
-                    <p>Caso deseje reagendar, entre em contato conosco ou acesse nosso link de agendamento.</p>
+                    <p>Caso deseje reagendar, entre em contato conosco.</p>
                 </div>
             `;
         } else {
-            // LÓGICA DE CONFIRMAÇÃO (Created / Updated)
             subject = `Agendamento - ${clinicName}`;
             htmlContent = `
                 <div style="font-family: Helvetica, Arial, sans-serif; padding: 20px; color: #333;">
@@ -176,19 +176,17 @@ Deno.serve(async (req) => {
     else if (type === 'new_request_notification' && requestDetails) {
         const { patientName, serviceName, requestedTime, dentistName, patientPhone } = requestDetails;
         
-        // Formata a data
         const dateObj = new Date(requestedTime);
         const dateStr = dateObj.toLocaleDateString('pt-BR');
         const timeStr = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-        const subject = `🔔 Nova Solicitação de Agendamento: ${patientName}`;
+        const subject = `🔔 Nova Solicitação: ${patientName}`;
         const htmlContent = `
             <div style="font-family: Helvetica, Arial, sans-serif; padding: 20px; color: #333; border: 1px solid #e2e8f0; border-radius: 8px;">
                 <h2 style="color: #0ea5e9; margin-top: 0;">Nova Solicitação Online 📅</h2>
-                <p>Um paciente solicitou um agendamento através do link público.</p>
+                <p><strong>${patientName}</strong> solicitou um agendamento através do link público.</p>
                 
                 <div style="background-color: #f0f9ff; padding: 15px; border-left: 4px solid #0ea5e9; margin: 20px 0;">
-                    <p style="margin: 5px 0;"><strong>Paciente:</strong> ${patientName}</p>
                     <p style="margin: 5px 0;"><strong>Contato:</strong> ${patientPhone}</p>
                     <p style="margin: 5px 0;"><strong>Serviço:</strong> ${serviceName}</p>
                     <p style="margin: 5px 0;"><strong>Profissional:</strong> ${dentistName}</p>
@@ -217,7 +215,37 @@ Deno.serve(async (req) => {
         }
         success = true;
     }
-    // 5. CONVITE DE DENTISTA / FUNCIONÁRIO
+    // 5. NOTIFICAÇÃO PARA O PACIENTE (Solicitação Recebida) - NOVO
+    else if (type === 'request_received_patient' && client && requestDetails) {
+        const { patientName, serviceName, requestedTime, dentistName } = requestDetails;
+        
+        const dateObj = new Date(requestedTime);
+        const dateStr = dateObj.toLocaleDateString('pt-BR');
+        const timeStr = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+        const subject = `Solicitação Recebida - ${clinicName}`;
+        const htmlContent = `
+            <div style="font-family: Helvetica, Arial, sans-serif; padding: 20px; color: #333;">
+                <h2 style="color: #0ea5e9;">Recebemos sua solicitação!</h2>
+                <p>Olá <strong>${patientName}</strong>,</p>
+                <p>Recebemos seu pedido de agendamento na <strong>${clinicName}</strong>.</p>
+                
+                <div style="background-color: #f0f9ff; padding: 15px; border-left: 4px solid #0ea5e9; margin: 15px 0;">
+                    <p style="margin: 5px 0;"><strong>Profissional:</strong> ${dentistName}</p>
+                    <p style="margin: 5px 0;"><strong>Procedimento:</strong> ${serviceName}</p>
+                    <p style="margin: 5px 0;"><strong>Data Sugerida:</strong> ${dateStr} às ${timeStr}</p>
+                </div>
+                
+                <p>Nossa equipe irá analisar a disponibilidade e você receberá uma confirmação por e-mail em breve.</p>
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                <p style="font-size: 12px; color: #666;">DentiHub - Gestão de Clínicas</p>
+            </div>
+        `;
+
+        await sendEmailViaResend(resendApiKey, [client.email], subject, htmlContent, clinicName, clinicEmail);
+        success = true;
+    }
+    // 6. CONVITE DE DENTISTA / FUNCIONÁRIO
     else if (type === 'invite_dentist' || type === 'invite_employee') {
         const isDentist = type === 'invite_dentist';
         const roleLabel = isDentist ? 'Dentista' : (body.roleLabel || 'Funcionário');
@@ -255,7 +283,7 @@ Deno.serve(async (req) => {
         }
         success = true;
     }
-    // 6. RECEITA / DOCUMENTO
+    // 7. RECEITA / DOCUMENTO
     else if (type === 'prescription' && client) {
         const subject = `Receita / Documento - ${clinicName}`;
         const htmlContent = `
@@ -271,7 +299,7 @@ Deno.serve(async (req) => {
         await sendEmailViaResend(resendApiKey, [client.email], subject, htmlContent, clinicName, clinicEmail, attachments);
         success = true;
     }
-    // 7. ALERTA DE ESTOQUE
+    // 8. ALERTA DE ESTOQUE
     else if (type === 'stock_alert' && item) {
         const subject = `⚠️ Alerta de Estoque Baixo: ${item.name} - ${clinicName}`;
         const htmlContent = `
@@ -297,7 +325,7 @@ Deno.serve(async (req) => {
                 try {
                     await sendEmailViaResend(resendApiKey, [r.email], subject, htmlContent, clinicName, clinicEmail);
                     await supabaseAdmin.from('communications').insert({
-                        clinic_id: user.id !== 'system' ? user.id : (item.clinic_id), // Tenta pegar ID correto
+                        clinic_id: user.id !== 'system' ? user.id : (item.clinic_id), 
                         type: 'stock_alert',
                         recipient_name: r.name || 'Admin',
                         recipient_email: r.email,
@@ -310,10 +338,14 @@ Deno.serve(async (req) => {
         }
         success = true;
     }
-    // 8. RECALL E OUTROS
-    else if (type === 'recall' && recipients) {
-         const subject = `Olá! Faz tempo que não te vemos na ${clinicName}`;
-         const htmlContent = `
+    // 9. RECALL / WELCOME
+    else if ((type === 'recall' || type === 'welcome') && recipients) {
+         const subject = type === 'recall' 
+            ? `Olá! Faz tempo que não te vemos na ${clinicName}`
+            : `Bem-vindo(a) à ${clinicName}!`;
+            
+         const htmlContent = type === 'recall' 
+            ? `
             <div style="font-family: Helvetica, Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 8px; overflow: hidden;">
                 <div style="background-color: #f97316; padding: 20px; text-align: center;">
                     <h1 style="color: white; margin: 0; font-size: 20px;">Cuidar do sorriso é essencial! 😁</h1>
@@ -325,7 +357,13 @@ Deno.serve(async (req) => {
                         <a href="https://dentihub.com.br/#/${clinicName.toLowerCase().replace(/\s/g, '-')}" target="_blank" style="background-color: #f97316; color: white; padding: 14px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">Agendar Agora</a>
                     </div>
                 </div>
+            </div>`
+            : `
+            <div style="font-family: Helvetica, Arial, sans-serif; color: #333; padding: 20px;">
+                <h1 style="color: #0ea5e9;">Bem-vindo!</h1>
+                <p>Seu cadastro na <strong>${clinicName}</strong> foi realizado com sucesso.</p>
             </div>`;
+
          for (const r of recipients) {
             if(r.email) {
                 await sendEmailViaResend(resendApiKey, [r.email], subject, htmlContent, clinicName, clinicEmail);
@@ -333,22 +371,6 @@ Deno.serve(async (req) => {
             }
          }
          success = true;
-    }
-    else if (type === 'welcome' && recipients) {
-        const subject = `Bem-vindo(a) à ${clinicName}!`;
-        const htmlContent = `
-            <div style="font-family: Helvetica, Arial, sans-serif; color: #333; padding: 20px;">
-                <h1 style="color: #0ea5e9;">Bem-vindo!</h1>
-                <p>Seu cadastro na <strong>${clinicName}</strong> foi realizado com sucesso.</p>
-            </div>
-        `;
-        for (const r of recipients) {
-            if(r.email) {
-                await sendEmailViaResend(resendApiKey, [r.email], subject, htmlContent, clinicName, clinicEmail);
-                results.count++;
-            }
-        }
-        success = true;
     }
 
     if (success) {

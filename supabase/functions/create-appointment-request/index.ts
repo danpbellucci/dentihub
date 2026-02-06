@@ -87,9 +87,46 @@ Deno.serve(async (req) => {
 
     if (insertError) throw new Error("Erro ao salvar solicitação.");
 
-    // --- NOTIFICAÇÃO POR E-MAIL PARA A CLÍNICA ---
+    // BUSCAR DADOS DE CONTEXTO
+    const { data: dentist } = await supabaseAdmin.from('dentists').select('name').eq('id', dentist_id).single();
+    const dentistName = dentist?.name || 'Não especificado';
+
+    const { data: clinicData } = await supabaseAdmin.from('clinics').select('name, email').eq('id', clinic_id).single();
+    const clinicName = clinicData?.name || 'Clínica';
+    const clinicEmail = clinicData?.email;
+
+    const emailFunctionUrl = `${supabaseUrl}/functions/v1/send-emails`;
+
+    // --- 1. NOTIFICAÇÃO PARA O PACIENTE (Recebemos seu pedido) ---
+    if (patient_email) {
+        try {
+            await fetch(emailFunctionUrl, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${serviceRoleKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    type: 'request_received_patient',
+                    client: { name: patient_name, email: patient_email },
+                    requestDetails: {
+                        patientName: patient_name,
+                        serviceName: service_name,
+                        requestedTime: requested_time,
+                        dentistName: dentistName
+                    },
+                    clinicName: clinicName,
+                    clinicEmail: clinicEmail
+                })
+            });
+        } catch (patError) {
+            console.error("Falha ao notificar paciente:", patError);
+        }
+    }
+
+    // --- 2. NOTIFICAÇÃO POR E-MAIL PARA A CLÍNICA ---
     try {
-        // 1. Busca quais papéis (roles) devem ser notificados
+        // Busca quais papéis (roles) devem ser notificados
         const { data: activeConfigs } = await supabaseAdmin
             .from('role_notifications')
             .select('role')
@@ -100,7 +137,7 @@ Deno.serve(async (req) => {
         if (activeConfigs && activeConfigs.length > 0) {
             const rolesToNotify = activeConfigs.map(c => c.role);
 
-            // 2. Busca os usuários com esses papéis
+            // Busca os usuários com esses papéis
             const { data: usersToNotify } = await supabaseAdmin
                 .from('user_profiles')
                 .select('email, role')
@@ -108,22 +145,12 @@ Deno.serve(async (req) => {
                 .in('role', rolesToNotify);
 
             if (usersToNotify && usersToNotify.length > 0) {
-                // 3. Busca nome do dentista (para o email)
-                const { data: dentist } = await supabaseAdmin.from('dentists').select('name').eq('id', dentist_id).single();
-                const dentistName = dentist?.name || 'Não especificado';
-
-                // 4. Envia os e-mails
-                // Usamos o endpoint send-emails para centralizar o layout e lógica do Resend
                 const recipients = usersToNotify.map(u => ({ email: u.email }));
-                
-                // Chamada interna para a função de email
-                // Nota: Usamos fetch para chamar a outra função edge
-                const emailFunctionUrl = `${supabaseUrl}/functions/v1/send-emails`;
                 
                 await fetch(emailFunctionUrl, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${serviceRoleKey}`, // Usa Service Key para bypassar RLS na outra ponta
+                        'Authorization': `Bearer ${serviceRoleKey}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
@@ -135,14 +162,16 @@ Deno.serve(async (req) => {
                             requestedTime: requested_time,
                             dentistName: dentistName,
                             patientPhone: patient_phone
-                        }
+                        },
+                        // Passa o nome da clínica explicitamente para o log ou contexto, 
+                        // embora o remetente para a equipe seja fixo "DentiHub Notificações"
+                        clinicName: clinicName 
                     })
                 });
             }
         }
     } catch (notifError) {
-        console.error("Erro ao enviar notificação de nova solicitação:", notifError);
-        // Não falha a requisição principal, apenas loga o erro
+        console.error("Erro ao enviar notificação de nova solicitação para clínica:", notifError);
     }
 
     // LOG DE USO
