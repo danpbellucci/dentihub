@@ -18,13 +18,13 @@ import FindClinicPage from './components/FindClinicPage';
 import SmartRecordPage from './components/SmartRecordPage';
 import MessagingPage from './components/MessagingPage';
 import GuidePage from './components/GuidePage';
-import InventoryPage from './components/InventoryPage'; // New Import
+import InventoryPage from './components/InventoryPage'; 
 import AppointmentActionPage from './components/AppointmentActionPage';
 import LearnMorePage from './components/LearnMorePage';
 import SuperAdminPage from './components/SuperAdminPage';
 import SuperAdminCampaigns from './components/SuperAdminCampaigns';
 import SuperAdminLeads from './components/SuperAdminLeads';
-import SuperAdminSubscriptions from './components/SuperAdminSubscriptions'; // New Import
+import SuperAdminSubscriptions from './components/SuperAdminSubscriptions'; 
 import UpdatePasswordPage from './components/UpdatePasswordPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Loader2 } from 'lucide-react';
@@ -239,6 +239,10 @@ const App: React.FC = () => {
                   </SuperAdminRoute>
               </PrivateRoute>
           } />
+
+          {/* Rota pública da clínica (Slug) - DEVE FICAR NO FINAL */}
+          <Route path="/:slug" element={<PublicBookingPage />} />
+
         </Routes>
       </HashRouter>
     </ErrorBoundary>
