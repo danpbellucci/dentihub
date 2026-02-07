@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import { UserProfile, ClinicRole } from '../types';
-import { Save, Loader2, Shield, Users, CreditCard, Trash2, AlertTriangle, CheckCircle, X, Building, Upload, Copy, Send, Zap, Settings, Lock, Plus, Pencil, Bell, Folder, Box } from 'lucide-react';
+import { Save, Loader2, Shield, Users, CreditCard, Trash2, AlertTriangle, CheckCircle, X, Building, Upload, Copy, Send, Zap, Settings, Lock, Plus, Pencil, Bell, Folder, Box, Gift, Award } from 'lucide-react';
 import Toast, { ToastType } from './Toast';
 import SubscriptionPaymentModal from './SubscriptionPaymentModal';
 import { useOutletContext, useNavigate, useLocation } from 'react-router-dom';
@@ -37,7 +37,7 @@ const SettingsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
-  const [activeTab, setActiveTab] = useState<'profile' | 'team' | 'permissions' | 'security' | 'billing'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'team' | 'permissions' | 'security' | 'billing' | 'referrals'>('profile');
   const [clinicData, setClinicData] = useState<any>({});
   const [permissions, setPermissions] = useState<Record<string, Record<string, boolean>>>({});
   const [notificationsSettings, setNotificationsSettings] = useState<Record<string, Record<string, boolean>>>({});
@@ -164,7 +164,7 @@ const SettingsPage: React.FC = () => {
   const handlePasswordChange = async (e: React.FormEvent) => { e.preventDefault(); if (passwordData.newPassword !== passwordData.confirmPassword) { setToast({ message: "Senhas não coincidem.", type: 'warning' }); return; } setSaving(true); try { const { error } = await supabase.auth.updateUser({ password: passwordData.newPassword }); if (error) throw error; setToast({ message: "Senha alterada!", type: 'success' }); setPasswordData({ newPassword: '', confirmPassword: '' }); } catch (err: any) { setToast({ message: "Erro: " + err.message, type: 'error' }); } finally { setSaving(false); } };
   const handleDeleteAccount = async () => { if (!deleteConfirmed) return; setIsDeletingAccount(true); try { const { data: { session } } = await supabase.auth.getSession(); if (!session) throw new Error("Sessão inválida."); const { error } = await supabase.functions.invoke('delete-account', { headers: { Authorization: `Bearer ${session.access_token}` } }); if (error) throw error; await supabase.auth.signOut(); setToast({ message: "Conta excluída. Adeus!", type: 'success' }); setTimeout(() => { navigate('/'); window.location.reload(); }, 2000); } catch (err: any) { setToast({ message: "Erro: " + err.message, type: 'error' }); setIsDeletingAccount(false); setShowDeleteAccountModal(false); } };
   const openPaymentModal = async (planName: string, price: string, priceId: string) => { setSelectedPlan({ name: planName, price, priceId }); setShowPaymentModal(true); setLoadingPayment(true); try { const { data, error } = await supabase.functions.invoke('create-subscription', { body: { priceId } }); if (error || !data?.clientSecret) throw new Error("Falha no pagamento."); setClientSecret(data.clientSecret); } catch (err: any) { setToast({ message: err.message, type: 'error' }); setShowPaymentModal(false); } finally { setLoadingPayment(false); } };
-  const copyToClipboard = () => { navigator.clipboard.writeText(`${window.location.origin}/#/${clinicData.slug}`); setToast({ message: "Link copiado!", type: 'success' }); };
+  const copyToClipboard = (text: string) => { navigator.clipboard.writeText(text); setToast({ message: "Copiado para a área de transferência!", type: 'success' }); };
   const currentTier = contextProfile?.clinics?.subscription_tier || 'free';
 
   if (loading) return <div className="flex h-96 w-full items-center justify-center"><div className="flex flex-col items-center gap-3"><Loader2 className="h-10 w-10 animate-spin text-primary" /><span className="text-gray-500 font-medium">Carregando...</span></div></div>;
@@ -177,14 +177,21 @@ const SettingsPage: React.FC = () => {
         <div className="w-full md:w-64 flex-shrink-0">
             <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow-sm overflow-hidden p-2 border border-white/5">
                 <nav className="space-y-1">
-                    {['profile', 'team', 'permissions', 'security', 'billing'].map(tab => (
+                    {['profile', 'team', 'permissions', 'referrals', 'security', 'billing'].map(tab => (
                         <button key={tab} onClick={() => setActiveTab(tab as any)} className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-md transition-colors ${activeTab === tab ? 'bg-primary text-white' : 'text-gray-400 hover:bg-gray-800'}`}>
                             {tab === 'profile' && <Building size={18} className="mr-3" />}
                             {tab === 'team' && <Users size={18} className="mr-3" />}
                             {tab === 'permissions' && <Lock size={18} className="mr-3" />}
+                            {tab === 'referrals' && <Gift size={18} className="mr-3" />}
                             {tab === 'security' && <Shield size={18} className="mr-3" />}
                             {tab === 'billing' && <CreditCard size={18} className="mr-3" />}
-                            {tab === 'profile' ? 'Perfil da Clínica' : tab === 'team' ? 'Gestão de Acessos' : tab === 'permissions' ? 'Perfis de Acesso' : tab === 'security' ? 'Segurança' : 'Planos e Assinatura'}
+                            
+                            {tab === 'profile' ? 'Perfil da Clínica' : 
+                             tab === 'team' ? 'Gestão de Acessos' : 
+                             tab === 'permissions' ? 'Perfis de Acesso' : 
+                             tab === 'referrals' ? 'Indicações' :
+                             tab === 'security' ? 'Segurança' : 
+                             'Planos e Assinatura'}
                         </button>
                     ))}
                 </nav>
@@ -229,13 +236,69 @@ const SettingsPage: React.FC = () => {
                         <h4 className="text-sm font-bold text-blue-400 flex items-center gap-2 mb-2"><Copy size={16} /> Link de Agendamento</h4>
                         <div className="flex gap-2">
                             <input type="text" readOnly className="flex-1 border border-blue-500/20 rounded px-3 py-2 text-sm text-blue-300 bg-blue-900/10" value={`${window.location.origin}/#/${clinicData.slug}`} />
-                            <button onClick={copyToClipboard} className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-blue-700">Copiar</button>
+                            <button onClick={() => copyToClipboard(`${window.location.origin}/#/${clinicData.slug}`)} className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-blue-700">Copiar</button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* ... Other Tabs (Team, Permissions, Security, Billing) ... */}
+            {/* TAB: REFERRALS (INDICAÇÕES) */}
+            {activeTab === 'referrals' && (
+                <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow-sm p-6 animate-fade-in border border-white/5">
+                    <h2 className="text-xl font-bold text-white mb-6 pb-2 border-b border-white/10 flex items-center gap-2">
+                        <Gift className="text-primary"/> Programa de Indicações
+                    </h2>
+                    
+                    <div className="bg-gradient-to-br from-blue-900/30 to-purple-900/30 border border-blue-500/30 rounded-xl p-6 mb-8 text-center relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-4 opacity-10"><Award size={100} className="text-white"/></div>
+                        <h3 className="text-2xl font-black text-white mb-2">Indique e Ganhe!</h3>
+                        <p className="text-gray-300 max-w-2xl mx-auto mb-6">
+                            Ajude outros colegas a modernizar suas clínicas e ganhe benefícios exclusivos no DentiHub.
+                        </p>
+                        
+                        <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto text-left">
+                            <div className="bg-gray-800/60 p-4 rounded-lg border border-white/10 flex items-start gap-3">
+                                <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400"><Users size={24}/></div>
+                                <div>
+                                    <h4 className="font-bold text-white">Ganhe 1 Mês de Starter</h4>
+                                    <p className="text-sm text-gray-400">Para cada indicação que atingir 10 pacientes cadastrados.</p>
+                                </div>
+                            </div>
+                            <div className="bg-gray-800/60 p-4 rounded-lg border border-white/10 flex items-start gap-3">
+                                <div className="p-2 bg-yellow-500/20 rounded-lg text-yellow-400"><Zap size={24}/></div>
+                                <div>
+                                    <h4 className="font-bold text-white">Ganhe 1 Mês de Pro</h4>
+                                    <p className="text-sm text-gray-400">Para cada indicação que assinar um plano pago.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="max-w-xl mx-auto">
+                        <label className="block text-sm font-bold text-gray-400 mb-2 text-center uppercase tracking-wide">Seu Código de Indicação</label>
+                        <div className="flex gap-2 relative">
+                            <input 
+                                type="text" 
+                                readOnly 
+                                value={clinicData.referral_code || '---'} 
+                                className="w-full bg-gray-800 border-2 border-primary border-dashed rounded-lg p-4 text-center text-2xl font-mono font-black text-white tracking-widest focus:outline-none"
+                            />
+                            <button 
+                                onClick={() => copyToClipboard(clinicData.referral_code)} 
+                                className="absolute right-2 top-2 bottom-2 bg-gray-700 hover:bg-gray-600 text-white px-4 rounded font-bold transition flex items-center"
+                                title="Copiar Código"
+                            >
+                                <Copy size={18}/>
+                            </button>
+                        </div>
+                        <p className="text-center text-xs text-gray-500 mt-3">
+                            Compartilhe este código com seus colegas. Eles devem inseri-lo no momento do cadastro.
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {/* ... Other Tabs ... */}
             
             {activeTab === 'team' && (
                 <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow-sm p-6 animate-fade-in border border-white/5">
@@ -324,8 +387,6 @@ const SettingsPage: React.FC = () => {
                 </div>
             )}
 
-            {/* Resto dos componentes e modais (Security, Billing, Modais) mantidos idênticos */}
-            {/* ... (Security Content) ... */}
             {activeTab === 'security' && (
                 <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow-sm p-6 animate-fade-in border border-white/5 flex flex-col gap-10">
                     <div>
@@ -346,7 +407,6 @@ const SettingsPage: React.FC = () => {
                 </div>
             )}
 
-            {/* ... (Billing Content) ... */}
             {activeTab === 'billing' && (
                 <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow-sm p-6 animate-fade-in border border-white/5">
                     <div className="flex justify-between items-start mb-6">

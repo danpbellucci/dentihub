@@ -7,9 +7,10 @@ import {
   Calendar, Users, DollarSign, CheckCircle, ShieldCheck, Zap, Search, Mic, 
   Smartphone, Tablet, Monitor, LayoutDashboard, BellRing,
   UserCheck, MessageSquare, Mail, Gift, Menu, X, Check, Loader2,
-  TrendingUp, TrendingDown, Filter, ArrowRight, Lock, Image as ImageIcon,
+  TrendingUp, TrendingDown, Filter, ArrowRight, ArrowDown, Lock, Image as ImageIcon,
   ChevronLeft, ChevronRight, Plus, Folder, Brain, Clock, MoreHorizontal, FileText, Trash2,
-  BookOpen, Settings, HelpCircle, AlertTriangle
+  BookOpen, Settings, HelpCircle, AlertTriangle, Box, Cloud, Edit2, ArrowUpCircle, ArrowDownCircle, CreditCard,
+  ChevronDown, Upload, User, RefreshCw, Save
 } from 'lucide-react';
 import Toast, { ToastType } from './Toast';
 
@@ -26,6 +27,84 @@ const LandingPage: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mockupMobileMenuOpen, setMockupMobileMenuOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+
+  const features = [
+    {
+      id: 'agenda',
+      title: 'Agenda Inteligente',
+      icon: Calendar,
+      color: 'text-blue-400',
+      bgGlow: 'bg-blue-500/20',
+      border: 'border-blue-500/20',
+      description: 'O coração da clínica, projetado para eliminar "buracos" e conflitos.',
+      details: [
+        'Link Público de Agendamento',
+        'Central de Aprovação de Consultas',
+        'Status Coloridos e Visuais',
+        'Bloqueio de Horários e Férias'
+      ]
+    },
+    {
+      id: 'ai',
+      title: 'Prontuário com IA',
+      icon: Brain,
+      color: 'text-purple-400',
+      bgGlow: 'bg-purple-500/20',
+      border: 'border-purple-500/20',
+      description: 'A funcionalidade "Uau" que economiza horas de digitação.',
+      details: [
+        'Voz para Texto (Ditado)',
+        'Resumo SOAP Automático',
+        'Histórico Seguro na Nuvem',
+        'Foco total no paciente'
+      ]
+    },
+    {
+      id: 'crm',
+      title: 'Automação & CRM',
+      icon: BellRing,
+      color: 'text-orange-400',
+      bgGlow: 'bg-orange-500/20',
+      border: 'border-orange-500/20',
+      description: 'Fidelização automática e redução drástica de No-Show.',
+      details: [
+        'Lembretes Automáticos (E-mail)',
+        'Campanhas de Retorno (Recall)',
+        'Confirmação com um clique',
+        'Avisos de Aniversário'
+      ]
+    },
+    {
+      id: 'finance',
+      title: 'Financeiro Simples',
+      icon: DollarSign,
+      color: 'text-green-400',
+      bgGlow: 'bg-green-500/20',
+      border: 'border-green-500/20',
+      description: 'Controle total do fluxo de caixa sem precisar de contador.',
+      details: [
+        'Lançamento Automático via Agenda',
+        'Contas a Pagar e Receber',
+        'Previsão Diária no E-mail',
+        'Relatórios de Receita'
+      ]
+    },
+    {
+      id: 'inventory',
+      title: 'Controle de Estoque',
+      icon: Box,
+      color: 'text-cyan-400',
+      bgGlow: 'bg-cyan-500/20',
+      border: 'border-cyan-500/20',
+      description: 'Gestão completa de materiais para evitar desperdícios e faltas.',
+      details: [
+        'Alertas de Estoque Baixo (E-mail)',
+        'Itens Compartilhados ou por Dentista',
+        'Ajuste Rápido de Quantidade',
+        'Categorização Flexível'
+      ]
+    }
+  ];
 
   useEffect(() => {
     const handleResize = () => {
@@ -123,6 +202,7 @@ const LandingPage: React.FC = () => {
     { label: 'Prontuário IA', icon: Mic },
     { label: 'Mensageria', icon: MessageSquare },
     { label: 'Financeiro', icon: DollarSign },
+    { label: 'Estoque', icon: Box },
     { label: 'Solicitações', icon: BellRing, badge: 2 },
     { label: 'Guia Prático', icon: BookOpen },
     { label: 'Configurações', icon: Settings },
@@ -201,14 +281,12 @@ const LandingPage: React.FC = () => {
           </div>
           
           <h1 className="text-5xl sm:text-7xl font-black text-white tracking-tight mb-8 leading-tight max-w-5xl mx-auto drop-shadow-2xl will-change-transform">
-            O Sistema Operacional <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 animate-gradient-x">
-              do Futuro para Dentistas
-            </span>
+            O <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Sistema Operacional <br />
+            do Futuro</span> para Dentistas
           </h1>
           
           <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-400 mb-12 leading-relaxed">
-            Abandone o papel e os sistemas do passado. Experimente a gestão com inteligência artificial, 
+            Abandone o papel e os sistemas do passado. Experimente a <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 font-bold">gestão com inteligência artificial</span>, 
             agendamento online e marketing automático em uma interface que você vai amar usar.
           </p>
           
@@ -292,6 +370,7 @@ const LandingPage: React.FC = () => {
                         )}
 
                         <div className="p-6">
+                            
                             {activeMockup === 'Visão Geral' && (
                                 <div className="space-y-6 animate-fade-in">
                                     <h2 className="text-xl font-bold text-white mb-4">Visão Geral</h2>
@@ -299,38 +378,64 @@ const LandingPage: React.FC = () => {
                                         <div className="bg-gray-900/60 p-4 rounded-xl border border-white/5 relative overflow-hidden">
                                             <div className="flex justify-between items-start mb-2"><div className="p-2 bg-blue-500/10 rounded-lg"><Users size={20} className="text-blue-500"/></div></div>
                                             <p className="text-xs text-gray-400 uppercase font-bold">Pacientes</p>
-                                            <p className="text-2xl font-black text-white">128</p>
+                                            <p className="text-2xl font-black text-white">148</p>
                                         </div>
                                         <div className="bg-gray-900/60 p-4 rounded-xl border border-white/5 relative overflow-hidden">
                                             <div className="flex justify-between items-start mb-2"><div className="p-2 bg-green-500/10 rounded-lg"><Calendar size={20} className="text-green-500"/></div></div>
                                             <p className="text-xs text-gray-400 uppercase font-bold">Agendados Hoje</p>
-                                            <p className="text-2xl font-black text-white">8</p>
+                                            <p className="text-2xl font-black text-white">12</p>
                                         </div>
                                         <div className="bg-gray-900/60 p-4 rounded-xl border border-white/5 relative overflow-hidden">
                                             <div className="flex justify-between items-start mb-2"><div className="p-2 bg-yellow-500/10 rounded-lg"><DollarSign size={20} className="text-yellow-500"/></div></div>
                                             <p className="text-xs text-gray-400 uppercase font-bold">Receita (Mês)</p>
-                                            <p className="text-2xl font-black text-white">R$ 15.450,00</p>
+                                            <p className="text-2xl font-black text-white">R$ 18.590,00</p>
                                         </div>
                                     </div>
-                                    <div className="bg-gray-900/60 border border-white/5 rounded-xl p-4 h-64">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <h3 className="font-bold text-white text-sm flex items-center"><Clock size={16} className="mr-2 text-primary"/> Próximos Agendamentos</h3>
-                                            <span className="text-[10px] bg-gray-800 px-2 py-1 rounded text-gray-400">Rolar para ver mais</span>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <div className="flex items-center justify-between p-3 bg-gray-800/40 rounded-lg border border-white/5">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="text-center bg-gray-800 border border-white/10 rounded px-2 py-1"><p className="text-[9px] text-gray-400 uppercase">HOJE</p><p className="text-sm font-black text-white">14</p></div>
-                                                    <div><p className="font-bold text-white text-sm">Mariana Souza</p><div className="flex items-center gap-2"><span className="text-[10px] font-mono text-gray-300 bg-gray-700/50 px-1 rounded">14:00</span><span className="text-[10px] text-gray-500">Limpeza</span></div></div>
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[400px]">
+                                        <div className="bg-gray-900/60 p-4 rounded-xl border border-white/5 flex flex-col h-full overflow-hidden">
+                                            <h3 className="font-bold text-white flex items-center gap-2 text-sm mb-4"><Clock size={16} className="text-gray-400"/> Próximos Agendamentos</h3>
+                                            <div className="space-y-3">
+                                                <div className="flex items-center justify-between p-3 bg-gray-800/40 rounded-lg border border-white/5">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-xs font-bold text-gray-400 bg-gray-800 px-2 py-1 rounded">14:00</span>
+                                                        <div>
+                                                            <p className="text-sm font-bold text-white">Mariana Costa</p>
+                                                            <p className="text-xs text-gray-500">Avaliação Inicial</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
                                                 </div>
-                                                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                                <div className="flex items-center justify-between p-3 bg-gray-800/40 rounded-lg border border-white/5">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-xs font-bold text-gray-400 bg-gray-800 px-2 py-1 rounded">15:00</span>
+                                                        <div>
+                                                            <p className="text-sm font-bold text-white">Pedro Alves</p>
+                                                            <p className="text-xs text-gray-500">Manutenção Ortodôntica</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                                                </div>
+                                                <div className="flex items-center justify-center pt-2">
+                                                    <span className="text-xs text-primary cursor-pointer hover:underline">Ver todos</span>
+                                                </div>
                                             </div>
-                                            <div className="flex items-center justify-between p-3 bg-gray-800/40 rounded-lg border border-white/5">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="text-center bg-gray-800 border border-white/10 rounded px-2 py-1"><p className="text-[9px] text-gray-400 uppercase">HOJE</p><p className="text-sm font-black text-white">14</p></div>
-                                                    <div><p className="font-bold text-white text-sm">Carlos Pereira</p><div className="flex items-center gap-2"><span className="text-[10px] font-mono text-gray-300 bg-gray-700/50 px-1 rounded">15:30</span><span className="text-[10px] text-gray-500">Avaliação</span></div></div>
+                                        </div>
+                                        <div className="flex flex-col gap-4">
+                                            <div className="flex-1 bg-gray-900/60 p-4 rounded-xl border border-white/5 relative overflow-hidden">
+                                                <div className="absolute right-0 top-0 p-4 opacity-5"><TrendingUp size={60} className="text-green-500"/></div>
+                                                <h3 className="font-bold text-white flex items-center gap-2 text-sm mb-4"><span className="p-1 bg-green-500/20 rounded text-green-400"><ArrowRight size={14} className="-rotate-45"/></span> Entradas (Semana)</h3>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div className="p-3 bg-green-900/10 rounded-lg border border-green-500/20"><p className="text-[10px] text-green-400 font-bold uppercase">Realizado</p><p className="text-lg font-black text-white">R$ 4.200,00</p></div>
+                                                    <div className="p-3 bg-gray-800/30 rounded-lg border border-white/5"><p className="text-[10px] text-gray-400 font-bold uppercase">A Receber</p><p className="text-lg font-black text-gray-300">R$ 1.850,00</p></div>
                                                 </div>
-                                                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                            </div>
+                                            <div className="flex-1 bg-gray-900/60 p-4 rounded-xl border border-white/5 relative overflow-hidden">
+                                                <div className="absolute right-0 top-0 p-4 opacity-5"><TrendingDown size={60} className="text-red-500"/></div>
+                                                <h3 className="font-bold text-white flex items-center gap-2 text-sm mb-4"><span className="p-1 bg-red-500/20 rounded text-red-400"><ArrowRight size={14} className="rotate-45"/></span> Saídas (Semana)</h3>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div className="p-3 bg-red-900/10 rounded-lg border border-red-500/20"><p className="text-[10px] text-red-400 font-bold uppercase">Pago</p><p className="text-lg font-black text-white">R$ 1.250,00</p></div>
+                                                    <div className="p-3 bg-gray-800/30 rounded-lg border border-white/5"><p className="text-[10px] text-gray-400 font-bold uppercase">A Pagar</p><p className="text-lg font-black text-gray-300">R$ 580,00</p></div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -340,35 +445,46 @@ const LandingPage: React.FC = () => {
                             {activeMockup === 'Agenda' && (
                                 <div className="space-y-4 animate-fade-in h-full flex flex-col">
                                     <div className="flex justify-between items-center mb-2">
-                                        <h2 className="text-lg font-bold text-white">Agenda</h2>
-                                        <button className="bg-primary text-white text-xs px-3 py-1.5 rounded-lg font-bold flex items-center shadow-lg shadow-blue-900/20">
-                                            <Plus size={14} className="mr-1"/> Novo
-                                        </button>
-                                    </div>
-                                    <div className="flex items-center justify-between bg-gray-900 p-2 rounded-lg border border-white/5">
-                                        <div className="flex items-center gap-2 text-gray-400"><ChevronLeft size={16}/><span className="text-white font-bold text-sm">Outubro 2026</span><ChevronRight size={16}/></div>
-                                        <span className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">Hoje</span>
-                                    </div>
-                                    <div className="flex-1 bg-gray-900/50 border border-white/5 rounded-lg overflow-hidden flex flex-col">
-                                        <div className="grid grid-cols-4 bg-gray-800/50 p-2 text-[10px] font-bold text-gray-500 uppercase">
-                                            <div>Horário</div>
-                                            <div className="col-span-2">Paciente</div>
-                                            <div className="text-right">Status</div>
+                                        <div className="flex items-center gap-2 bg-gray-900 border border-white/10 p-1 rounded-lg">
+                                            <button className="p-1 text-gray-400 hover:text-white"><ChevronLeft size={16}/></button>
+                                            <span className="text-sm font-bold text-white px-2">Fevereiro 2026</span>
+                                            <button className="p-1 text-gray-400 hover:text-white"><ChevronRight size={16}/></button>
+                                            <span className="text-[10px] font-bold text-gray-400 border-l border-white/10 pl-2 ml-1 cursor-pointer">Hoje</span>
                                         </div>
-                                        <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2">
+                                        <button className="bg-primary text-white text-xs px-3 py-1.5 rounded-lg font-bold flex items-center shadow-lg shadow-blue-900/20"><Plus size={14} className="mr-1"/> Novo Agendamento</button>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
+                                        {['Todos Pacientes', 'Todos Dentistas', 'Financeiro (Todos)', 'Status (Todos)'].map((f, i) => (
+                                            <div key={i} className="bg-gray-800 border border-white/10 rounded px-2 py-1.5 text-[10px] text-gray-300 flex justify-between items-center cursor-pointer hover:bg-gray-700">
+                                                {f} <ChevronDown size={10} />
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="flex-1 bg-gray-900/50 border border-white/5 rounded-lg overflow-hidden flex flex-col">
+                                        <div className="grid grid-cols-7 bg-gray-800/50 p-2 text-[9px] font-bold text-gray-500 uppercase tracking-wide">
+                                            <div>Data</div><div>Horário</div><div className="col-span-1">Paciente</div><div className="col-span-1">Dentista</div><div className="text-center">Status</div><div className="text-center">Pagamento</div><div className="text-right">Ações</div>
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto custom-scrollbar">
                                             {[
-                                                { time: '09:00', name: 'João Silva', proc: 'Avaliação', status: 'Confirmado', color: 'text-green-400' },
-                                                { time: '10:00', name: 'Maria Souza', proc: 'Limpeza', status: 'Agendado', color: 'text-blue-400' },
-                                                { time: '11:00', name: 'Pedro Santos', proc: 'Canal', status: 'Em andamento', color: 'text-yellow-400' },
-                                                { time: '14:00', name: 'Ana Costa', proc: 'Clareamento', status: 'Agendado', color: 'text-blue-400' },
+                                                { date: '06/02', time: '08:00 - 09:00', name: 'João Miguel', dentist: 'Dr. André', status: 'CONFIRMADO', pay: 'PAGO', val: '0', color: 'bg-blue-500', statusColor: 'text-green-400 bg-green-900/20 border-green-500/30', payColor: 'text-green-400 bg-green-900/20 border-green-500/30' },
+                                                { date: '06/02', time: '09:00 - 10:00', name: 'Ana Clara', dentist: 'Dra. Juliana', status: 'AGENDADO', pay: 'PENDENTE', val: '0', color: 'bg-purple-500', statusColor: 'text-blue-400 bg-blue-900/20 border-blue-500/30', payColor: 'text-yellow-400 bg-yellow-900/20 border-yellow-500/30' },
+                                                { date: '06/02', time: '10:00 - 11:30', name: 'Lucas Ferrari', sub: 'Canal', dentist: 'Dr. André', status: 'AGENDADO', pay: 'PENDENTE', val: '0', color: 'bg-blue-500', statusColor: 'text-blue-400 bg-blue-900/20 border-blue-500/30', payColor: 'text-yellow-400 bg-yellow-900/20 border-yellow-500/30' }
                                             ].map((item, i) => (
-                                                <div key={i} className="grid grid-cols-4 items-center bg-gray-800/30 p-2 rounded border border-white/5 hover:bg-gray-800 transition">
-                                                    <div className="font-mono text-xs text-gray-300">{item.time}</div>
-                                                    <div className="col-span-2">
-                                                        <div className="text-xs font-bold text-white">{item.name}</div>
-                                                        <div className="text-[10px] text-gray-500">{item.proc}</div>
+                                                <div key={i} className="grid grid-cols-7 items-center p-3 border-b border-white/5 hover:bg-gray-800/30 text-xs">
+                                                    <div className="text-gray-300 font-bold">{item.date}</div>
+                                                    <div className="text-gray-400">{item.time}</div>
+                                                    <div>
+                                                        <div className="font-bold text-white">{item.name}</div>
+                                                        {item.sub && <div className="text-[10px] text-gray-500">{item.sub}</div>}
                                                     </div>
-                                                    <div className={`text-[10px] font-bold text-right ${item.color}`}>{item.status}</div>
+                                                    <div className="flex items-center text-gray-400"><div className={`w-1.5 h-1.5 rounded-full ${item.color} mr-1.5`}></div>{item.dentist}</div>
+                                                    <div className="text-center"><span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${item.statusColor}`}>{item.status}</span></div>
+                                                    <div className="text-center"><span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${item.payColor}`}>{item.pay}</span></div>
+                                                    <div className="text-right text-gray-500 flex justify-end gap-2">
+                                                        <Trash2 size={12} className="hover:text-red-400 cursor-pointer"/>
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
@@ -377,176 +493,284 @@ const LandingPage: React.FC = () => {
                             )}
 
                             {activeMockup === 'Pacientes' && (
-                                <div className="space-y-4 animate-fade-in">
-                                    <div className="flex justify-between items-center">
-                                        <h2 className="text-xl font-bold text-white">Pacientes</h2>
-                                        <button className="bg-primary text-white text-xs px-3 py-1.5 rounded font-bold flex items-center"><Plus size={14} className="mr-1"/> Novo</button>
-                                    </div>
-                                    <div className="bg-gray-900 border border-white/5 p-2 rounded-lg flex items-center text-gray-400 text-sm">
-                                        <Search size={16} className="mr-2 ml-1"/> <span className="opacity-50">Buscar por nome ou CPF...</span>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <div className="bg-gray-900/60 border border-white/5 p-3 rounded-lg flex justify-between items-center group hover:border-white/10 transition">
-                                            <div>
-                                                <p className="font-bold text-white text-sm">Mariana Souza</p>
-                                                <p className="text-[10px] text-gray-500">(11) 99999-0000 | 123.456.789-00</p>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <button className="p-1.5 bg-gray-800 rounded border border-white/5 text-gray-400 hover:text-purple-400"><FileText size={14}/></button>
-                                                <button className="p-1.5 bg-gray-800 rounded border border-white/5 text-gray-400 hover:text-yellow-400"><Folder size={14}/></button>
-                                            </div>
+                                <div className="space-y-4 animate-fade-in h-full flex flex-col">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h2 className="text-lg font-bold text-white flex items-center gap-2">Pacientes <span className="text-xs bg-gray-800 px-2 py-0.5 rounded border border-white/10 text-gray-400">148 / Ilimitado</span></h2>
+                                        <div className="flex gap-2">
+                                            <button className="bg-gray-800 text-gray-300 border border-white/10 px-3 py-1.5 rounded text-xs font-bold flex items-center"><Folder size={12} className="mr-1"/> Modelo</button>
+                                            <button className="bg-gray-800 text-gray-300 border border-white/10 px-3 py-1.5 rounded text-xs font-bold flex items-center"><Upload size={12} className="mr-1"/> Importar Excel</button>
+                                            <button className="bg-primary text-white text-xs px-3 py-1.5 rounded font-bold flex items-center"><Plus size={14} className="mr-1"/> Novo</button>
                                         </div>
-                                        <div className="bg-gray-900/60 border border-white/5 p-3 rounded-lg flex justify-between items-center group hover:border-white/10 transition">
-                                            <div>
-                                                <p className="font-bold text-white text-sm">Carlos Pereira</p>
-                                                <p className="text-[10px] text-gray-500">(11) 98888-1111 | 987.654.321-99</p>
+                                    </div>
+                                    
+                                    <div className="relative mb-2">
+                                        <Search className="absolute left-3 top-2.5 text-gray-500" size={14} />
+                                        <input className="w-full bg-gray-800 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-primary" placeholder="Buscar por nome ou CPF..." />
+                                    </div>
+
+                                    <div className="flex-1 bg-gray-900/50 border border-white/5 rounded-lg overflow-y-auto custom-scrollbar">
+                                        {[
+                                            { name: 'Mariana Costa', phone: '(11) 99999-1234', cpf: '***.456.789-**' },
+                                            { name: 'Carlos Souza', phone: '(11) 98888-2222', cpf: '***.123.456-**' },
+                                            { name: 'Fernanda Lima', phone: '(11) 97777-3333', cpf: '***.789.012-**' },
+                                            { name: 'Ricardo Oliveira', phone: '(11) 96666-4444', cpf: '***.345.678-**' },
+                                            { name: 'Patrícia Santos', phone: '(11) 95555-5555', cpf: '***.901.234-**' },
+                                            { name: 'Roberto Almeida', phone: '(11) 94444-6666', cpf: '***.567.890-**' }
+                                        ].map((p, i) => (
+                                            <div key={i} className="p-3 border-b border-white/5 hover:bg-gray-800/30 flex justify-between items-center group">
+                                                <div>
+                                                    <h4 className="text-sm font-bold text-white">{p.name}</h4>
+                                                    <p className="text-[10px] text-gray-500">{p.phone} | {p.cpf}</p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex gap-1">
+                                                        <button className="p-1.5 bg-gray-800 border border-white/5 rounded text-gray-400 hover:text-blue-400 transition" title="Receita"><FileText size={12}/></button>
+                                                        <button className="p-1.5 bg-gray-800 border border-white/5 rounded text-gray-400 hover:text-purple-400 transition" title="Prontuário"><CheckCircle size={12}/></button>
+                                                        <button className="p-1.5 bg-gray-800 border border-white/5 rounded text-gray-400 hover:text-yellow-400 transition" title="Arquivos"><Folder size={12}/></button>
+                                                    </div>
+                                                    <div className="w-px h-4 bg-gray-700 mx-1"></div>
+                                                    <Edit2 size={14} className="text-gray-500 hover:text-blue-400 cursor-pointer"/>
+                                                    <Trash2 size={14} className="text-gray-500 hover:text-red-400 cursor-pointer"/>
+                                                </div>
                                             </div>
-                                            <div className="flex gap-2">
-                                                <button className="p-1.5 bg-gray-800 rounded border border-white/5 text-gray-400 hover:text-purple-400"><FileText size={14}/></button>
-                                                <button className="p-1.5 bg-gray-800 rounded border border-white/5 text-gray-400 hover:text-yellow-400"><Folder size={14}/></button>
-                                            </div>
-                                        </div>
+                                        ))}
                                     </div>
                                 </div>
                             )}
 
                             {activeMockup === 'Dentistas' && (
-                                <div className="space-y-4 animate-fade-in">
-                                    <div className="flex justify-between items-center">
-                                        <h2 className="text-xl font-bold text-white">Dentistas</h2>
-                                        <button className="bg-primary text-white text-xs px-3 py-1.5 rounded font-bold flex items-center"><Plus size={14} className="mr-1"/> Novo</button>
-                                    </div>
-                                    <div className="bg-gray-900 border border-white/5 p-2 rounded-lg flex items-center text-gray-400 text-sm">
-                                        <Search size={16} className="mr-2 ml-1"/> <span className="opacity-50">Buscar por nome...</span>
-                                    </div>
-                                    <div className="bg-gray-900/60 border border-white/5 p-4 rounded-lg relative overflow-hidden group">
-                                        <div className="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center font-bold text-gray-400 border border-white/10">F</div>
-                                            <div><p className="text-sm font-bold text-white">Dra. Fernanda</p><p className="text-[10px] text-gray-500">CRO: 12345</p></div>
+                                <div className="space-y-4 animate-fade-in h-full flex flex-col">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h2 className="text-lg font-bold text-white flex items-center gap-2">Dentistas <span className="text-xs bg-gray-800 px-2 py-0.5 rounded border border-white/10 text-gray-400">2 / 3</span></h2>
+                                        <div className="flex gap-2">
+                                            <button className="bg-gray-800 text-gray-300 border border-white/10 px-3 py-1.5 rounded text-xs font-bold flex items-center"><Folder size={12} className="mr-1"/> Modelo</button>
+                                            <button className="bg-primary text-white text-xs px-3 py-1.5 rounded font-bold flex items-center"><Plus size={14} className="mr-1"/> Novo</button>
                                         </div>
-                                        <div className="flex gap-1 mb-3"><span className="text-[9px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded border border-white/10">ORTODONTIA</span></div>
-                                        <div className="flex justify-end gap-2 border-t border-white/5 pt-2">
-                                            <button className="text-[10px] font-bold text-blue-400 hover:bg-blue-500/10 px-2 py-1 rounded">Editar</button>
-                                            <button className="text-[10px] font-bold text-red-400 hover:bg-red-500/10 px-2 py-1 rounded">Excluir</button>
+                                    </div>
+                                    
+                                    <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow border border-white/5 overflow-hidden hover:border-white/20 transition-all group relative">
+                                        <div className="h-1.5 w-full bg-purple-500"></div>
+                                        <div className="p-4">
+                                            <div className="flex items-center mb-3">
+                                                <div className="h-10 w-10 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 font-bold text-sm mr-3 border border-white/10">J</div>
+                                                <div>
+                                                    <h3 className="font-bold text-white text-sm">Dra. Juliana Mendes</h3>
+                                                    <p className="text-[10px] text-gray-500">CRO: 54321</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-[10px] text-gray-400 flex items-center mb-4"><Mail size={10} className="mr-1"/> juliana@odontovida.com.br</div>
+                                            <div className="flex justify-end gap-2 border-t border-white/5 pt-3">
+                                                <button className="flex items-center px-2 py-1 text-[10px] font-bold text-blue-400 hover:bg-blue-500/10 rounded transition"><Edit2 size={10} className="mr-1"/> Editar</button>
+                                                <button className="flex items-center px-2 py-1 text-[10px] font-bold text-red-400 hover:bg-red-500/10 rounded transition"><Trash2 size={10} className="mr-1"/> Excluir</button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             )}
 
                             {activeMockup === 'Prontuário IA' && (
-                                <div className="space-y-6 animate-fade-in h-full flex flex-col items-center justify-center text-center">
-                                    <div className="w-full bg-blue-900/20 border border-blue-500/20 p-3 rounded-lg text-left mb-auto w-full">
-                                        <p className="text-xs text-blue-300 font-bold flex items-center"><Zap size={12} className="mr-1"/> Plano Gratuito</p>
-                                        <p className="text-[10px] text-blue-400">Restam 3 usos no plano Gratuito. Duração máx: 5 minutos.</p>
+                                <div className="space-y-4 animate-fade-in h-full flex flex-col">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h2 className="text-lg font-bold text-white flex items-center gap-2"><Mic className="text-primary" size={18}/> Prontuário Inteligente (IA)</h2>
+                                        <HelpCircle size={16} className="text-gray-500"/>
                                     </div>
                                     
-                                    <div className="w-full max-w-sm space-y-3">
-                                        <div className="bg-gray-800 border border-gray-700 p-2 rounded text-left text-xs text-gray-300">Paciente: <strong>Mariana Souza</strong></div>
-                                        <div className="bg-gray-800 border border-gray-700 p-2 rounded text-left text-xs text-gray-300">Dentista: <strong>Dr. André Silva</strong></div>
+                                    <div className="bg-blue-900/20 border border-blue-500/20 p-3 rounded-lg text-left mb-4">
+                                        <p className="text-xs text-blue-300 font-bold flex items-center"><Zap size={12} className="mr-1"/> Plano Starter</p>
+                                        <p className="text-[10px] text-blue-400 mt-0.5">Uso diário (Dentista): 2/5. Duração máx: 10 minutos.</p>
                                     </div>
 
-                                    <div className="my-8 relative group cursor-pointer">
-                                        <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl group-hover:bg-primary/40 transition"></div>
-                                        <div className="relative w-20 h-20 bg-gray-800 border-2 border-dashed border-gray-600 rounded-full flex items-center justify-center text-gray-400 group-hover:border-primary group-hover:text-primary transition">
-                                            <Mic size={32} />
+                                    <div className="grid grid-cols-2 gap-3 mb-2">
+                                        <div>
+                                            <label className="text-[10px] font-bold text-gray-400 mb-1 block">Paciente</label>
+                                            <div className="bg-gray-800 border border-gray-700 rounded p-2 text-xs text-white">Mariana Costa</div>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-gray-400 mb-1 block">Dentista Responsável</label>
+                                            <div className="bg-gray-800 border border-gray-700 rounded p-2 text-xs text-white">Dr. André Silva</div>
                                         </div>
                                     </div>
-                                    <p className="text-sm text-gray-500">Clique para gravar a evolução clínica</p>
+
+                                    <div className="flex-1 border-2 border-dashed border-gray-700 rounded-xl bg-gray-800/30 flex items-center justify-center relative">
+                                        <div className="h-16 w-16 bg-red-600 rounded-full flex items-center justify-center text-white shadow-lg shadow-red-900/50 cursor-pointer hover:scale-105 transition-transform">
+                                            <Mic size={24}/>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
 
                             {activeMockup === 'Mensageria' && (
-                                <div className="space-y-4 animate-fade-in">
-                                    <h2 className="text-xl font-bold text-white mb-4">Central de Mensagens</h2>
-                                    <div className="bg-blue-900/20 border border-blue-500/20 p-3 rounded-lg flex justify-between items-center">
-                                        <div>
-                                            <p className="text-xs font-bold text-blue-300 flex items-center"><Zap size={12} className="mr-1 text-yellow-400"/> Envios Automáticos</p>
-                                            <p className="text-[10px] text-blue-400">Verificação diária da agenda ativa.</p>
-                                        </div>
-                                        <span className="text-[9px] bg-green-900/30 text-green-400 border border-green-500/20 px-2 py-0.5 rounded-full font-bold">Ativo</span>
+                                <div className="space-y-4 animate-fade-in h-full flex flex-col">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h2 className="text-lg font-bold text-white">Central de Mensagens</h2>
+                                        <HelpCircle size={16} className="text-gray-500"/>
                                     </div>
-                                    <div className="bg-gray-900/60 border border-white/5 rounded-xl overflow-hidden">
-                                        <div className="px-3 py-2 bg-gray-800/50 text-[10px] font-bold text-gray-500 uppercase">Últimos Envios</div>
-                                        <div className="divide-y divide-white/5">
-                                            {[
-                                                { to: 'João Santos', type: 'Lembrete (24h)', time: '15:00', status: 'Enviado' },
-                                                { to: 'Ana Costa', type: 'Lembrete (24h)', time: '14:00', status: 'Enviado' },
-                                                { to: 'Dr. André Silva', type: 'Agenda Diária', time: '08:00', status: 'Enviado' },
-                                            ].map((msg, i) => (
-                                                <div key={i} className="p-3 flex justify-between items-center text-xs">
-                                                    <div><p className="text-white font-bold">{msg.to}</p><p className="text-gray-500">{msg.type}</p></div>
-                                                    <div className="text-right"><span className="text-green-400 bg-green-900/20 px-1.5 py-0.5 rounded border border-green-500/20 flex items-center text-[9px] font-bold"><Check size={8} className="mr-1"/> {msg.status}</span><p className="text-[9px] text-gray-600 mt-1">{msg.time}</p></div>
-                                                </div>
-                                            ))}
+                                    
+                                    <div className="flex border-b border-white/10 mb-4">
+                                        <div className="py-2 px-4 border-b-2 border-primary text-primary text-xs font-bold">Histórico & Automações</div>
+                                        <div className="py-2 px-4 border-b-2 border-transparent text-gray-400 text-xs font-medium">Campanha Manual (Retorno)</div>
+                                    </div>
+
+                                    <div className="bg-indigo-900/20 border border-indigo-500/20 p-3 rounded-lg flex items-center justify-between mb-2">
+                                        <div>
+                                            <h3 className="text-xs font-bold text-white flex items-center gap-1"><Zap size={12} className="text-yellow-400 fill-current"/> Sistema de Envios Automáticos</h3>
+                                            <p className="text-[10px] text-gray-400">O DentiHub verifica diariamente sua agenda.</p>
                                         </div>
+                                        <span className="text-[9px] bg-green-900/30 text-green-400 px-2 py-0.5 rounded border border-green-500/20 font-bold flex items-center"><Clock size={10} className="mr-1"/> Ativo</span>
+                                    </div>
+
+                                    <div className="flex justify-between items-center mb-2 mt-4">
+                                        <h3 className="text-xs font-bold text-white">Últimos Envios</h3>
+                                        <Loader2 size={12} className="text-gray-500"/>
+                                    </div>
+
+                                    <div className="flex-1 bg-gray-900/50 border border-white/5 rounded-lg overflow-y-auto custom-scrollbar">
+                                        <div className="grid grid-cols-4 bg-gray-800/50 p-2 text-[9px] font-bold text-gray-500 uppercase">
+                                            <div>Data</div><div>Tipo</div><div className="col-span-1">Destinatário</div><div className="text-right">Status</div>
+                                        </div>
+                                        {[
+                                            { date: '10:00', type: 'Lembrete (24h)', dest: 'Mariana Costa', status: 'Enviado' },
+                                            { date: '09:30', type: 'Recall', dest: 'Ricardo Oliveira', status: 'Enviado' },
+                                            { date: '09:00', type: 'stock_alert', dest: 'Admin', status: 'Enviado' },
+                                            { date: 'Ontem', type: 'Aniversário', dest: 'Patrícia Santos', status: 'Enviado' },
+                                            { date: 'Ontem', type: 'Boas-vindas', dest: 'Roberto Almeida', status: 'Enviado' },
+                                        ].map((item, i) => (
+                                            <div key={i} className="grid grid-cols-4 p-2 border-b border-white/5 text-[10px] items-center hover:bg-gray-800/30">
+                                                <div className="text-gray-400">{item.date}</div>
+                                                <div className="font-bold text-white">{item.type}</div>
+                                                <div className="text-gray-400 col-span-1 truncate">{item.dest}</div>
+                                                <div className="text-right"><span className="bg-green-900/30 text-green-400 border border-green-500/20 px-1.5 py-0.5 rounded font-bold inline-flex items-center"><Check size={8} className="mr-1"/> {item.status}</span></div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             )}
 
                             {activeMockup === 'Financeiro' && (
-                                <div className="space-y-6 animate-fade-in">
-                                    <div className="flex justify-between items-center">
-                                        <h2 className="text-xl font-bold text-white">Fluxo de Caixa</h2>
-                                        <button className="bg-primary text-white text-xs px-3 py-1.5 rounded font-bold flex items-center"><Plus size={14} className="mr-1"/> Transação</button>
+                                <div className="space-y-4 animate-fade-in h-full flex flex-col">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h2 className="text-lg font-bold text-white flex items-center gap-2">Fluxo de Caixa <HelpCircle size={14} className="text-gray-500"/></h2>
+                                        <button className="bg-primary text-white text-xs px-3 py-1.5 rounded font-bold flex items-center"><Plus size={14} className="mr-1"/> Nova Transação</button>
                                     </div>
-                                    <div className="bg-gray-900/60 border border-green-500/30 p-4 rounded-xl">
-                                        <p className="text-xs text-green-400 uppercase font-bold">Saldo (Período)</p>
-                                        <p className="text-2xl font-black text-green-500">R$ +4.200,00</p>
+
+                                    <div className="bg-gray-900/60 p-4 rounded-lg border border-white/5 border-l-4 border-l-primary mb-2">
+                                        <p className="text-[10px] text-gray-400 font-bold uppercase">Saldo (Período)</p>
+                                        <p className="text-2xl font-black text-green-400">R$ 18.590,00</p>
                                     </div>
-                                    <div className="space-y-2">
-                                        <div className="flex justify-between items-center p-3 bg-gray-800/40 rounded-lg border border-white/5">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-1.5 bg-green-500/10 rounded text-green-500"><TrendingUp size={14}/></div>
-                                                <div><p className="text-xs font-bold text-white">Consulta Particular</p><p className="text-[10px] text-gray-500">15/10/2026</p></div>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-xs font-black text-green-500">R$ 250,00</p>
-                                                <span className="text-[9px] bg-green-900/30 text-green-400 px-1.5 rounded border border-green-500/20">RECEBIDO</span>
-                                            </div>
+
+                                    <div className="flex gap-2 mb-2 justify-end">
+                                        <div className="bg-gray-800 border border-white/10 rounded px-2 py-1 text-[10px] text-white flex items-center">01/02/2026 <Calendar size={10} className="ml-2 text-gray-500"/></div>
+                                        <div className="bg-gray-800 border border-white/10 rounded px-2 py-1 text-[10px] text-white flex items-center">28/02/2026 <Calendar size={10} className="ml-2 text-gray-500"/></div>
+                                        <div className="bg-gray-800 border border-white/10 rounded px-2 py-1 text-[10px] text-white flex items-center">Todos <ChevronDown size={10} className="ml-2 text-gray-500"/></div>
+                                    </div>
+
+                                    <div className="flex-1 bg-gray-900/50 border border-white/5 rounded-lg overflow-y-auto custom-scrollbar">
+                                        <div className="grid grid-cols-5 bg-gray-800/50 p-2 text-[9px] font-bold text-gray-400 uppercase tracking-wide">
+                                            <div>Data</div><div className="col-span-2">Categoria</div><div className="text-center">Status</div><div className="text-right">Valor</div>
                                         </div>
-                                        <div className="flex justify-between items-center p-3 bg-gray-800/40 rounded-lg border border-white/5">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-1.5 bg-red-500/10 rounded text-red-500"><TrendingDown size={14}/></div>
-                                                <div><p className="text-xs font-bold text-white">Aluguel Sala</p><p className="text-[10px] text-gray-500">10/10/2026</p></div>
+                                        {[
+                                            { date: '06/02', cat: 'Consulta (Mariana)', type: 'income', status: 'RECEBIDO', val: 'R$ 250,00', statusColor: 'text-green-400 bg-green-900/20 border-green-500/30' },
+                                            { date: '05/02', cat: 'Lab. Protético', type: 'expense', status: 'PAGO', val: 'R$ 450,00', statusColor: 'text-red-400 bg-red-900/20 border-red-500/30' },
+                                            { date: '05/02', cat: 'Aluguel Imóvel', type: 'expense', status: 'PENDENTE', val: 'R$ 2.500,00', statusColor: 'text-yellow-400 bg-yellow-900/20 border-yellow-500/30' },
+                                            { date: '04/02', cat: 'Implante (Carlos)', type: 'income', status: 'RECEBIDO', val: 'R$ 3.500,00', statusColor: 'text-green-400 bg-green-900/20 border-green-500/30' }
+                                        ].map((item, i) => (
+                                            <div key={i} className="grid grid-cols-5 items-center p-3 border-b border-white/5 hover:bg-gray-800/30 text-xs group">
+                                                <div className="text-gray-400">{item.date}</div>
+                                                <div className="col-span-2 flex items-center font-medium text-gray-200">
+                                                    {item.type === 'income' ? <ArrowUpCircle size={12} className="text-green-500 mr-2"/> : <ArrowDownCircle size={12} className="text-red-500 mr-2"/>}
+                                                    {item.cat}
+                                                </div>
+                                                <div className="text-center"><span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase ${item.statusColor}`}>{item.status}</span></div>
+                                                <div className={`text-right font-black ${item.type === 'income' ? 'text-green-400' : 'text-red-400'}`}>{item.val}</div>
                                             </div>
-                                            <div className="text-right">
-                                                <p className="text-xs font-black text-red-500">R$ 1.500,00</p>
-                                                <span className="text-[9px] bg-red-900/30 text-red-400 px-1.5 rounded border border-red-500/20">PAGO</span>
-                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeMockup === 'Estoque' && (
+                                <div className="space-y-4 animate-fade-in h-full flex flex-col">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h2 className="text-lg font-bold text-white flex items-center gap-2"><Box className="text-primary" size={18}/> Controle de Estoque</h2>
+                                        <button className="bg-primary text-white text-xs px-3 py-1.5 rounded font-bold flex items-center"><Plus size={14} className="mr-1"/> Novo Item</button>
+                                    </div>
+
+                                    <div className="flex gap-2 mb-2">
+                                        <div className="flex-1 relative">
+                                            <Search className="absolute left-2 top-2 text-gray-500" size={12}/>
+                                            <input className="w-full bg-gray-800 border border-white/10 rounded pl-8 py-1.5 text-xs text-white placeholder-gray-500" placeholder="Buscar item..." />
                                         </div>
+                                        <div className="relative">
+                                            <Filter className="absolute left-2 top-2 text-gray-500" size={12}/>
+                                            <select className="bg-gray-800 border border-white/10 rounded pl-8 pr-2 py-1.5 text-xs text-white appearance-none w-28"><option>Todas Cat.</option></select>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 overflow-y-auto custom-scrollbar p-1">
+                                        {[
+                                            { name: 'Luvas Látex M', cat: 'Descartável', owner: 'Compartilhado', min: '5 cx', qty: 8, alert: false },
+                                            { name: 'Anestésico Tópico', cat: 'Medicamento', owner: 'Compartilhado', min: '3 un', qty: 2, alert: true },
+                                            { name: 'Resina A2', cat: 'Material', owner: 'Dr. André', min: '2 un', qty: 4, alert: false },
+                                        ].map((item, i) => (
+                                            <div key={i} className={`bg-gray-800/50 border rounded-lg p-3 flex flex-col justify-between ${item.alert ? 'border-red-500/50' : 'border-white/5'}`}>
+                                                <div>
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <h3 className="font-bold text-white text-sm">{item.name}</h3>
+                                                        <span className="text-[8px] bg-gray-900 text-gray-400 px-1.5 py-0.5 rounded border border-white/10 uppercase">{item.cat}</span>
+                                                    </div>
+                                                    <div className="mb-2">
+                                                        <span className={`inline-flex items-center text-[9px] px-1.5 py-0.5 rounded border ${item.owner.includes('Dr.') ? 'text-blue-300 bg-blue-900/20 border-blue-500/20' : 'text-gray-400 bg-gray-700/30 border-white/5'}`}>
+                                                            {item.owner.includes('Dr.') ? <User size={8} className="mr-1"/> : <Users size={8} className="mr-1"/>} {item.owner}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1 mb-2">
+                                                        {item.alert && <span className="text-[9px] text-red-400 flex items-center font-bold bg-red-900/20 px-1.5 py-0.5 rounded"><AlertTriangle size={8} className="mr-1"/> Baixo Estoque</span>}
+                                                        <span className="text-[9px] text-gray-500">Mín: {item.min}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                                                    <div className="flex items-center gap-2 bg-gray-900 rounded p-0.5 border border-white/10">
+                                                        <button className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-white">-</button>
+                                                        <span className={`font-mono font-bold w-6 text-center text-xs ${item.alert ? 'text-red-400' : 'text-white'}`}>{item.qty}</span>
+                                                        <button className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-white">+</button>
+                                                    </div>
+                                                    <div className="flex gap-1">
+                                                        <button className="p-1 text-gray-400 hover:text-blue-400"><Edit2 size={12}/></button>
+                                                        <button className="p-1 text-gray-400 hover:text-red-400"><Trash2 size={12}/></button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             )}
 
                             {activeMockup === 'Solicitações' && (
-                                <div className="space-y-4 animate-fade-in">
-                                    <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">Solicitações <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">2</span></h2>
-                                    <div className="bg-gray-900/60 border border-white/5 rounded-xl overflow-hidden">
-                                        <div className="p-4 border-b border-white/5 flex flex-col gap-2">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <p className="text-white font-bold text-sm">Lucas Martins <span className="text-[10px] bg-blue-900/30 text-blue-400 px-1.5 py-0.5 rounded ml-2">Novo Paciente</span></p>
-                                                    <p className="text-gray-400 text-xs mt-1">Quer agendar: <strong>Avaliação</strong></p>
-                                                </div>
-                                                <div className="bg-blue-900/20 text-blue-400 text-xs px-2 py-1 rounded border border-blue-500/20 flex items-center">
-                                                    <Clock size={12} className="mr-1"/> Amanhã 15:00
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-2 mt-2">
-                                                <button className="flex-1 bg-green-600/20 text-green-400 border border-green-500/20 py-1.5 rounded text-xs font-bold hover:bg-green-600/30 transition">Aceitar</button>
-                                                <button className="flex-1 bg-red-600/20 text-red-400 border border-red-500/20 py-1.5 rounded text-xs font-bold hover:bg-red-600/30 transition">Recusar</button>
+                                <div className="space-y-4 animate-fade-in h-full flex flex-col">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h2 className="text-lg font-bold text-white flex items-center gap-2">Solicitações e Avisos <RefreshCw size={14} className="text-gray-500"/></h2>
+                                    </div>
+                                    
+                                    <h3 className="text-[10px] font-bold text-gray-400 uppercase mb-2 flex items-center"><Calendar size={12} className="mr-1"/> Novos Pedidos de Agendamento</h3>
+
+                                    <div className="bg-gray-900/60 backdrop-blur-md shadow rounded-lg border border-white/5 p-4 hover:bg-gray-800/30 transition">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <h3 className="text-base font-bold text-white flex items-center">
+                                                Lucas Silva 
+                                                <span className="ml-2 text-[9px] font-bold bg-indigo-900/30 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full flex items-center"><UserCheck size={8} className="mr-1"/> Paciente Cadastrado</span>
+                                            </h3>
+                                            <div className="flex gap-2">
+                                                <button className="px-3 py-1 border border-red-500/30 text-red-400 rounded hover:bg-red-900/20 text-xs font-bold flex items-center"><X size={10} className="mr-1"/> Recusar</button>
+                                                <button className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-bold flex items-center"><Check size={10} className="mr-1"/> Aceitar</button>
                                             </div>
                                         </div>
-                                        <div className="p-4 flex flex-col gap-2 opacity-60">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <p className="text-white font-bold text-sm">Ana Costa</p>
-                                                    <p className="text-gray-400 text-xs mt-1">Quer agendar: <strong>Limpeza</strong></p>
-                                                </div>
-                                                <div className="bg-blue-900/20 text-blue-400 text-xs px-2 py-1 rounded border border-blue-500/20 flex items-center">
-                                                    <Clock size={12} className="mr-1"/> 20/10 09:00
-                                                </div>
+                                        
+                                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-400">
+                                            <div><span className="font-semibold text-gray-500">Serviço:</span> Limpeza e Profilaxia</div>
+                                            <div className="flex items-center text-gray-300"><Smartphone size={10} className="mr-1 text-green-500"/> (11) 98888-7777</div>
+                                            <div><span className="font-semibold text-gray-500">Dentista:</span> Dra. Juliana Mendes</div>
+                                            <div className="flex items-center text-primary font-bold mt-1 bg-blue-900/20 w-fit px-2 py-0.5 rounded border border-blue-500/20">
+                                                <Clock size={12} className="mr-1" /> 07/02/2026 às 14:00
                                             </div>
                                         </div>
                                     </div>
@@ -554,56 +778,78 @@ const LandingPage: React.FC = () => {
                             )}
 
                             {activeMockup === 'Guia Prático' && (
-                                <div className="space-y-4 animate-fade-in">
-                                    <h2 className="text-xl font-bold text-white mb-4">Guia Prático</h2>
-                                    <div className="space-y-3">
-                                        <div className="bg-gray-800/50 border border-white/5 p-3 rounded-lg flex justify-between items-center cursor-pointer hover:bg-gray-800 transition">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400"><Calendar size={16}/></div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-white">Como configurar a Agenda?</p>
-                                                    <p className="text-[10px] text-gray-500">3 passos simples</p>
-                                                </div>
-                                            </div>
-                                            <ChevronRight size={16} className="text-gray-500"/>
-                                        </div>
-                                        <div className="bg-gray-800/50 border border-white/5 p-3 rounded-lg flex justify-between items-center cursor-pointer hover:bg-gray-800 transition">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400"><Mic size={16}/></div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-white">Usando a IA no Prontuário</p>
-                                                    <p className="text-[10px] text-gray-500">Tutorial rápido</p>
-                                                </div>
-                                            </div>
-                                            <ChevronRight size={16} className="text-gray-500"/>
+                                <div className="space-y-4 animate-fade-in h-full flex flex-col">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="p-2 bg-indigo-900/30 text-indigo-400 rounded-lg border border-indigo-500/20"><BookOpen size={20} /></div>
+                                        <div>
+                                            <h1 className="text-lg font-bold text-white">Guia Prático</h1>
+                                            <p className="text-xs text-gray-400">Aprenda a utilizar todos os recursos do DentiHub.</p>
                                         </div>
                                     </div>
-                                    <div className="mt-4 bg-blue-900/20 border border-blue-500/20 p-4 rounded-lg text-center">
-                                        <p className="text-xs text-blue-300 font-bold mb-2">Precisa de ajuda?</p>
-                                        <button className="bg-blue-600 text-white text-xs px-4 py-2 rounded font-bold hover:bg-blue-500 transition">Falar com Suporte</button>
+
+                                    <div className="space-y-2 overflow-y-auto custom-scrollbar pr-1">
+                                        {[
+                                            { t: 'Visão Geral', i: LayoutDashboard, d: 'Acompanhe os indicadores chave e a agenda do dia.' },
+                                            { t: 'Agenda', i: Calendar, d: 'Gerencie compromissos, status e pagamentos.' },
+                                            { t: 'Pacientes', i: Users, d: 'Cadastro completo e histórico.' },
+                                            { t: 'Dentistas', i: UserCheck, d: 'Gestão da equipe.' },
+                                            { t: 'Prontuário IA', i: Mic, d: 'Transcreva consultas com IA.' },
+                                            { t: 'Mensageria', i: MessageSquare, d: 'Automação de e-mails.' },
+                                            { t: 'Financeiro', i: DollarSign, d: 'Fluxo de caixa.' },
+                                            { t: 'Solicitações', i: BellRing, d: 'Aprovação de agendamentos online.' },
+                                            { t: 'Configurações', i: Settings, d: 'Dados da clínica e equipe.' }
+                                        ].map((g, idx) => (
+                                            <div key={idx} className="bg-gray-900/60 border border-white/5 rounded-lg p-3 flex justify-between items-center group cursor-pointer hover:bg-gray-800/50">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-1.5 bg-blue-900/20 text-blue-400 rounded border border-blue-500/20"><g.i size={16}/></div>
+                                                    <div>
+                                                        <h3 className="text-sm font-bold text-white">{g.t}</h3>
+                                                        <p className="text-[10px] text-gray-400 truncate w-40">{g.d}</p>
+                                                    </div>
+                                                </div>
+                                                <ChevronDown size={14} className="text-gray-500"/>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             )}
 
                             {activeMockup === 'Configurações' && (
-                                <div className="space-y-6 animate-fade-in">
-                                    <h2 className="text-xl font-bold text-white mb-4">Configurações</h2>
-                                    <div className="bg-gray-900/60 border border-white/5 p-4 rounded-xl">
-                                        <div className="flex gap-4 border-b border-white/5 pb-4 mb-4 overflow-x-auto">
-                                            <button className="text-xs font-bold text-primary border-b-2 border-primary pb-1">Perfil da Clínica</button>
-                                            <button className="text-xs font-bold text-gray-500 hover:text-white pb-1">Equipe</button>
-                                            <button className="text-xs font-bold text-gray-500 hover:text-white pb-1">Planos</button>
+                                <div className="space-y-4 animate-fade-in h-full flex flex-col">
+                                    <h1 className="text-xl font-bold text-white mb-2">Configurações</h1>
+                                    <div className="flex gap-4 h-full">
+                                        <div className="w-1/3 bg-gray-900/60 rounded-lg p-2 border border-white/5">
+                                            <div className="bg-primary text-white text-xs font-bold px-3 py-2 rounded mb-1 flex items-center"><Settings size={12} className="mr-2"/> Perfil da Clínica</div>
+                                            <div className="text-gray-400 text-xs px-3 py-2 hover:bg-gray-800 rounded flex items-center"><Users size={12} className="mr-2"/> Gestão de Acessos</div>
+                                            <div className="text-gray-400 text-xs px-3 py-2 hover:bg-gray-800 rounded flex items-center"><Lock size={12} className="mr-2"/> Perfis de Acesso</div>
+                                            <div className="text-gray-400 text-xs px-3 py-2 hover:bg-gray-800 rounded flex items-center"><ShieldCheck size={12} className="mr-2"/> Segurança</div>
+                                            <div className="text-gray-400 text-xs px-3 py-2 hover:bg-gray-800 rounded flex items-center"><CreditCard size={12} className="mr-2"/> Planos e Assinatura</div>
                                         </div>
-                                        <div className="space-y-4">
-                                            <div>
-                                                <label className="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Nome da Clínica</label>
-                                                <input type="text" value="Clínica Odonto Vida" className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white" readOnly/>
+                                        <div className="flex-1 bg-gray-900/60 rounded-lg p-4 border border-white/5">
+                                            <h2 className="text-sm font-bold text-white mb-4 pb-2 border-b border-white/10">Dados da Clínica</h2>
+                                            <div className="space-y-3">
+                                                <div><label className="text-[10px] text-gray-400 font-bold block mb-1">Nome *</label><input className="w-full bg-gray-800 border border-gray-700 rounded p-1.5 text-xs text-white" value="Clínica OdontoVida" readOnly/></div>
+                                                <div><label className="text-[10px] text-gray-400 font-bold block mb-1">Endereço *</label><input className="w-full bg-gray-800 border border-gray-700 rounded p-1.5 text-xs text-white" value="Av. Brasil, 500" readOnly/></div>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div><label className="text-[10px] text-gray-400 font-bold block mb-1">Cidade *</label><input className="w-full bg-gray-800 border border-gray-700 rounded p-1.5 text-xs text-white" value="São Paulo" readOnly/></div>
+                                                    <div><label className="text-[10px] text-gray-400 font-bold block mb-1">Estado *</label><select className="w-full bg-gray-800 border border-gray-700 rounded p-1.5 text-xs text-white"><option>SP</option></select></div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div><label className="text-[10px] text-gray-400 font-bold block mb-1">Telefone</label><input className="w-full bg-gray-800 border border-gray-700 rounded p-1.5 text-xs text-white" value="(11) 3333-4444" readOnly/></div>
+                                                    <div><label className="text-[10px] text-gray-400 font-bold block mb-1">WhatsApp</label><input className="w-full bg-gray-800 border border-gray-700 rounded p-1.5 text-xs text-white" value="(11) 99999-8888" readOnly/></div>
+                                                </div>
+                                                <div><label className="text-[10px] text-gray-400 font-bold block mb-1">E-mail</label><input className="w-full bg-gray-800 border border-gray-700 rounded p-1.5 text-xs text-white" value="contato@odontovida.com.br" readOnly/></div>
+                                                
+                                                <div className="mt-2 bg-blue-900/20 border border-blue-500/20 rounded p-2">
+                                                    <h4 className="text-[10px] font-bold text-blue-400 flex items-center gap-1 mb-1"><Folder size={10} /> Link de Agendamento</h4>
+                                                    <div className="flex gap-1">
+                                                        <input type="text" readOnly className="flex-1 border border-blue-500/20 rounded px-2 py-1 text-[10px] text-blue-300 bg-blue-900/10" value={`https://dentihub.com.br/#/odontovida`} />
+                                                        <button className="bg-blue-600 text-white px-2 py-1 rounded text-[10px] font-bold">Copiar</button>
+                                                    </div>
+                                                </div>
+                                                
+                                                <button className="bg-primary text-white px-4 py-2 rounded text-xs font-bold mt-2 shadow-sm flex items-center"><Save size={12} className="mr-1"/> Salvar</button>
                                             </div>
-                                            <div>
-                                                <label className="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Endereço</label>
-                                                <input type="text" value="Av. Paulista, 1000 - SP" className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white" readOnly/>
-                                            </div>
-                                            <button className="w-full bg-primary text-white py-2 rounded text-sm font-bold mt-2">Salvar Alterações</button>
                                         </div>
                                     </div>
                                 </div>
@@ -620,15 +866,8 @@ const LandingPage: React.FC = () => {
                               </div>
                               <div className="space-y-2 overflow-y-auto">
                                   {mockupMenu.map(item => (
-                                      <button 
-                                          key={item.label} 
-                                          onClick={() => { setActiveMockup(item.label); setMockupMobileMenuOpen(false); }} 
-                                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition ${activeMockup === item.label ? 'bg-primary text-white' : 'text-gray-400 hover:bg-gray-900 hover:text-white'}`}
-                                      >
-                                          <div className="relative">
-                                              <item.icon size={18}/>
-                                              {item.badge && <span className="absolute -top-1 -right-1 bg-red-500 w-2 h-2 rounded-full"></span>}
-                                          </div>
+                                      <button key={item.label} onClick={() => { setActiveMockup(item.label); setMockupMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition ${activeMockup === item.label ? 'bg-primary text-white' : 'text-gray-400 hover:bg-gray-900 hover:text-white'}`}>
+                                          <div className="relative"><item.icon size={18}/>{item.badge && <span className="absolute -top-1 -right-1 bg-red-500 w-2 h-2 rounded-full"></span>}</div>
                                           {item.label}
                                       </button>
                                   ))}
@@ -660,27 +899,9 @@ const LandingPage: React.FC = () => {
                     </p>
                     
                     <ul className="space-y-4 mb-10">
-                        <li className="flex items-start gap-3">
-                            <div className="mt-1 p-1 bg-green-500/20 rounded text-green-400 border border-green-500/20"><Check size={16}/></div>
-                            <div>
-                                <strong className="block text-white">Transcrição de Voz para Texto</strong>
-                                <span className="text-sm text-gray-500">Não tire as luvas. Apenas dite e o sistema escreve.</span>
-                            </div>
-                        </li>
-                        <li className="flex items-start gap-3">
-                            <div className="mt-1 p-1 bg-green-500/20 rounded text-green-400 border border-green-500/20"><Check size={16}/></div>
-                            <div>
-                                <strong className="block text-white">Formato SOAP Automático</strong>
-                                <span className="text-sm text-gray-500">A IA organiza em Subjetivo, Objetivo, Avaliação e Plano.</span>
-                            </div>
-                        </li>
-                        <li className="flex items-start gap-3">
-                            <div className="mt-1 p-1 bg-green-500/20 rounded text-green-400 border border-green-500/20"><Check size={16}/></div>
-                            <div>
-                                <strong className="block text-white">Histórico Seguro</strong>
-                                <span className="text-sm text-gray-500">Tudo salvo na nuvem com data e hora.</span>
-                            </div>
-                        </li>
+                        <li className="flex items-start gap-3"><div className="mt-1 p-1 bg-green-500/20 rounded text-green-400 border border-green-500/20"><Check size={16}/></div><div><strong className="block text-white">Transcrição de Voz para Texto</strong><span className="text-sm text-gray-500">Não tire as luvas. Apenas dite e o sistema escreve.</span></div></li>
+                        <li className="flex items-start gap-3"><div className="mt-1 p-1 bg-green-500/20 rounded text-green-400 border border-green-500/20"><Check size={16}/></div><div><strong className="block text-white">Formato SOAP Automático</strong><span className="text-sm text-gray-500">A IA organiza em Subjetivo, Objetivo, Avaliação e Plano.</span></div></li>
+                        <li className="flex items-start gap-3"><div className="mt-1 p-1 bg-green-500/20 rounded text-green-400 border border-green-500/20"><Check size={16}/></div><div><strong className="block text-white">Histórico Seguro</strong><span className="text-sm text-gray-500">Tudo salvo na nuvem com data e hora.</span></div></li>
                     </ul>
 
                     <button onClick={() => goToAuth('signup')} className="bg-white text-gray-900 px-8 py-3 rounded-lg font-bold hover:bg-gray-200 transition shadow-lg shadow-white/10">
@@ -692,37 +913,39 @@ const LandingPage: React.FC = () => {
                 <div className="relative group">
                     <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
                     <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6 shadow-2xl relative overflow-hidden ring-1 ring-white/10">
+                        {/* Audio Waveform */}
+                        <div className="flex items-center justify-between mb-4 bg-gray-800/50 p-3 rounded-lg border border-white/5">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center animate-pulse">
+                                    <Mic size={16} className="text-red-500" />
+                                </div>
+                                <div className="flex gap-1 h-4 items-center">
+                                    {[...Array(12)].map((_, i) => (
+                                        <div key={i} className="w-1 bg-purple-500 rounded-full animate-bounce" style={{height: Math.random() * 16 + 4 + 'px', animationDelay: i * 0.1 + 's'}}></div>
+                                    ))}
+                                </div>
+                            </div>
+                            <span className="text-xs text-gray-500 font-mono">00:14 / 00:45</span>
+                        </div>
+
+                        {/* Transcription */}
+                        <div className="mb-4">
+                            <p className="text-xs text-gray-500 uppercase font-bold mb-1">Transcrição (Voz para Texto)</p>
+                            <p className="text-gray-300 text-sm italic">"O paciente João chegou relatando uma dor aguda no dente 26, principalmente com água gelada. No exame clínico notei uma retração gengival severa e desgaste cervical. Vou aplicar um dessensibilizante agora e agendar uma restauração classe 5."</p>
+                        </div>
+
+                        {/* Arrow separator */}
+                        <div className="flex justify-center mb-4"><ArrowDown size={20} className="text-purple-500/50" /></div>
+
+                        {/* SOAP Result */}
+                        <div className="space-y-2 font-mono text-xs">
+                            <div className="p-2 bg-gray-800/30 rounded border border-purple-500/20"><span className="text-purple-400 font-bold">S:</span> <span className="text-gray-400">Dor aguda no dente 26 com estímulos térmicos (frio).</span></div>
+                            <div className="p-2 bg-gray-800/30 rounded border border-purple-500/20"><span className="text-purple-400 font-bold">O:</span> <span className="text-gray-400">Retração gengival severa e desgaste cervical no 26.</span></div>
+                            <div className="p-2 bg-gray-800/30 rounded border border-purple-500/20"><span className="text-purple-400 font-bold">A:</span> <span className="text-gray-400">Hipersensibilidade dentinária / Lesão cervical não cariosa.</span></div>
+                            <div className="p-2 bg-gray-800/30 rounded border border-purple-500/20"><span className="text-purple-400 font-bold">P:</span> <span className="text-gray-400">Aplicação de dessensibilizante (imediato); Restaur. Classe V (agendada).</span></div>
+                        </div>
                         
-                        {/* Fake Audio Wave */}
-                        <div className="flex items-center justify-center gap-1 h-12 mb-8 mt-2">
-                            {[...Array(20)].map((_, i) => (
-                                <div key={i} className="w-1 bg-gradient-to-t from-purple-500 to-pink-500 rounded-full animate-pulse" style={{ height: Math.random() * 40 + 10 + 'px', animationDuration: Math.random() * 0.5 + 0.5 + 's' }}></div>
-                            ))}
-                        </div>
-
-                        {/* SOAP Preview */}
-                        <div className="space-y-3 font-mono text-sm">
-                            <div className="p-4 bg-gray-800/50 rounded-lg border border-white/5 hover:border-purple-500/30 transition">
-                                <span className="text-purple-400 font-bold block mb-1">S (Subjetivo)</span>
-                                <span className="text-gray-400">Paciente relatou sensibilidade no dente 26 ao tomar água gelada.</span>
-                            </div>
-                            <div className="p-4 bg-gray-800/50 rounded-lg border border-white/5 hover:border-purple-500/30 transition">
-                                <span className="text-purple-400 font-bold block mb-1">O (Objetivo)</span>
-                                <span className="text-gray-400">Exame clínico revelou retração gengival. Sem cáries visíveis.</span>
-                            </div>
-                            <div className="p-4 bg-gray-800/50 rounded-lg border border-white/5 hover:border-purple-500/30 transition">
-                                <span className="text-purple-400 font-bold block mb-1">A (Avaliação)</span>
-                                <span className="text-gray-400">Hipersensibilidade dentinária.</span>
-                            </div>
-                            <div className="p-4 bg-gray-800/50 rounded-lg border border-white/5 hover:border-purple-500/30 transition">
-                                <span className="text-purple-400 font-bold block mb-1">P (Plano)</span>
-                                <span className="text-gray-400">Aplicação de dessensibilizante e orientação de escovação.</span>
-                            </div>
-                        </div>
-
-                        <div className="absolute bottom-4 right-4 text-purple-500/10 pointer-events-none">
-                            <SparklesIcon size={120} />
-                        </div>
+                        <div className="absolute bottom-4 right-4 text-purple-500/10 pointer-events-none"><SparklesIcon size={120} /></div>
                     </div>
                 </div>
             </div>
@@ -731,20 +954,127 @@ const LandingPage: React.FC = () => {
             <div className="mt-16 max-w-4xl mx-auto">
                 <div className="aspect-video rounded-2xl overflow-hidden shadow-2xl border border-white/10 relative bg-gray-900 group">
                     <div className="absolute inset-0 bg-purple-600/20 blur-3xl opacity-20 group-hover:opacity-30 transition duration-1000 pointer-events-none"></div>
-                    <iframe 
-                        className="w-full h-full relative z-10"
-                        src="https://www.youtube.com/embed/hQmUia6y7vg?rel=0" 
-                        title="DentiHub AI Demo"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                        allowFullScreen
-                    ></iframe>
+                    <iframe className="w-full h-full relative z-10" src="https://www.youtube.com/embed/hQmUia6y7vg?rel=0" title="DentiHub AI Demo" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe>
                 </div>
                 <p className="text-center text-gray-500 text-sm mt-4">Veja a Inteligência Artificial criando um prontuário em tempo real.</p>
             </div>
         </div>
       </section>
 
-      {/* REST OF SECTIONS (Features, Pricing, Footer) - KEPT IDENTICAL */}
+      {/* FEATURES SECTION (Adicionado) */}
+      <section id="features" className="py-24 relative z-10 bg-gray-950">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+                <h2 className="text-3xl font-bold text-white">Recursos que transformam</h2>
+                <p className="mt-4 text-gray-400">Tudo o que sua clínica precisa em um só lugar.</p>
+            </div>
+
+            <div className="space-y-24">
+            {features.map((feature, index) => (
+                <div key={feature.id} className={`flex flex-col md:flex-row gap-12 items-center ${index % 2 === 1 ? 'md:flex-row-reverse' : ''}`}>
+                
+                <div className="flex-1 w-full">
+                    <div className={`rounded-3xl p-8 bg-gray-900/40 backdrop-blur border border-white/5 relative overflow-hidden group hover:border-white/10 transition duration-500`}>
+                        <div className={`absolute top-0 right-0 p-8 opacity-20 transform translate-x-1/4 -translate-y-1/4 group-hover:scale-110 transition duration-700 blur-2xl`}>
+                            <feature.icon size={200} className={feature.color} />
+                        </div>
+                        <div className="relative z-10">
+                            <div className={`w-16 h-16 ${feature.bgGlow} rounded-2xl flex items-center justify-center mb-6 border ${feature.border}`}>
+                                <feature.icon size={32} className={feature.color} />
+                            </div>
+                            <h3 className="text-2xl font-bold text-white mb-2">{feature.title}</h3>
+                            <p className="text-gray-400 font-medium">{feature.description}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex-1 w-full">
+                    <h3 className="text-2xl font-bold text-white mb-6">Principais Recursos</h3>
+                    <ul className="space-y-4">
+                    {feature.details.map((detail, i) => (
+                        <li key={i} className="flex items-start">
+                        <div className={`mt-1 mr-3 p-0.5 rounded-full bg-gray-800 border ${feature.border}`}>
+                            <CheckCircle className={`w-4 h-4 ${feature.color}`} />
+                        </div>
+                        <span className="text-gray-300 text-lg">{detail}</span>
+                        </li>
+                    ))}
+                    </ul>
+                </div>
+
+                </div>
+            ))}
+            </div>
+
+            {/* Technical & Security Section */}
+            <div className="mt-32">
+                <div className="text-center mb-16">
+                    <h2 className="text-3xl font-bold text-white">Tecnologia e Segurança</h2>
+                    <p className="text-gray-400 mt-4">Construído com padrões modernos para garantir sua tranquilidade.</p>
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-8">
+                    <div className="bg-gray-900/60 backdrop-blur p-8 rounded-2xl border border-white/5 hover:border-blue-500/50 transition duration-300 group">
+                    <div className="w-14 h-14 bg-blue-900/30 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition duration-300 border border-blue-500/20">
+                        <Cloud className="w-8 h-8 text-blue-400" />
+                    </div>
+                    <h3 className="font-bold text-lg text-white mb-2">100% na Nuvem</h3>
+                    <p className="text-sm text-gray-400 leading-relaxed">Nada para instalar. Acesse de qualquer lugar (casa ou clínica) pelo Chrome, Safari ou Edge.</p>
+                    </div>
+                    <div className="bg-gray-900/60 backdrop-blur p-8 rounded-2xl border border-white/5 hover:border-purple-500/50 transition duration-300 group">
+                    <div className="w-14 h-14 bg-purple-900/30 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition duration-300 border border-purple-500/20">
+                        <Smartphone className="w-8 h-8 text-purple-400" />
+                    </div>
+                    <h3 className="font-bold text-lg text-white mb-2">Mobile First</h3>
+                    <p className="text-sm text-gray-400 leading-relaxed">Interface responsiva desenhada para funcionar perfeitamente no seu celular ou tablet.</p>
+                    </div>
+                    <div className="bg-gray-900/60 backdrop-blur p-8 rounded-2xl border border-white/5 hover:border-green-500/50 transition duration-300 group">
+                    <div className="w-14 h-14 bg-green-900/30 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition duration-300 border border-green-500/20">
+                        <Lock className="w-8 h-8 text-green-400" />
+                    </div>
+                    <h3 className="font-bold text-lg text-white mb-2">Dados Seguros</h3>
+                    <p className="text-sm text-gray-400 leading-relaxed">Criptografia de ponta a ponta e backups automáticos. Seus pacientes estão seguros.</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Gestão de Equipe */}
+            <div className="mt-24 bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl p-10 text-white text-center relative overflow-hidden border border-white/10">
+                <div className="relative z-10 max-w-3xl mx-auto">
+                    <div className="mx-auto w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mb-6 backdrop-blur-sm border border-white/20">
+                        <Users size={32} className="text-blue-300" />
+                    </div>
+                    <h2 className="text-3xl font-bold mb-4">Gestão de Equipe e Acessos</h2>
+                    <p className="text-gray-300 mb-8 text-lg">
+                        Cresça sua clínica com segurança. Convide outros dentistas e recepcionistas, definindo exatamente o que cada um pode ver.
+                    </p>
+                    <div className="flex flex-wrap justify-center gap-4 text-sm font-bold">
+                        <span className="bg-white/10 border border-white/20 px-4 py-2 rounded-full text-white">Administrador (Total)</span>
+                        <span className="bg-white/10 border border-white/20 px-4 py-2 rounded-full text-white">Dentista (Agenda Própria)</span>
+                        <span className="bg-white/10 border border-white/20 px-4 py-2 rounded-full text-white">Recepcionista (Operacional)</span>
+                    </div>
+                </div>
+                {/* Decorative BG */}
+                <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-bl from-blue-600/10 to-transparent pointer-events-none"></div>
+            </div>
+
+            {/* CTA Final */}
+            <div className="mt-32 text-center">
+                <h2 className="text-3xl font-bold text-white mb-6">Tudo isso em uma única plataforma</h2>
+                <button 
+                    onClick={() => navigate('/auth', { state: { view: 'signup' } })}
+                    className="bg-blue-600 text-white text-xl font-bold px-10 py-5 rounded-xl shadow-[0_0_30px_rgba(37,99,235,0.4)] hover:bg-blue-500 transition-all transform hover:-translate-y-1 hover:shadow-[0_0_40px_rgba(37,99,235,0.6)]"
+                >
+                    Começar Gratuitamente
+                </button>
+                <p className="mt-4 text-sm text-gray-500">
+                    Plano Free disponível para consultórios iniciantes.
+                </p>
+            </div>
+        </div>
+      </section>
+
+      {/* PLANS SECTION */}
       <section className="py-24 relative z-10" id="plans">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -796,7 +1126,7 @@ const LandingPage: React.FC = () => {
         <div id="plans-end-trigger" className="h-1 w-full pointer-events-none opacity-0"></div>
       </section>
 
-      <footer className="bg-gray-950 py-12 border-t border-white/5 relative z-10">
+      <footer className="bg-gray-950 border-t border-white/5 py-12 text-center text-sm text-gray-500 relative z-10">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <div className="flex justify-center items-center gap-2 text-white font-bold text-xl mb-4">
             <Logo className="w-6 h-6" />

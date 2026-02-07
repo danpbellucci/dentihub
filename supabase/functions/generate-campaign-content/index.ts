@@ -19,103 +19,123 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, taskType, contextData } = await req.json()
+    const { prompt, taskType, contextData, currentContent } = await req.json()
     
-    // Prioriza a chave de Admin
-    const apiKey = Deno.env.get('ADMIN_GEMINI_KEY') || Deno.env.get('GEMINI_API_KEY') || Deno.env.get('API_KEY')
+    // 1. Definição da Chave de API (Prioridade: ADMIN_GEMINI_KEY)
+    let apiKey = Deno.env.get('ADMIN_GEMINI_KEY');
+    let keySource = 'ADMIN_GEMINI_KEY';
+
+    if (!apiKey) {
+        apiKey = Deno.env.get('GEMINI_API_KEY');
+        keySource = 'GEMINI_API_KEY';
+    }
+    if (!apiKey) {
+        apiKey = Deno.env.get('API_KEY');
+        keySource = 'API_KEY';
+    }
     
     if (!apiKey) {
-      throw new Error('Chave da API (ADMIN_GEMINI_KEY) não configurada.')
+      throw new Error('Chave da API (ADMIN_GEMINI_KEY) não configurada no servidor.')
     }
+
+    console.log(`[GENERATE-CONTENT] Usando chave: ${keySource} (${apiKey.substring(0, 5)}...)`);
 
     const ai = new GoogleGenAI({ apiKey })
-    // Usando modelo de alta performance para texto conforme guidelines
+    
+    // 2. Modelo Definido (gemini-3-flash-preview)
     const MODEL_NAME = "gemini-3-flash-preview"
 
-    let systemContext = '';
-    let responseSchema: any = {};
-
-    // 1. COPY PARA REDES SOCIAIS / BLOG
-    if (taskType === 'social') {
-        responseSchema = {
-          type: Type.OBJECT,
-          properties: {
-            title: { type: Type.STRING, description: "Título chamativo ou Headline." },
-            content: { type: Type.STRING, description: "O corpo do texto completo (post ou artigo)." },
-            hashtags: { type: Type.STRING, description: "Lista de hashtags separadas por espaço." },
-            image_suggestion: { type: Type.STRING, description: "Sugestão visual para acompanhar o texto." }
-          },
-          required: ["title", "content", "hashtags"],
-        };
-
-        systemContext = `
-          Você é um Especialista em Content Marketing e Copywriting para Odontologia.
-          Objetivo: Criar conteúdo engajador para redes sociais ou blogs de clínicas.
-          Diretrizes:
-          - Use técnica AIDA (Atenção, Interesse, Desejo, Ação).
-          - Use emojis moderadamente.
-          - Foque nas dores e desejos dos pacientes (estética, saúde, medo de dentista).
-          - Texto escaneável.
-        `;
-    } 
-    
-    // 2. PROMPT PARA IMAGENS
-    else if (taskType === 'image_prompt') {
-        responseSchema = {
-          type: Type.OBJECT,
-          properties: {
-            midjourney_prompt: { type: Type.STRING, description: "Prompt detalhado otimizado para Midjourney (em inglês)." },
-            dalle_prompt: { type: Type.STRING, description: "Prompt descritivo otimizado para DALL-E 3 (em inglês)." },
-            negative_prompt: { type: Type.STRING, description: "O que evitar na imagem (ex: deformed teeth, scary tools)." },
-            pt_description: { type: Type.STRING, description: "Explicação da ideia da imagem em português." }
-          },
-          required: ["midjourney_prompt", "dalle_prompt", "pt_description"],
-        };
-
-        systemContext = `
-          Você é um Engenheiro de Prompt especialista em IA Generativa de Imagens (Midjourney, DALL-E, Stable Diffusion).
-          Objetivo: Criar prompts para gerar imagens de alta qualidade para marketing odontológico.
-          Diretrizes:
-          - Evite "Uncanny Valley" (dentes deformados, muitos dedos).
-          - Estilo: Fotorealista, Cinematográfico, Iluminação de Estúdio ou Ilustração 3D (conforme pedido).
-          - Os prompts devem ser em INGLÊS técnico.
-        `;
+    let effectiveTaskType = taskType;
+    if (!effectiveTaskType && currentContent) {
+        effectiveTaskType = 'email_campaign_chat';
     }
 
-    // 3. GOOGLE ADS E META ADS
-    else if (taskType === 'ads_strategy') {
+    console.log(`[GENERATE-CONTENT] Tarefa: ${effectiveTaskType} | Modelo: ${MODEL_NAME}`);
+
+    let systemContext = '';
+    let responseSchema: any = undefined; // Deixe undefined se não tiver schema
+
+    // --- CONFIGURAÇÃO DE SCHEMAS POR TIPO ---
+
+    if (effectiveTaskType === 'social') {
+        responseSchema = {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING, description: "Título criativo ou Assunto do email" },
+            content: { type: Type.STRING, description: "Corpo do texto completo (HTML simples se for email)" },
+            hashtags: { type: Type.STRING, description: "Lista de hashtags (ex: #dentista #saude)" }
+          },
+          required: ["title", "content"],
+        };
+        systemContext = `
+          Você é um Especialista em Marketing Odontológico de classe mundial.
+          Gere conteúdo persuasivo, profissional e em Português do Brasil.
+          Se for um E-mail, use formatação HTML básica (<p>, <b>, <br>) no campo 'content'.
+          Se for Social Media, use emojis e linguagem engajadora.
+        `;
+    } 
+    else if (effectiveTaskType === 'image_prompt') {
+        responseSchema = {
+          type: Type.OBJECT,
+          properties: {
+            midjourney_prompt: { type: Type.STRING, description: "Prompt detalhado em Inglês para Midjourney v6" },
+            dalle_prompt: { type: Type.STRING, description: "Prompt descritivo em Inglês para DALL-E 3" },
+            pt_description: { type: Type.STRING, description: "Explicação da imagem em Português" }
+          },
+          required: ["midjourney_prompt", "dalle_prompt"],
+        };
+        systemContext = `
+          Você é um Engenheiro de Prompt Sênior para IA Generativa.
+          Crie prompts visuais impressionantes focados em Odontologia de alta qualidade.
+          Os prompts DEVEM ser em INGLÊS.
+        `;
+    }
+    else if (effectiveTaskType === 'ads_strategy') {
         responseSchema = {
           type: Type.OBJECT,
           properties: {
             campaign_name: { type: Type.STRING },
-            target_audience: { type: Type.STRING, description: "Segmentação de público detalhada." },
-            keywords: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Lista de 10-20 palavras-chave (Google Ads)." },
-            headlines: { type: Type.ARRAY, items: { type: Type.STRING }, description: "5 opções de títulos chamativos (30 chars max para Google)." },
-            descriptions: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 opções de descrições persuasivas (90 chars max para Google)." },
-            primary_text: { type: Type.STRING, description: "Texto principal para Meta Ads (Facebook/Instagram)." },
-            call_to_action: { type: Type.STRING, description: "Melhor CTA para usar." }
+            target_audience: { type: Type.STRING },
+            keywords: { type: Type.ARRAY, items: { type: Type.STRING } },
+            headlines: { type: Type.ARRAY, items: { type: Type.STRING } },
+            descriptions: { type: Type.ARRAY, items: { type: Type.STRING } },
+            primary_text: { type: Type.STRING },
+            call_to_action: { type: Type.STRING }
           },
-          required: ["campaign_name", "keywords", "headlines", "descriptions", "primary_text"],
+          required: ["campaign_name", "headlines", "descriptions", "primary_text"],
         };
-
         systemContext = `
-          Você é um Gestor de Tráfego Pago Senior (Google Ads & Meta Ads) focado em clínicas odontológicas.
-          Objetivo: Estruturar uma campanha de alta conversão.
-          Diretrizes:
-          - Google Ads: Foco em intenção de busca (fundo de funil). Títulos curtos e diretos.
-          - Meta Ads: Foco em interrupção e desejo visual. Texto persuasivo.
-          - Segmentação: Geográfica (raio da clínica), Idade, Interesses.
+          Você é um Gestor de Tráfego Pago experiente.
+          Crie uma estratégia completa para Google Ads e Meta Ads.
+          Foco: Conversão e Leads.
+          Google Ads: Headlines curtas (máx 30 chars).
+          Meta Ads: Copy persuasiva usando framework AIDA.
         `;
-    } else {
-        throw new Error("Tipo de tarefa desconhecido.");
+    }
+    else if (effectiveTaskType === 'email_campaign_chat') {
+         responseSchema = {
+          type: Type.OBJECT,
+          properties: {
+            subject: { type: Type.STRING },
+            html_content: { type: Type.STRING },
+            rationale: { type: Type.STRING }
+          },
+          required: ["subject", "html_content"],
+        };
+        systemContext = `Você é um assistente de marketing focado em e-mail marketing odontológico.`;
+    }
+    else {
+        // Fallback genérico sem schema forçado
+        systemContext = `Você é um assistente útil. Responda em JSON.`;
     }
 
+    // 3. Chamada ao Modelo
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
       contents: {
         parts: [
-          { text: `Contexto/Dados do Usuário: ${JSON.stringify(contextData || {})}` },
-          { text: `Solicitação Principal: ${prompt}` }
+          { text: `Contexto Adicional (JSON): ${JSON.stringify(contextData || {})}` },
+          { text: `INSTRUÇÃO: ${prompt}` }
         ]
       },
       config: {
@@ -126,15 +146,45 @@ serve(async (req) => {
       },
     });
 
-    const text = response.text || "{}";
-    const cleanedText = text.replace(/```json\n?|```/g, '').trim();
-    
+    const rawText = response.text || "";
+    console.log("[GENERATE-CONTENT] Raw Response Length:", rawText.length);
+
+    // 4. Tratamento da Resposta (Limpeza de Markdown)
     let data;
     try {
-        data = JSON.parse(cleanedText);
+        // Remove blocos de código ```json ... ``` se existirem
+        let cleanText = rawText.replace(/^```json\s*/i, "").replace(/\s*```$/, "").trim();
+        
+        // Se ainda tiver sobras, tenta encontrar o primeiro { e o último }
+        const firstBrace = cleanText.indexOf('{');
+        const lastBrace = cleanText.lastIndexOf('}');
+        
+        if (firstBrace !== -1 && lastBrace !== -1) {
+            cleanText = cleanText.substring(firstBrace, lastBrace + 1);
+        }
+
+        data = JSON.parse(cleanText);
+        
+        // Verifica se o objeto está vazio (erro silencioso comum do Gemini)
+        if (Object.keys(data).length === 0) {
+             console.warn("[GENERATE-CONTENT] Aviso: Objeto JSON vazio retornado.");
+             // Se veio vazio, mas temos texto bruto, talvez o modelo tenha falhado na estrutura
+             if (rawText.length > 50) {
+                 data = { error: "A IA gerou uma resposta, mas não no formato esperado.", raw: rawText };
+             }
+        }
+
     } catch (e) {
-        console.error("JSON Parse Error:", text);
-        throw new Error("A IA gerou uma resposta inválida. Tente novamente.");
+        console.error("[GENERATE-CONTENT] JSON Parse Error:", e.message);
+        console.error("Texto recebido:", rawText);
+        
+        // Retorna erro amigável para o frontend
+        return new Response(JSON.stringify({ 
+            error: "A IA não retornou um JSON válido. Tente novamente.", 
+            raw_response: rawText 
+        }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
     }
 
     return new Response(JSON.stringify(data), {
@@ -142,7 +192,7 @@ serve(async (req) => {
     })
 
   } catch (error: any) {
-    console.error("Function Error:", error);
+    console.error("[GENERATE-CONTENT] Fatal Error:", error);
     return new Response(JSON.stringify({ error: error.message || "Erro interno na função." }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

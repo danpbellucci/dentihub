@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase, SUPABASE_URL } from '../services/supabase';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Logo } from './Logo';
-import { Smile, Lock, Mail, ArrowLeft, AlertTriangle, User, KeyRound, X, FileText } from 'lucide-react';
+import { Smile, Lock, Mail, ArrowLeft, AlertTriangle, User, KeyRound, X, FileText, Tag } from 'lucide-react';
 
 const TERMS_OF_USE_TEXT = `TERMOS DE USO – DENTIHUB
 
@@ -99,6 +99,7 @@ const AuthPage: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
+  const [referralCode, setReferralCode] = useState('');
   
   // Verification Flow
   const [isVerifying, setIsVerifying] = useState(false);
@@ -166,7 +167,13 @@ const AuthPage: React.FC = () => {
       if (verificationCode.length !== 6) throw new Error("O código deve ter 6 dígitos.");
 
       const { data, error } = await supabase.functions.invoke('complete-signup', {
-          body: { email, password, code: verificationCode, name }
+          body: { 
+              email, 
+              password, 
+              code: verificationCode, 
+              name,
+              referralCode: referralCode.trim() // Passa o código de indicação
+          }
       });
 
       if (error) throw new Error(error.message || "Erro de comunicação.");
@@ -377,6 +384,23 @@ const AuthPage: React.FC = () => {
                             </div>
                         </div>
 
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-1">Código de Indicação (Opcional)</label>
+                            <div className="relative rounded-md shadow-sm">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <Tag className="h-5 w-5 text-gray-500" />
+                                </div>
+                                <input
+                                    type="text"
+                                    value={referralCode}
+                                    onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                                    className="block w-full pl-10 bg-gray-800 border border-gray-700 text-white rounded-lg py-2.5 placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition"
+                                    placeholder="Ex: WX2Y9A"
+                                    maxLength={10}
+                                />
+                            </div>
+                        </div>
+
                         <div className="flex items-start mt-2">
                             <div className="flex items-center h-5">
                                 <input
@@ -456,6 +480,7 @@ const AuthPage: React.FC = () => {
                       setIsVerifying(false);
                       setVerificationCode('');
                       setTermsAccepted(false);
+                      setReferralCode('');
                   }}
                   disabled={isMisconfigured}
                   className="w-full flex justify-center py-2.5 px-4 border border-gray-700 rounded-lg shadow-sm bg-gray-800 text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white disabled:opacity-50 transition-colors"

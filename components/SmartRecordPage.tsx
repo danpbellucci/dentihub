@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import { Client, Dentist } from '../types';
-import { Mic, Square, Save, Loader2, Info, FileText, CheckCircle, Lock, Zap, HelpCircle, X, AlertTriangle } from 'lucide-react';
+import { Mic, Square, Save, Loader2, Info, FileText, CheckCircle, Lock, Zap, HelpCircle, X, AlertTriangle, Sparkles } from 'lucide-react';
 import Toast, { ToastType } from './Toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -45,11 +45,22 @@ const SmartRecordPage: React.FC = () => {
   // UPGRADE MODAL
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
+  // INSTRUCTION MODAL STATES
+  const [showInstructionModal, setShowInstructionModal] = useState(false);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
+
   const timerRef = useRef<any>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     initialize();
+    
+    // Check localStorage for instruction preference
+    const hideInstruction = localStorage.getItem('denti_hide_smart_record_instruction');
+    if (hideInstruction !== 'true') {
+        setShowInstructionModal(true);
+    }
+
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
 
@@ -254,6 +265,13 @@ const SmartRecordPage: React.FC = () => {
      }
   };
 
+  const closeInstructionModal = () => {
+      if (dontShowAgain) {
+          localStorage.setItem('denti_hide_smart_record_instruction', 'true');
+      }
+      setShowInstructionModal(false);
+  };
+
   return (
     <div className="max-w-4xl mx-auto pb-10">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
@@ -383,6 +401,52 @@ const SmartRecordPage: React.FC = () => {
                         Confirmar
                     </button>
                 </div>
+            </div>
+        </div>
+      )}
+
+      {/* INSTRUCTION MODAL */}
+      {showInstructionModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in">
+            <div className="bg-gray-900 border border-white/10 p-8 rounded-2xl shadow-2xl w-full max-w-md text-center">
+                <div className="flex justify-center mb-6">
+                    <div className="bg-gradient-to-tr from-purple-600 to-blue-600 p-4 rounded-full shadow-lg shadow-purple-500/30">
+                        <Sparkles size={32} className="text-white" />
+                    </div>
+                </div>
+                
+                <h3 className="text-2xl font-bold text-white mb-4">Como funciona a IA?</h3>
+                
+                <div className="text-gray-300 text-sm leading-relaxed mb-8 bg-gray-800/50 p-4 rounded-xl border border-white/5">
+                    <p className="mb-3">
+                        Essa funcionalidade deve ser usada pelo dentista <strong>logo após a conclusão da consulta</strong>.
+                    </p>
+                    <p>
+                        Basta clicar no microfone e <strong>ditar o que foi feito</strong>. A Inteligência Artificial irá transcrever sua fala e criar um resumo técnico organizado (SOAP) automaticamente.
+                    </p>
+                </div>
+
+                <div className="mb-6 flex items-center justify-center">
+                    <label className="flex items-center space-x-2 cursor-pointer text-sm text-gray-400 hover:text-white transition group select-none">
+                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${dontShowAgain ? 'bg-primary border-primary' : 'border-gray-600 bg-gray-800'}`}>
+                            {dontShowAgain && <CheckCircle size={14} className="text-white"/>}
+                        </div>
+                        <input
+                            type="checkbox"
+                            className="hidden"
+                            checked={dontShowAgain}
+                            onChange={(e) => setDontShowAgain(e.target.checked)}
+                        />
+                        <span>Não exibir esta mensagem novamente</span>
+                    </label>
+                </div>
+
+                <button
+                    onClick={closeInstructionModal}
+                    className="w-full py-3.5 bg-white text-gray-900 rounded-xl font-bold hover:bg-gray-200 transition shadow-lg flex items-center justify-center"
+                >
+                    Entendi, vamos começar!
+                </button>
             </div>
         </div>
       )}

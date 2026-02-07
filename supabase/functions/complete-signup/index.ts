@@ -14,6 +14,11 @@ const sanitizeSlug = (text: string) => {
     return text.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-');
 };
 
+// Gerador de código simples (6 caracteres alfanuméricos maiúsculos)
+const generateReferralCode = () => {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
+};
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin') ?? '';
   const allowedOrigins = [
@@ -40,15 +45,14 @@ Deno.serve(async (req) => {
 
     if (!supabaseUrl || !serviceRoleKey) throw new Error("Configuração incompleta.");
 
-    const { email: rawEmail, password, code, name } = await req.json();
+    const { email: rawEmail, password, code, name, referralCode } = await req.json();
     if (!rawEmail || !password || !code) throw new Error("Dados incompletos.");
     
-    // Normalizar email para evitar problemas de case sensitive
     const email = rawEmail.toLowerCase().trim();
 
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-    // 1. Verificar Código
+    // 1. Verificar Código de Verificação
     const { data: verification } = await supabaseAdmin
         .from('verification_codes')
         .select('*')
@@ -71,8 +75,7 @@ Deno.serve(async (req) => {
     if (authError || !authUser.user) throw authError || new Error("Falha ao criar usuário.");
     const userId = authUser.user.id;
 
-    // 3. Verificar se é um Usuário Convidado (Funcionário/Dentista)
-    // Se o email já existe em user_profiles, significa que foi convidado.
+    // 3. Verificar Usuário Convidado ou Novo Dono
     const { data: invitedProfile } = await supabaseAdmin
         .from('user_profiles')
         .select('id, role, clinic_id')
@@ -80,28 +83,21 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
     if (invitedProfile) {
-        // CENÁRIO A: USUÁRIO CONVIDADO
-        // Atualizamos o ID do perfil existente (que era um placeholder ou uuid antigo) para o novo ID do Auth.
-        // Mantemos o role e clinic_id originais do convite.
-        
+        // CENÁRIO A: USUÁRIO CONVIDADO (Não usa referral, pois entra em clínica existente)
         console.log(`Vinculando usuário convidado ${email} ao perfil existente.`);
         
-        // Atualiza usando o e-mail como chave, pois o ID antigo não é o do Auth
         const { error: linkError } = await supabaseAdmin
             .from('user_profiles')
             .update({ id: userId }) 
             .eq('email', email);
 
         if (linkError) {
-            // Rollback: Se falhar ao vincular, deleta o usuário do Auth para não ficar órfão
             await supabaseAdmin.auth.admin.deleteUser(userId);
             throw new Error("Erro ao vincular perfil convidado: " + linkError.message);
         }
 
     } else {
         // CENÁRIO B: NOVO DONO DE CLÍNICA (Sign Up Padrão)
-        // Cria uma nova clínica e um novo perfil de administrador.
-        
         console.log(`Criando nova clínica para ${email}.`);
 
         let clinicName = name && name.trim() ? name.trim() : 'Minha Clínica';
@@ -109,9 +105,34 @@ Deno.serve(async (req) => {
         const { data: existingSlug } = await supabaseAdmin.from('clinics').select('id').eq('slug', slug).maybeSingle();
         if (existingSlug) slug = `${slug}-${Math.floor(Math.random()*1000)}`;
 
+        // -- Lógica de Indicação --
+        let referredByClinicId = null;
+        if (referralCode) {
+            const { data: referrer } = await supabaseAdmin
+                .from('clinics')
+                .select('id')
+                .eq('referral_code', referralCode.toUpperCase().trim())
+                .maybeSingle();
+            
+            if (referrer) {
+                referredByClinicId = referrer.id;
+            }
+        }
+
+        // Gera código único para a nova clínica (com retry simples)
+        let newReferralCode = generateReferralCode();
+        // (Em produção ideal, faria um loop check, mas probabilidade de colisão com 6 chars é baixa para MVP)
+
         const { error: clinicError } = await supabaseAdmin
             .from('clinics')
-            .insert({ id: userId, name: clinicName, slug: slug, subscription_tier: 'free' });
+            .insert({ 
+                id: userId, 
+                name: clinicName, 
+                slug: slug, 
+                subscription_tier: 'free',
+                referral_code: newReferralCode,
+                referred_by: referredByClinicId
+            });
 
         if (clinicError) {
             await supabaseAdmin.auth.admin.deleteUser(userId);

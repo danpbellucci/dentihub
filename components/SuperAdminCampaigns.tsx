@@ -63,14 +63,14 @@ const SuperAdminCampaigns: React.FC = () => {
             const { data, error } = await supabase.functions.invoke('generate-campaign-content', {
                 body: { 
                     prompt: userMsg,
+                    taskType: 'email_campaign_chat', // Tipo específico para este chat
                     currentContent: { subject, htmlContent }
                 }
             });
 
             if (error) throw error;
+            if (data && data.error) throw new Error(data.error);
             
-            // A IA deve retornar um JSON com subject, html_content e rationale.
-            // O backend (edge function) já faz o parsing e tratamento de erro.
             if (data) {
                 if (data.subject) setSubject(data.subject);
                 if (data.html_content) setHtmlContent(data.html_content);
@@ -99,9 +99,6 @@ const SuperAdminCampaigns: React.FC = () => {
 
         setPreparingList(true);
         try {
-            // Buscar usuários que se encaixam nos perfis selecionados
-            // Em um sistema real, isso poderia ser milhares, então paginação ou processamento em batch seria ideal.
-            // Aqui buscamos todos para confirmação (limite de segurança do Supabase se aplica)
             const { data: users, error } = await supabase
                 .from('user_profiles')
                 .select('email')
@@ -114,10 +111,9 @@ const SuperAdminCampaigns: React.FC = () => {
                 return;
             }
 
-            // Remove duplicatas e nulos
             const uniqueEmails = [...new Set(users.map(u => u.email).filter(Boolean))];
             
-            setPendingRecipients(uniqueEmails.map(email => ({ email }))); // Formato simplificado
+            setPendingRecipients(uniqueEmails.map(email => ({ email }))); 
             setShowConfirmModal(true);
 
         } catch (err: any) {
@@ -132,14 +128,12 @@ const SuperAdminCampaigns: React.FC = () => {
         setSending(true);
         
         try {
-            // Chama a função de envio em massa
-            // A Edge Function deve estar preparada para receber o conteúdo HTML
             const { data, error } = await supabase.functions.invoke('send-emails', {
                 body: {
                     type: 'marketing_campaign',
                     recipients: pendingRecipients,
                     subject,
-                    htmlContent // Envia o HTML gerado
+                    htmlContent 
                 }
             });
 
@@ -303,7 +297,6 @@ const SuperAdminCampaigns: React.FC = () => {
                             <div className="w-full h-full overflow-y-auto bg-gray-100 p-8 flex justify-center">
                                 <div 
                                     className="bg-white w-full max-w-[600px] shadow-lg min-h-[400px] p-0"
-                                    // Render HTML safely (or dangerously in this trusted admin context)
                                     dangerouslySetInnerHTML={{ __html: htmlContent || '<div style="padding:40px; text-align:center; color:#ccc;">O conteúdo do e-mail aparecerá aqui.</div>' }}
                                 />
                             </div>

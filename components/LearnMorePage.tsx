@@ -5,7 +5,7 @@ import { Logo } from './Logo';
 import { 
   ArrowLeft, Brain, Clock, ShieldCheck, Database, Mic, Smile, CheckCircle, 
   FileText, Calendar, BellRing, DollarSign, Users, Repeat, Smartphone, Cloud, Lock,
-  Search, Menu, X
+  Search, Menu, X, Box
 } from 'lucide-react';
 
 const LearnMorePage: React.FC = () => {
@@ -91,6 +91,21 @@ const LearnMorePage: React.FC = () => {
         'Contas a Pagar/Receber: Organize despesas fixas e variáveis.',
         'Previsão Diária: Receba um e-mail com a previsão financeira do dia seguinte.',
         'Visão de Saldo: Acompanhe a saúde financeira em tempo real.'
+      ]
+    },
+    {
+      id: 'inventory',
+      title: 'Controle de Estoque & Materiais',
+      icon: Box,
+      color: 'text-cyan-400',
+      bgGlow: 'bg-cyan-500/20',
+      border: 'border-cyan-500/20',
+      description: 'Gestão completa de insumos para evitar desperdícios e garantir que nunca falte nada.',
+      details: [
+        'Alertas de Estoque Baixo: O sistema avisa por e-mail quando repor.',
+        'Donos de Materiais: Defina se o item é da clínica ou de um dentista específico.',
+        'Ajuste Rápido: Entrada e saída simplificada no dia a dia.',
+        'Categorização: Organize por descartáveis, instrumentais ou medicamentos.'
       ]
     }
   ];
