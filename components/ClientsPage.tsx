@@ -1,6 +1,7 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../services/supabase';
-import { Client, UserProfile, Dentist } from '../types';
+import { Client, Dentist } from '../types';
 import { 
   Plus, Edit2, Trash2, Upload, Search, X, Loader2, User, 
   Phone, Mail, MapPin, FileText, Download, HelpCircle, 
@@ -9,13 +10,14 @@ import {
 import * as XLSX from 'xlsx';
 import { jsPDF } from "jspdf";
 import Toast, { ToastType } from './Toast';
-import { useOutletContext, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { useDashboard } from './DashboardLayout';
 import { validateCPF } from '../utils/validators';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const ClientsPage: React.FC = () => {
-  const { userProfile } = useOutletContext<{ userProfile: UserProfile | null }>();
+  const { userProfile } = useDashboard() || {};
   const navigate = useNavigate();
   const [clients, setClients] = useState<Client[]>([]);
   const [dentists, setDentists] = useState<Dentist[]>([]); 
@@ -795,7 +797,7 @@ const ClientsPage: React.FC = () => {
                 </p>
                 <div className="flex flex-col gap-3">
                     <button 
-                        onClick={() => navigate('/dashboard/settings', { state: { openBilling: true } })}
+                        onClick={() => { navigate('/dashboard/settings', { state: { openBilling: true } }); }}
                         className="w-full py-3 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg font-bold hover:from-yellow-500 hover:to-orange-500 transition shadow-lg flex items-center justify-center gap-2"
                     >
                         <Zap size={18} fill="currentColor" /> Fazer Upgrade

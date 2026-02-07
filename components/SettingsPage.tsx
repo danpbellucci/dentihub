@@ -2,12 +2,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import { UserProfile, ClinicRole } from '../types';
-import { Save, Loader2, Shield, Users, CreditCard, Trash2, AlertTriangle, CheckCircle, X, Building, Upload, Copy, Send, Zap, Settings, Lock, Plus, Pencil, Bell, Folder, Box, Gift, Award } from 'lucide-react';
+import { Save, Loader2, Shield, Users, CreditCard, Trash2, AlertTriangle, CheckCircle, X, Building, Upload, Copy, Send, Zap, Settings, Lock, Plus, Pencil, Bell, Folder, Box, Gift, Award, Clock } from 'lucide-react';
 import Toast, { ToastType } from './Toast';
 import SubscriptionPaymentModal from './SubscriptionPaymentModal';
 import { useOutletContext, useNavigate, useLocation } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
+import { format, parseISO } from 'date-fns';
 
 const stripePromise = loadStripe('pk_live_51SlBFr2Obfcu36b5A1xwCAouBbAsnZWRFEOEWYcfOmASaVvaBZM8uMhCCc11M3CNuaprfNXsVS0YnV3mlHQrXXKy00uj8Jzf7g');
 
@@ -47,6 +48,8 @@ const SettingsPage: React.FC = () => {
   const [roleToEdit, setRoleToEdit] = useState<ClinicRole | null>(null);
   const [editRoleLabel, setEditRoleLabel] = useState('');
   const [members, setMembers] = useState<any[]>([]);
+  const [referredClinics, setReferredClinics] = useState<any[]>([]);
+  const [loadingReferrals, setLoadingReferrals] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('employee');
   const [inviting, setInviting] = useState(false);
@@ -73,6 +76,13 @@ const SettingsPage: React.FC = () => {
           setActiveTab('billing');
       }
   }, [contextProfile?.clinic_id, location.state]);
+
+  // Carregar indicados quando a aba for aberta
+  useEffect(() => {
+      if (activeTab === 'referrals' && clinicData?.id) {
+          fetchReferredClinics();
+      }
+  }, [activeTab, clinicData?.id]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -108,6 +118,37 @@ const SettingsPage: React.FC = () => {
 
   const fetchSubscription = async () => {
     try { await supabase.functions.invoke('check-subscription'); const { data, error } = await supabase.functions.invoke('get-subscription-details'); if (!error && data) { setSubscription(data); if (data.hasSubscription && data.status === 'active' && refreshProfile) await refreshProfile(); } } catch (e) { console.error(e); }
+  };
+
+  const fetchReferredClinics = async () => {
+      setLoadingReferrals(true);
+      try {
+          // Usa a nova RPC para buscar clínicas + contagem de pacientes
+          const { data, error } = await supabase.rpc('get_my_referrals_stats');
+          
+          if (error) {
+              console.error("Erro RPC:", error);
+              throw error;
+          }
+          setReferredClinics(data || []);
+      } catch (err: any) {
+          console.error("Erro ao buscar indicações:", err);
+          // Se der erro na RPC (ex: 404 se não foi criada), tenta fallback básico sem contagem
+          if (err.message?.includes('function') || err.code === 'PGRST202') {
+             try {
+                const { data: fallbackData } = await supabase
+                    .from('clinics')
+                    .select('id, name, created_at, subscription_tier')
+                    .eq('referred_by', clinicData.id);
+                setReferredClinics(fallbackData || []);
+                setToast({ message: "Aviso: Contagem de pacientes indisponível. Execute o script SQL.", type: 'warning' });
+             } catch (e) {
+                 setReferredClinics([]);
+             }
+          }
+      } finally {
+          setLoadingReferrals(false);
+      }
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -274,7 +315,7 @@ const SettingsPage: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="max-w-xl mx-auto">
+                    <div className="max-w-xl mx-auto mb-8">
                         <label className="block text-sm font-bold text-gray-400 mb-2 text-center uppercase tracking-wide">Seu Código de Indicação</label>
                         <div className="flex gap-2 relative">
                             <input 
@@ -294,6 +335,54 @@ const SettingsPage: React.FC = () => {
                         <p className="text-center text-xs text-gray-500 mt-3">
                             Compartilhe este código com seus colegas. Eles devem inseri-lo no momento do cadastro.
                         </p>
+                    </div>
+
+                    <div className="border-t border-white/10 pt-6">
+                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Users size={18} className="text-gray-400"/> Clínicas Indicadas</h3>
+                        {loadingReferrals ? (
+                            <div className="flex justify-center py-8"><Loader2 className="animate-spin text-primary" size={24}/></div>
+                        ) : referredClinics.length === 0 ? (
+                            <div className="text-center py-8 text-gray-500 bg-gray-800/30 rounded-lg border border-dashed border-white/10">
+                                <p>Nenhuma indicação encontrada ainda.</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto border border-white/10 rounded-lg">
+                                <table className="min-w-full divide-y divide-white/10">
+                                    <thead className="bg-gray-800">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Nome da Clínica</th>
+                                            <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Data Cadastro</th>
+                                            <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Pacientes</th>
+                                            <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Plano</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-gray-900/40 divide-y divide-white/5">
+                                        {referredClinics.map((refClinic, index) => (
+                                            <tr key={index}>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-200">{refClinic.name}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 text-center">
+                                                    {format(parseISO(refClinic.created_at), 'dd/MM/yyyy')}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                    <span className="text-sm font-bold text-white bg-gray-800 px-2 py-1 rounded border border-white/10">
+                                                        {refClinic.patient_count || 0}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                    <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
+                                                        refClinic.subscription_tier === 'pro' ? 'bg-yellow-900/30 text-yellow-400 border border-yellow-500/20' :
+                                                        refClinic.subscription_tier === 'starter' ? 'bg-blue-900/30 text-blue-400 border border-blue-500/20' :
+                                                        'bg-gray-800 text-gray-400 border border-gray-700'
+                                                    }`}>
+                                                        {refClinic.subscription_tier}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

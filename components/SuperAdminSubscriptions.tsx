@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import { 
   ArrowLeft, Search, RefreshCw, CheckCircle, XCircle, 
-  Loader2, Edit2, Save, CreditCard, ShieldAlert, Filter, X
+  Loader2, Edit2, Save, CreditCard, ShieldAlert, Filter, X, Lock
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import Toast, { ToastType } from './Toast';
@@ -18,6 +18,7 @@ interface ClinicSubscription {
     stripe_customer_id?: string;
     stripe_subscription_id?: string;
     created_at: string;
+    is_manual_override?: boolean;
 }
 
 const SuperAdminSubscriptions: React.FC = () => {
@@ -41,7 +42,7 @@ const SuperAdminSubscriptions: React.FC = () => {
             // Busca clínicas
             const { data: clinicsData, error } = await supabase
                 .from('clinics')
-                .select('id, name, email, subscription_tier, stripe_customer_id, stripe_subscription_id, created_at')
+                .select('id, name, email, subscription_tier, stripe_customer_id, stripe_subscription_id, created_at, is_manual_override')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -65,18 +66,42 @@ const SuperAdminSubscriptions: React.FC = () => {
         if (!newTier) return;
         setProcessing(true);
         try {
+            // Ao definir manualmente, ativamos o override para evitar que o Stripe sobrescreva
             const { error } = await supabase
                 .from('clinics')
-                .update({ subscription_tier: newTier })
+                .update({ 
+                    subscription_tier: newTier,
+                    is_manual_override: true 
+                })
                 .eq('id', clinicId);
 
             if (error) throw error;
 
-            setClinics(prev => prev.map(c => c.id === clinicId ? { ...c, subscription_tier: newTier as any } : c));
-            setToast({ message: "Plano atualizado com sucesso! (Override Manual)", type: 'success' });
+            setClinics(prev => prev.map(c => c.id === clinicId ? { ...c, subscription_tier: newTier as any, is_manual_override: true } : c));
+            setToast({ message: "Plano fixado com sucesso! (Override Ativo)", type: 'success' });
             setEditingId(null);
         } catch (err: any) {
             setToast({ message: "Erro ao atualizar: " + err.message, type: 'error' });
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const handleRemoveOverride = async (clinicId: string) => {
+        if (!window.confirm("Isso removerá a proteção manual e sincronizará com o Stripe no próximo login do usuário. Confirmar?")) return;
+        setProcessing(true);
+        try {
+            const { error } = await supabase
+                .from('clinics')
+                .update({ is_manual_override: false })
+                .eq('id', clinicId);
+
+            if (error) throw error;
+
+            setClinics(prev => prev.map(c => c.id === clinicId ? { ...c, is_manual_override: false } : c));
+            setToast({ message: "Proteção manual removida. Sincronização automática reativada.", type: 'info' });
+        } catch (err: any) {
+            setToast({ message: "Erro: " + err.message, type: 'error' });
         } finally {
             setProcessing(false);
         }
@@ -150,7 +175,7 @@ const SuperAdminSubscriptions: React.FC = () => {
                                 <tr>
                                     <th className="px-6 py-4">Clínica / ID</th>
                                     <th className="px-6 py-4">Contato</th>
-                                    <th className="px-6 py-4 text-center">Stripe</th>
+                                    <th className="px-6 py-4 text-center">Status</th>
                                     <th className="px-6 py-4 text-center">Plano Atual</th>
                                     <th className="px-6 py-4 text-center">Ações</th>
                                 </tr>
@@ -171,10 +196,10 @@ const SuperAdminSubscriptions: React.FC = () => {
                                                 {clinic.email || <span className="text-gray-400 italic">Não informado</span>}
                                                 <div className="text-xs text-gray-400 mt-1">Desde: {format(parseISO(clinic.created_at), 'dd/MM/yyyy')}</div>
                                             </td>
-                                            <td className="px-6 py-4 text-center">
+                                            <td className="px-6 py-4 text-center space-y-1">
                                                 {clinic.stripe_subscription_id ? (
                                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700" title="Assinatura Stripe Ativa">
-                                                        <CheckCircle size={12} className="mr-1"/> Ativo
+                                                        <CheckCircle size={12} className="mr-1"/> Stripe
                                                     </span>
                                                 ) : clinic.stripe_customer_id ? (
                                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700" title="Cliente Stripe (Sem Assinatura Ativa)">
@@ -184,6 +209,18 @@ const SuperAdminSubscriptions: React.FC = () => {
                                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-500" title="Sem vínculo Stripe">
                                                         <XCircle size={12} className="mr-1"/> Off
                                                     </span>
+                                                )}
+                                                
+                                                {clinic.is_manual_override && (
+                                                    <div className="flex justify-center">
+                                                        <button 
+                                                            onClick={() => handleRemoveOverride(clinic.id)}
+                                                            className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700 hover:bg-purple-200 cursor-pointer border border-purple-200" 
+                                                            title="Clique para remover a proteção manual e voltar a sincronizar com Stripe"
+                                                        >
+                                                            <Lock size={10} className="mr-1"/> Travado Manual
+                                                        </button>
+                                                    </div>
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 text-center">
@@ -246,7 +283,7 @@ const SuperAdminSubscriptions: React.FC = () => {
                     {filteredClinics.length > 0 && (
                         <div className="bg-yellow-50 p-3 border-t border-yellow-100 text-xs text-yellow-700 flex items-center justify-center gap-2">
                             <ShieldAlert size={14} />
-                            <span>Atenção: Alterar o plano aqui sobrescreve o banco de dados diretamente, independente do pagamento no Stripe.</span>
+                            <span>Atenção: Alterar o plano aqui <strong>trava (override)</strong> o status, impedindo que o Stripe o altere automaticamente até que você remova o cadeado.</span>
                         </div>
                     )}
                 </div>

@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import { Logo } from './Logo';
 import { 
@@ -24,7 +24,16 @@ import {
 } from 'lucide-react';
 import { UserProfile } from '../types';
 
-const DashboardLayout: React.FC = () => {
+// Context Definition
+export interface DashboardContextType {
+  userProfile: UserProfile | null;
+  refreshProfile: () => Promise<void>;
+  refreshNotifications?: () => void;
+}
+export const DashboardContext = createContext<DashboardContextType | null>(null);
+export const useDashboard = () => useContext(DashboardContext);
+
+const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pendingRequests, setPendingRequests] = useState(0);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -70,6 +79,10 @@ const DashboardLayout: React.FC = () => {
       if (!user) return;
       const { data: profileById } = await supabase.from('user_profiles').select('*, clinics(name, subscription_tier)').eq('id', user.id).maybeSingle();
       if (profileById) setUserProfile(profileById as unknown as UserProfile);
+  };
+
+  const refreshNotifications = () => {
+      if (userProfile?.clinic_id) fetchCount(userProfile.clinic_id);
   };
 
   useEffect(() => {
@@ -215,111 +228,112 @@ const DashboardLayout: React.FC = () => {
   }
 
   return (
-    // Usa h-[100dvh] para garantir altura correta em navegadores móveis
-    <div className="flex h-screen h-[100dvh] bg-gray-950 text-gray-100 overflow-hidden font-sans">
-      
-      <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/10 rounded-full blur-[120px]"></div>
-          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/10 rounded-full blur-[120px]"></div>
-      </div>
-
-      {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm md:hidden" onClick={() => setSidebarOpen(false)}></div>}
-
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-900/95 backdrop-blur-xl border-r border-white/5 shadow-2xl transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="flex items-center justify-between p-4 border-b border-white/5">
-          <div className="flex flex-col w-full">
-            <div className="flex items-center space-x-2 text-white font-bold text-xl mb-1 cursor-pointer" onClick={() => navigate('/dashboard')}>
-                <div className="bg-gradient-to-tr from-blue-600 to-purple-600 p-1.5 rounded-lg shadow-lg shadow-purple-500/20">
-                    <Logo className="w-5 h-5 text-white" />
-                </div>
-                <span>Denti<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Hub</span></span>
-            </div>
-            {isSuperAdmin ? (
-                <span className="text-[10px] bg-red-500/20 text-red-300 border border-red-500/30 px-2 py-0.5 rounded-full font-bold mt-1 inline-flex items-center w-fit">
-                    <ShieldAlert size={10} className="mr-1"/> SYSTEM ADMIN
-                </span>
-            ) : (
-                clinicName && <span className="text-xs text-gray-500 font-medium ml-9 truncate max-w-[180px]">{clinicName}</span>
-            )}
-          </div>
-          <button className="md:hidden text-gray-400 hover:text-white" onClick={() => setSidebarOpen(false)}><X size={24} /></button>
+    <DashboardContext.Provider value={{ userProfile, refreshProfile, refreshNotifications }}>
+        <div className="flex h-screen h-[100dvh] bg-gray-950 text-gray-100 overflow-hidden font-sans">
+        
+        <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/10 rounded-full blur-[120px]"></div>
+            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/10 rounded-full blur-[120px]"></div>
         </div>
 
-        <div className="px-4 py-4 bg-gray-900/50 border-b border-white/5">
-            <p className="text-xs text-gray-500 uppercase font-bold mb-1">Logado como</p>
-            <p className="text-sm font-medium text-white truncate" title={userProfile?.email}>{userProfile?.email}</p>
-            <div className="flex items-center mt-2 space-x-2">
-                <span className="text-[10px] bg-blue-500/10 text-blue-300 px-2 py-0.5 rounded-full inline-block capitalize font-bold border border-blue-500/20">
-                    {userProfile?.role === 'administrator' ? 'Administrador' : 
-                     userProfile?.role === 'dentist' ? 'Dentista' : 
-                     userProfile?.role === 'employee' ? 'Funcionário' : 
-                     userProfile?.role}
-                </span>
-                {userProfile?.clinics?.subscription_tier && (
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full inline-block uppercase font-bold border ${userProfile.clinics.subscription_tier === 'pro' ? 'bg-gradient-to-r from-yellow-600/20 to-yellow-800/20 text-yellow-200 border-yellow-500/30' : userProfile.clinics.subscription_tier === 'starter' ? 'bg-blue-900/30 text-blue-300 border-blue-500/20' : 'bg-gray-800 text-gray-400 border-gray-700'}`}>
-                    {userProfile.clinics.subscription_tier}
-                  </span>
+        {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm md:hidden" onClick={() => setSidebarOpen(false)}></div>}
+
+        <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-900/95 backdrop-blur-xl border-r border-white/5 shadow-2xl transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <div className="flex items-center justify-between p-4 border-b border-white/5">
+            <div className="flex flex-col w-full">
+                <div className="flex items-center space-x-2 text-white font-bold text-xl mb-1 cursor-pointer" onClick={() => navigate('/dashboard')}>
+                    <div className="bg-gradient-to-tr from-blue-600 to-purple-600 p-1.5 rounded-lg shadow-lg shadow-purple-500/20">
+                        <Logo className="w-5 h-5 text-white" />
+                    </div>
+                    <span>Denti<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Hub</span></span>
+                </div>
+                {isSuperAdmin ? (
+                    <span className="text-[10px] bg-red-500/20 text-red-300 border border-red-500/30 px-2 py-0.5 rounded-full font-bold mt-1 inline-flex items-center w-fit">
+                        <ShieldAlert size={10} className="mr-1"/> SYSTEM ADMIN
+                    </span>
+                ) : (
+                    clinicName && <span className="text-xs text-gray-500 font-medium ml-9 truncate max-w-[180px]">{clinicName}</span>
                 )}
             </div>
-        </div>
-
-        <nav className="mt-4 px-3 space-y-1 pb-20 overflow-y-auto max-h-[calc(100vh-180px)] custom-scrollbar">
-          {visibleNavItems.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.end} onClick={() => setSidebarOpen(false)}
-              className={({ isActive }) => `group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 relative overflow-hidden ${
-                  isActive 
-                  ? 'bg-primary text-white shadow-[0_0_15px_rgba(14,165,233,0.3)] border border-primary/50' 
-                  : 'text-gray-400 hover:bg-white/5 hover:text-white hover:border hover:border-white/5 border border-transparent'
-              }`}
-            >
-              <div className="relative mr-3">
-                <item.icon className={`h-5 w-5 ${item.key === 'smart-record' ? 'text-purple-400' : ''}`} />
-                {item.badge && pendingRequests > 0 && <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span></span>}
-              </div>
-              <span className="flex-1">{item.label}</span>
-              {item.badge && pendingRequests > 0 && <span className="ml-auto bg-red-500 text-white py-0.5 px-1.5 rounded-md text-[10px] font-bold min-w-[18px] text-center">{pendingRequests}</span>}
-            </NavLink>
-          ))}
-
-          {isSuperAdmin && (
-              <NavLink 
-                to="/super-admin" 
-                onClick={() => setSidebarOpen(false)}
-                className={({ isActive }) => `group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-colors mt-6 border border-red-500/30 ${isActive ? 'bg-red-500/20 text-red-200' : 'text-red-400 hover:bg-red-500/10'}`}
-              >
-                  <Activity className="mr-3 h-5 w-5" />
-                  <span className="flex-1 font-bold">God Mode</span>
-              </NavLink>
-          )}
-        </nav>
-
-        <div className="absolute bottom-0 w-full border-t border-white/5 bg-gray-900/95 p-4 backdrop-blur-sm">
-          <button 
-            onClick={handleLogout} 
-            className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
-          >
-            <LogOut className="mr-3 h-5 w-5" />
-            Sair
-          </button>
-        </div>
-      </div>
-
-      <div className="flex-1 flex flex-col overflow-hidden relative z-10">
-        <div className="md:hidden bg-gray-900 border-b border-white/5 p-4 flex items-center justify-between">
-            <div className="flex items-center text-white font-bold gap-2">
-                <Logo className="w-6 h-6" /> 
-                <span>Denti<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Hub</span></span>
+            <button className="md:hidden text-gray-400 hover:text-white" onClick={() => setSidebarOpen(false)}><X size={24} /></button>
             </div>
-            <button onClick={() => setSidebarOpen(true)} className="text-gray-400 hover:text-white">
-                <Menu size={24} />
+
+            <div className="px-4 py-4 bg-gray-900/50 border-b border-white/5">
+                <p className="text-xs text-gray-500 uppercase font-bold mb-1">Logado como</p>
+                <p className="text-sm font-medium text-white truncate" title={userProfile?.email}>{userProfile?.email}</p>
+                <div className="flex items-center mt-2 space-x-2">
+                    <span className="text-[10px] bg-blue-500/10 text-blue-300 px-2 py-0.5 rounded-full inline-block capitalize font-bold border border-blue-500/20">
+                        {userProfile?.role === 'administrator' ? 'Administrador' : 
+                        userProfile?.role === 'dentist' ? 'Dentista' : 
+                        userProfile?.role === 'employee' ? 'Funcionário' : 
+                        userProfile?.role}
+                    </span>
+                    {userProfile?.clinics?.subscription_tier && (
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full inline-block uppercase font-bold border ${userProfile.clinics.subscription_tier === 'pro' ? 'bg-gradient-to-r from-yellow-600/20 to-yellow-800/20 text-yellow-200 border-yellow-500/30' : userProfile.clinics.subscription_tier === 'starter' ? 'bg-blue-900/30 text-blue-300 border-blue-500/20' : 'bg-gray-800 text-gray-400 border-gray-700'}`}>
+                        {userProfile.clinics.subscription_tier}
+                    </span>
+                    )}
+                </div>
+            </div>
+
+            <nav className="mt-4 px-3 space-y-1 pb-20 overflow-y-auto max-h-[calc(100vh-180px)] custom-scrollbar">
+            {visibleNavItems.map((item) => (
+                <NavLink key={item.to} to={item.to} end={item.end} onClick={() => setSidebarOpen(false)}
+                className={({ isActive }) => `group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 relative overflow-hidden ${
+                    isActive 
+                    ? 'bg-primary text-white shadow-[0_0_15px_rgba(14,165,233,0.3)] border border-primary/50' 
+                    : 'text-gray-400 hover:bg-white/5 hover:text-white hover:border hover:border-white/5 border border-transparent'
+                }`}
+                >
+                <div className="relative mr-3">
+                    <item.icon className={`h-5 w-5 ${item.key === 'smart-record' ? 'text-purple-400' : ''}`} />
+                    {item.badge && pendingRequests > 0 && <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span></span>}
+                </div>
+                <span className="flex-1">{item.label}</span>
+                {item.badge && pendingRequests > 0 && <span className="ml-auto bg-red-500 text-white py-0.5 px-1.5 rounded-md text-[10px] font-bold min-w-[18px] text-center">{pendingRequests}</span>}
+                </NavLink>
+            ))}
+
+            {isSuperAdmin && (
+                <NavLink 
+                    to="/super-admin" 
+                    onClick={() => setSidebarOpen(false)}
+                    className={({ isActive }) => `group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-colors mt-6 border border-red-500/30 ${isActive ? 'bg-red-500/20 text-red-200' : 'text-red-400 hover:bg-red-500/10'}`}
+                >
+                    <Activity className="mr-3 h-5 w-5" />
+                    <span className="flex-1 font-bold">God Mode</span>
+                </NavLink>
+            )}
+            </nav>
+
+            <div className="absolute bottom-0 w-full border-t border-white/5 bg-gray-900/95 p-4 backdrop-blur-sm">
+            <button 
+                onClick={handleLogout} 
+                className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+            >
+                <LogOut className="mr-3 h-5 w-5" />
+                Sair
             </button>
+            </div>
         </div>
-        
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-transparent p-4 sm:p-6 lg:p-8 custom-scrollbar">
-          <Outlet context={{ userProfile, refreshProfile }} />
-        </main>
-      </div>
-    </div>
+
+        <div className="flex-1 flex flex-col overflow-hidden relative z-10">
+            <div className="md:hidden bg-gray-900 border-b border-white/5 p-4 flex items-center justify-between">
+                <div className="flex items-center text-white font-bold gap-2">
+                    <Logo className="w-6 h-6" /> 
+                    <span>Denti<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Hub</span></span>
+                </div>
+                <button onClick={() => setSidebarOpen(true)} className="text-gray-400 hover:text-white">
+                    <Menu size={24} />
+                </button>
+            </div>
+            
+            <main className="flex-1 overflow-x-hidden overflow-y-auto bg-transparent p-4 sm:p-6 lg:p-8 custom-scrollbar">
+                {children}
+            </main>
+        </div>
+        </div>
+    </DashboardContext.Provider>
   );
 };
 

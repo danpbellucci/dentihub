@@ -56,12 +56,53 @@ Deno.serve(async (req) => {
     }
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Obter dados da clínica, incluindo a nova flag 'is_manual_override'
+    const { data: clinicData } = await supabaseAdmin
+        .from('clinics')
+        .select('subscription_tier, bonus_expires_at, is_manual_override')
+        .eq('id', user.id)
+        .single();
+
+    // 0. VERIFICAÇÃO DE OVERRIDE MANUAL (PRIORIDADE MÁXIMA)
+    // Se um Super Admin definiu o plano manualmente, ignoramos o Stripe.
+    if (clinicData?.is_manual_override) {
+        return new Response(JSON.stringify({ 
+            subscribed: true, 
+            tier: clinicData.subscription_tier, 
+            source: 'admin_override'
+        }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+        });
+    }
+
+    // 1. Verificar Bônus de Indicação (Prioridade Alta)
+    if (clinicData?.bonus_expires_at) {
+        const bonusDate = new Date(clinicData.bonus_expires_at);
+        if (bonusDate > new Date()) {
+            return new Response(JSON.stringify({ 
+                subscribed: true, 
+                tier: clinicData.subscription_tier, 
+                source: 'referral_bonus',
+                expires_at: clinicData.bonus_expires_at
+            }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 200,
+            });
+        }
+    }
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
     
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     
+    // Se não tem customer no Stripe, é Free
     if (customers.data.length === 0) {
-      await supabaseAdmin.from('clinics').update({ subscription_tier: 'free' }).eq('id', user.id);
+      if (clinicData?.subscription_tier !== 'free') {
+          // Reverter para free se não tiver bônus ativo nem override
+          await supabaseAdmin.from('clinics').update({ subscription_tier: 'free' }).eq('id', user.id);
+      }
       return new Response(JSON.stringify({ subscribed: false, tier: 'free' }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -77,7 +118,9 @@ Deno.serve(async (req) => {
     });
 
     if (subscriptions.data.length === 0) {
-      await supabaseAdmin.from('clinics').update({ subscription_tier: 'free' }).eq('id', user.id);
+      if (clinicData?.subscription_tier !== 'free') {
+          await supabaseAdmin.from('clinics').update({ subscription_tier: 'free' }).eq('id', user.id);
+      }
       return new Response(JSON.stringify({ subscribed: false, tier: 'free' }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -90,11 +133,14 @@ Deno.serve(async (req) => {
     
     const detectedTier = TIER_MAPPING[priceId] || TIER_MAPPING[productId] || 'free';
 
-    await supabaseAdmin.from('clinics').update({ 
-        subscription_tier: detectedTier,
-        stripe_customer_id: customerId,
-        stripe_subscription_id: subscription.id
-    }).eq('id', user.id);
+    // Atualiza apenas se mudou ou para garantir sincronia
+    if (clinicData?.subscription_tier !== detectedTier) {
+        await supabaseAdmin.from('clinics').update({ 
+            subscription_tier: detectedTier,
+            stripe_customer_id: customerId,
+            stripe_subscription_id: subscription.id
+        }).eq('id', user.id);
+    }
 
     return new Response(JSON.stringify({ subscribed: true, tier: detectedTier, updated: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

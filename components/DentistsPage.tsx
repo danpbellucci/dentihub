@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import { Dentist, ServiceItem } from '../types';
@@ -74,7 +73,7 @@ const DentistsPage: React.FC = () => {
 
   useEffect(() => {
     initialize();
-    if (location.state?.openModal) handleOpenModal();
+    if ((location.state as any)?.openModal) handleOpenModal();
   }, []);
 
   const initialize = async () => {
@@ -166,7 +165,6 @@ const DentistsPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  // ... (funções de schedule, plans, services, blockDate mantidas iguais) ...
   const updateScheduleDay = (day: string, field: string, value: any) => {
       setSchedule((prev: any) => ({ ...prev, [day]: { ...prev[day], [field]: value } }));
   };
@@ -515,7 +513,38 @@ const DentistsPage: React.FC = () => {
         </div>
       )}
 
-      {/* IMPORT RESULT MODAL (Mantido do anterior) */}
+      {/* DELETE MODAL */}
+      {deleteId && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in-up">
+          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm text-center">
+             <div className="bg-red-100 p-3 rounded-full inline-block mb-4">
+                <Trash2 className="text-red-600" size={32} />
+             </div>
+             <h3 className="text-lg font-bold text-gray-900 mb-2">Excluir Dentista?</h3>
+             <p className="text-gray-600 mb-6 text-sm">
+               Tem certeza que deseja remover este profissional? Agendamentos futuros podem ser afetados.
+             </p>
+             <div className="flex space-x-3 w-full">
+                <button 
+                  onClick={() => setDeleteId(null)}
+                  disabled={processing}
+                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-bold transition"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={confirmDelete}
+                  disabled={processing}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold transition shadow-lg shadow-red-200 flex items-center justify-center"
+                >
+                  {processing ? <Loader2 className="animate-spin" size={20}/> : 'Sim, Excluir'}
+                </button>
+             </div>
+          </div>
+        </div>
+      )}
+
+      {/* IMPORT RESULT MODAL */}
       {importResult.show && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in">
             <div className="bg-gray-900 border border-white/10 p-6 rounded-lg shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
@@ -531,11 +560,11 @@ const DentistsPage: React.FC = () => {
                     <div className="grid grid-cols-2 gap-4 mb-4">
                         <div className="bg-green-900/20 border border-green-500/30 p-3 rounded-lg text-center">
                             <span className="block text-2xl font-bold text-green-400">{importResult.successCount}</span>
-                            <span className="text-xs text-green-200 uppercase font-bold">Processados com Sucesso</span>
+                            <span className="text-xs text-green-200 uppercase font-bold">Processados</span>
                         </div>
                         <div className={`border p-3 rounded-lg text-center ${importResult.errorCount > 0 ? 'bg-red-900/20 border-red-500/30' : 'bg-gray-800 border-gray-700'}`}>
                             <span className={`block text-2xl font-bold ${importResult.errorCount > 0 ? 'text-red-400' : 'text-gray-400'}`}>{importResult.errorCount}</span>
-                            <span className={`text-xs uppercase font-bold ${importResult.errorCount > 0 ? 'text-red-200' : 'text-gray-500'}`}>Erros / Falhas</span>
+                            <span className={`text-xs uppercase font-bold ${importResult.errorCount > 0 ? 'text-red-200' : 'text-gray-500'}`}>Erros</span>
                         </div>
                     </div>
 
@@ -560,174 +589,183 @@ const DentistsPage: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL FORM, DELETE MODAL, HELP MODAL (Mantidos) */}
+      {/* Modal Form */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <div className="bg-gray-900 border border-white/10 p-6 rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-fade-in-up">
-            <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+          <div className="bg-gray-900 border border-white/10 p-6 rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-3">
               <h2 className="text-xl font-bold text-white">
                 {editingDentist ? 'Editar Dentista' : 'Novo Dentista'}
               </h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-white"><X size={24}/></button>
+              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-white"><X size={24} /></button>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
-                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar p-1">
-                    {/* DADOS PESSOAIS */}
-                    <div className="space-y-4 animate-fade-in">
-                        <h3 className="font-bold text-gray-300 border-b border-white/10 pb-2 flex items-center"><User size={18} className="mr-2 text-primary"/> Dados Pessoais</h3>
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                
+                {/* 1. DADOS PESSOAIS */}
+                <div className="space-y-4 mb-6">
+                    <h3 className="font-bold text-gray-300 border-b border-white/10 pb-2 flex items-center text-sm uppercase tracking-wide"><User size={16} className="mr-2 text-primary"/> Dados Pessoais</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome Completo *</label>
-                            <input required className="w-full bg-gray-800 border border-gray-700 text-white rounded p-2 focus:border-primary outline-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Nome Completo *</label>
+                            <input required className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white focus:border-primary outline-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">E-mail (Login) *</label>
-                                <input required type="email" className="w-full bg-gray-800 border border-gray-700 text-white rounded p-2 focus:border-primary outline-none" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Telefone</label>
-                                <input className="w-full bg-gray-800 border border-gray-700 text-white rounded p-2 focus:border-primary outline-none" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
-                            </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">E-mail (Login) *</label>
+                            <input required type="email" className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white focus:border-primary outline-none" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">CRO</label>
-                                <input className="w-full bg-gray-800 border border-gray-700 text-white rounded p-2 focus:border-primary outline-none" value={formData.cro} onChange={e => setFormData({...formData, cro: e.target.value})} />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">CPF *</label>
-                                <input className="w-full bg-gray-800 border border-gray-700 text-white rounded p-2 focus:border-primary outline-none" value={formData.cpf} onChange={e => setFormData({...formData, cpf: e.target.value})} maxLength={14}/>
-                            </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Telefone</label>
+                            <input className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white focus:border-primary outline-none" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">CRO</label>
+                            <input className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white focus:border-primary outline-none" value={formData.cro} onChange={e => setFormData({...formData, cro: e.target.value})} />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">CPF *</label>
+                            <input required className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white focus:border-primary outline-none" value={formData.cpf} onChange={e => {
+                                let v = e.target.value.replace(/\D/g, '');
+                                if (v.length > 11) v = v.slice(0, 11);
+                                v = v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+                                setFormData({...formData, cpf: v});
+                            }} maxLength={14} />
                         </div>
                         <div className="flex gap-4">
                             <div className="flex-1">
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Especialidades</label>
-                                <input className="w-full bg-gray-800 border border-gray-700 text-white rounded p-2 focus:border-primary outline-none" placeholder="Separe por vírgula" value={formData.specialties} onChange={e => setFormData({...formData, specialties: e.target.value})} />
+                                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Especialidades</label>
+                                <input className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white focus:border-primary outline-none" placeholder="Separe por vírgula" value={formData.specialties} onChange={e => setFormData({...formData, specialties: e.target.value})} />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Cor</label>
-                                <input type="color" className="h-10 w-20 rounded cursor-pointer border-0 p-0 bg-transparent" value={formData.color} onChange={e => setFormData({...formData, color: e.target.value})} />
+                                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Cor</label>
+                                <input type="color" className="h-10 w-full rounded cursor-pointer bg-gray-800 border border-gray-700 p-1" value={formData.color} onChange={e => setFormData({...formData, color: e.target.value})} />
                             </div>
-                        </div>
-                    </div>
-
-                    {/* PLANOS */}
-                    <div className="space-y-4 mt-6 animate-fade-in">
-                        <h3 className="font-bold text-gray-300 border-b border-white/10 pb-2 flex items-center"><ShieldCheck size={18} className="mr-2 text-primary"/> Planos Aceitos</h3>
-                        <div className="flex gap-2">
-                            <input className="flex-1 bg-gray-800 border border-gray-700 text-white rounded p-2 text-sm focus:border-primary outline-none" placeholder="Nome do plano (ex: Amil)" value={newPlan} onChange={e => setNewPlan(e.target.value)}/>
-                            <button type="button" onClick={handleAddPlan} className="bg-gray-800 border border-white/10 px-4 rounded hover:bg-gray-700 text-white text-sm font-bold">Adicionar</button>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            {plans.map(p => (
-                                <span key={p} className="bg-blue-900/30 text-blue-300 border border-blue-500/20 px-3 py-1 rounded-full text-sm font-bold flex items-center">
-                                    {p} <button type="button" onClick={() => removePlan(p)} className="ml-2 text-blue-400 hover:text-white"><X size={14}/></button>
-                                </span>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* SERVIÇOS */}
-                    <div className="space-y-4 mt-6 animate-fade-in">
-                        <h3 className="font-bold text-gray-300 border-b border-white/10 pb-2 flex items-center"><DollarSign size={18} className="mr-2 text-primary"/> Serviços e Preços</h3>
-                        <div className="grid grid-cols-12 gap-2 items-end bg-gray-800/50 p-3 rounded-lg border border-white/5">
-                            <div className="col-span-12 sm:col-span-5">
-                                <label className="text-[10px] font-bold text-gray-500 uppercase">Nome</label>
-                                <input className="w-full bg-gray-900 border border-gray-700 text-white rounded p-2 text-sm focus:border-primary outline-none" placeholder="Ex: Limpeza" value={newService.name} onChange={e => setNewService({...newService, name: e.target.value})}/>
-                            </div>
-                            <div className="col-span-6 sm:col-span-3">
-                                <label className="text-[10px] font-bold text-gray-500 uppercase">Preço (R$)</label>
-                                <input type="number" className="w-full bg-gray-900 border border-gray-700 text-white rounded p-2 text-sm focus:border-primary outline-none" value={newService.price} onChange={e => setNewService({...newService, price: e.target.value})} disabled={newService.is_variable_price}/>
-                            </div>
-                            <div className="col-span-6 sm:col-span-2">
-                                <label className="text-[10px] font-bold text-gray-500 uppercase">Min</label>
-                                <input type="number" className="w-full bg-gray-900 border border-gray-700 text-white rounded p-2 text-sm focus:border-primary outline-none" value={newService.duration} onChange={e => setNewService({...newService, duration: e.target.value})}/>
-                            </div>
-                            <div className="col-span-12 sm:col-span-2 flex items-center pt-2 sm:pt-0">
-                                 <button type="button" onClick={handleAddService} className="w-full bg-primary text-white p-2 rounded hover:bg-sky-600 flex items-center justify-center font-bold text-sm"><Plus size={16} className="mr-1"/> Add</button>
-                            </div>
-                            <div className="col-span-12 flex gap-4 mt-1 px-1">
-                                <label className="flex items-center text-xs text-gray-400 cursor-pointer">
-                                    <input type="checkbox" className="mr-1 rounded bg-gray-700 border-gray-600 text-primary" checked={newService.is_variable_price} onChange={e => setNewService({...newService, is_variable_price: e.target.checked, price: e.target.checked ? '' : newService.price})}/>
-                                    A combinar
-                                </label>
-                                <label className="flex items-center text-xs text-gray-400 cursor-pointer">
-                                    <input type="checkbox" className="mr-1 rounded bg-gray-700 border-gray-600 text-primary" checked={newService.covered_by_plans} onChange={e => setNewService({...newService, covered_by_plans: e.target.checked})}/>
-                                    Aceito por planos
-                                </label>
-                            </div>
-                        </div>
-                        <div className="max-h-40 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
-                            {services.map((s, i) => (
-                                <div key={i} className="flex justify-between items-center bg-gray-800 p-2 rounded text-sm border border-gray-700">
-                                    <div className="flex flex-col">
-                                        <span className="font-medium text-gray-300">{s.name}</span>
-                                        <div className="flex gap-2 text-[10px] text-gray-500">
-                                            {s.covered_by_plans && <span className="flex items-center text-blue-400"><ShieldCheck size={10} className="mr-0.5"/> Planos</span>}
-                                            {s.is_variable_price && <span className="flex items-center text-orange-400"><Tag size={10} className="mr-0.5"/> A combinar</span>}
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-gray-500 text-xs">{s.duration}min</span>
-                                        <span className="font-bold text-green-400 text-xs whitespace-nowrap">{s.is_variable_price ? 'A combinar' : `R$ ${Number(s.price).toFixed(2)}`}</span>
-                                        <button type="button" onClick={() => removeService(i)} className="text-red-400 hover:text-red-300"><X size={14}/></button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* DISPONIBILIDADE */}
-                    <div className="mt-6 animate-fade-in border-t border-white/10 pt-4">
-                        <h3 className="font-bold text-gray-300 mb-4 flex items-center"><Clock size={18} className="mr-2 text-primary"/> Disponibilidade</h3>
-                        <div className="space-y-2">
-                            {daysOfWeek.map(({ key, label }) => {
-                                const dayConfig = schedule[key];
-                                return (
-                                    <div key={key} className="flex items-start gap-2 py-2 border-b border-gray-800 last:border-0">
-                                        <div className="w-24 flex items-center pt-1.5">
-                                            <input type="checkbox" checked={dayConfig.active} onChange={e => updateScheduleDay(key, 'active', e.target.checked)} className="mr-2 h-4 w-4 text-primary bg-gray-700 border-gray-600 rounded"/>
-                                            <span className={`text-sm font-bold ${dayConfig.active ? 'text-gray-300' : 'text-gray-600'}`}>{label}</span>
-                                        </div>
-                                        {dayConfig.active ? (
-                                            <div className="flex flex-col gap-2 flex-1">
-                                                <div className="flex gap-2 items-center">
-                                                    <input type="time" className="bg-gray-800 border border-gray-700 text-white rounded p-1 text-sm flex-1 sm:flex-none sm:w-28" value={dayConfig.start} onChange={e => updateScheduleDay(key, 'start', e.target.value)} />
-                                                    <span className="text-gray-500 text-xs">até</span>
-                                                    <input type="time" className="bg-gray-800 border border-gray-700 text-white rounded p-1 text-sm flex-1 sm:flex-none sm:w-28" value={dayConfig.end} onChange={e => updateScheduleDay(key, 'end', e.target.value)} />
-                                                </div>
-                                            </div>
-                                        ) : <span className="text-xs text-gray-600 italic pt-1.5">Indisponível</span>}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* BLOQUEIOS */}
-                    <div className="mt-6 animate-fade-in border-t border-white/10 pt-6 bg-red-900/10 p-4 rounded-lg border border-red-900/20">
-                        <h3 className="font-bold text-red-400 mb-4 flex items-center"><AlertTriangle size={18} className="mr-2"/> Datas Bloqueadas</h3>
-                        <div className="flex gap-4 items-end mb-4">
-                            <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Data</label><input type="date" className="bg-gray-900 border border-gray-700 text-white rounded p-2 text-sm" value={blockDate} onChange={e => setBlockDate(e.target.value)}/></div>
-                            <div className="flex items-center pb-2"><input type="checkbox" id="allDay" checked={blockAllDay} onChange={e => setBlockAllDay(e.target.checked)} className="mr-2 bg-gray-700 border-gray-600"/><label htmlFor="allDay" className="text-sm text-gray-400">Dia Todo</label></div>
-                            <button type="button" onClick={handleBlockDate} className="bg-red-600 text-white px-4 py-2 rounded font-bold text-sm hover:bg-red-700">Bloquear</button>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            {schedule.blocked_dates?.map((b: any, i: number) => (
-                                <span key={i} className="bg-red-900/30 border border-red-500/30 text-red-300 px-3 py-1 rounded-full text-xs font-bold flex items-center">
-                                    {formatDateSafe(typeof b === 'string' ? b : b.date)}
-                                    <button type="button" onClick={() => removeBlockedDate(i)} className="ml-2 text-red-400 hover:text-red-200"><X size={14}/></button>
-                                </span>
-                            ))}
                         </div>
                     </div>
                 </div>
 
-                <div className="pt-4 flex justify-end gap-3 border-t border-white/10 mt-auto bg-gray-900 sticky bottom-0">
-                    <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2 text-gray-400 hover:text-white hover:bg-white/5 rounded font-bold transition">Cancelar</button>
-                    <button type="submit" disabled={processing} className="px-8 py-2 bg-primary text-white rounded font-bold hover:bg-sky-600 transition shadow-md flex items-center disabled:opacity-50">
-                        {processing ? <Loader2 className="animate-spin mr-2"/> : <Check className="mr-2"/>} Salvar Dentista
+                {/* 2. PLANOS */}
+                <div className="space-y-4 mb-6">
+                    <h3 className="font-bold text-gray-300 border-b border-white/10 pb-2 flex items-center text-sm uppercase tracking-wide"><ShieldCheck size={16} className="mr-2 text-primary"/> Planos Aceitos</h3>
+                    <div className="flex gap-2">
+                        <input 
+                            className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white focus:border-primary outline-none" 
+                            placeholder="Nome do plano (ex: Amil)" 
+                            value={newPlan} 
+                            onChange={e => setNewPlan(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddPlan())}
+                        />
+                        <button type="button" onClick={handleAddPlan} className="bg-gray-700 px-4 rounded hover:bg-gray-600 text-white font-bold text-sm">Add</button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {plans.map(p => (
+                            <span key={p} className="bg-blue-900/30 text-blue-300 px-3 py-1 rounded-full text-xs font-bold flex items-center border border-blue-500/30">
+                                {p} <button type="button" onClick={() => removePlan(p)} className="ml-2 hover:text-white"><X size={12}/></button>
+                            </span>
+                        ))}
+                    </div>
+                </div>
+
+                {/* 3. SERVIÇOS */}
+                <div className="space-y-4 mb-6">
+                    <h3 className="font-bold text-gray-300 border-b border-white/10 pb-2 flex items-center text-sm uppercase tracking-wide"><DollarSign size={16} className="mr-2 text-primary"/> Serviços</h3>
+                    <div className="grid grid-cols-12 gap-2 items-end bg-gray-800/50 p-3 rounded-lg border border-white/5">
+                        <div className="col-span-5">
+                            <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Nome</label>
+                            <input className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-sm text-white focus:border-primary outline-none" value={newService.name} onChange={e => setNewService({...newService, name: e.target.value})}/>
+                        </div>
+                        <div className="col-span-3">
+                            <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Preço (R$)</label>
+                            <input type="number" className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-sm text-white focus:border-primary outline-none" value={newService.price} onChange={e => setNewService({...newService, price: e.target.value})} disabled={newService.is_variable_price}/>
+                        </div>
+                        <div className="col-span-2">
+                            <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Minutos</label>
+                            <input type="number" className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-sm text-white focus:border-primary outline-none" value={newService.duration} onChange={e => setNewService({...newService, duration: e.target.value})}/>
+                        </div>
+                        <div className="col-span-2">
+                             <button type="button" onClick={handleAddService} className="w-full bg-primary text-white p-1.5 rounded text-xs font-bold hover:bg-sky-600 h-[34px]">Add</button>
+                        </div>
+                        <div className="col-span-12 flex gap-4 mt-2">
+                            <label className="flex items-center text-xs text-gray-400 cursor-pointer"><input type="checkbox" className="mr-2 bg-gray-700 border-gray-600 rounded" checked={newService.is_variable_price} onChange={e => setNewService({...newService, is_variable_price: e.target.checked, price: e.target.checked ? '' : newService.price})}/> A combinar</label>
+                            <label className="flex items-center text-xs text-gray-400 cursor-pointer"><input type="checkbox" className="mr-2 bg-gray-700 border-gray-600 rounded" checked={newService.covered_by_plans} onChange={e => setNewService({...newService, covered_by_plans: e.target.checked})}/> Aceita Plano</label>
+                        </div>
+                    </div>
+                    <div className="max-h-32 overflow-y-auto space-y-1 custom-scrollbar pr-1">
+                        {services.map((s, i) => (
+                            <div key={i} className="flex justify-between items-center bg-gray-800 p-2 rounded text-xs border border-gray-700">
+                                <div>
+                                    <span className="font-bold text-gray-200 block">{s.name}</span>
+                                    <span className="text-[10px] text-gray-500">{s.covered_by_plans ? 'Aceita Plano' : 'Particular'} • {s.is_variable_price ? 'A combinar' : ''}</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className="text-gray-400">{s.duration}min</span>
+                                    <span className="font-bold text-green-400">{s.is_variable_price ? '---' : `R$ ${Number(s.price).toFixed(2)}`}</span>
+                                    <button type="button" onClick={() => removeService(i)} className="text-gray-500 hover:text-red-400"><X size={14}/></button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* 4. DISPONIBILIDADE */}
+                <div className="space-y-4 mb-6">
+                    <h3 className="font-bold text-gray-300 border-b border-white/10 pb-2 flex items-center text-sm uppercase tracking-wide"><Clock size={16} className="mr-2 text-primary"/> Horários</h3>
+                    <div className="space-y-2 bg-gray-800/30 p-3 rounded-lg border border-white/5">
+                        {daysOfWeek.map(({ key, label }) => {
+                            const dayConfig = schedule[key];
+                            return (
+                                <div key={key} className="flex items-center gap-2 text-sm">
+                                    <div className="w-24 flex items-center">
+                                        <input type="checkbox" checked={dayConfig.active} onChange={e => updateScheduleDay(key, 'active', e.target.checked)} className="mr-2 bg-gray-700 border-gray-600 rounded text-primary"/>
+                                        <span className={dayConfig.active ? 'text-gray-200' : 'text-gray-500'}>{label}</span>
+                                    </div>
+                                    {dayConfig.active && (
+                                        <>
+                                            <input type="time" className="bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white" value={dayConfig.start} onChange={e => updateScheduleDay(key, 'start', e.target.value)} />
+                                            <span className="text-gray-500">-</span>
+                                            <input type="time" className="bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white" value={dayConfig.end} onChange={e => updateScheduleDay(key, 'end', e.target.value)} />
+                                            <span className="text-[10px] text-gray-500 ml-2">Pausa:</span>
+                                            <input type="time" className="bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white" value={dayConfig.pause_start} onChange={e => updateScheduleDay(key, 'pause_start', e.target.value)} />
+                                            <span className="text-gray-500">-</span>
+                                            <input type="time" className="bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white" value={dayConfig.pause_end} onChange={e => updateScheduleDay(key, 'pause_end', e.target.value)} />
+                                        </>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* 5. DATAS BLOQUEADAS */}
+                <div className="space-y-4">
+                    <div className="bg-red-900/10 p-4 rounded-lg border border-red-500/20">
+                        <h3 className="font-bold text-red-400 mb-3 flex items-center text-sm"><AlertTriangle size={14} className="mr-2"/> Bloqueios (Férias/Feriados)</h3>
+                        <div className="flex flex-wrap gap-2 items-end mb-3">
+                            <div><label className="text-[10px] text-red-400 block mb-1">Data</label><input type="date" className="bg-gray-900 border border-red-500/30 rounded p-1.5 text-xs text-white" value={blockDate} onChange={e => setBlockDate(e.target.value)} /></div>
+                            <div className="flex items-center pb-2"><input type="checkbox" checked={blockAllDay} onChange={e => setBlockAllDay(e.target.checked)} className="mr-1 bg-gray-700 border-red-500/30 rounded text-red-500"/><label className="text-xs text-red-300">Dia Todo</label></div>
+                            {!blockAllDay && <div className="flex items-center gap-1"><input type="time" className="bg-gray-900 border border-red-500/30 rounded p-1.5 text-xs text-white" value={blockStart} onChange={e => setBlockStart(e.target.value)} /><span>-</span><input type="time" className="bg-gray-900 border border-red-500/30 rounded p-1.5 text-xs text-white" value={blockEnd} onChange={e => setBlockEnd(e.target.value)} /></div>}
+                            <button type="button" onClick={handleBlockDate} className="bg-red-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-red-700">Bloquear</button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {schedule.blocked_dates?.map((b: any, i: number) => {
+                                const dateStr = typeof b === 'string' ? b : b.date;
+                                const isFull = typeof b === 'string' || b.allDay;
+                                return (
+                                    <span key={i} className="bg-red-900/30 border border-red-500/30 text-red-300 px-2 py-1 rounded text-[10px] font-bold flex items-center">
+                                        {formatDateSafe(dateStr)} {isFull ? '' : `(${b.start}-${b.end})`}
+                                        <button type="button" onClick={() => removeBlockedDate(i)} className="ml-2 hover:text-white"><X size={10}/></button>
+                                    </span>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="pt-6 flex justify-end gap-3 border-t border-white/10 mt-6">
+                    <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-400 hover:text-white font-bold transition">Cancelar</button>
+                    <button type="submit" disabled={processing} className="px-6 py-2 bg-primary text-white rounded font-bold hover:bg-sky-600 transition flex items-center shadow-md disabled:opacity-50">
+                        {processing ? <Loader2 className="animate-spin mr-2"/> : 'Salvar Dentista'}
                     </button>
                 </div>
             </form>
@@ -735,22 +773,7 @@ const DentistsPage: React.FC = () => {
         </div>
       )}
 
-      {/* DELETE MODAL */}
-      {deleteId && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in-up">
-          <div className="bg-gray-900 border border-white/10 p-6 rounded-lg shadow-xl w-full max-w-sm text-center">
-             <div className="bg-red-900/20 p-3 rounded-full inline-block mb-4"><Trash2 className="text-red-500" size={32} /></div>
-             <h3 className="text-lg font-bold text-white mb-2">Excluir Dentista?</h3>
-             <p className="text-gray-400 mb-6 text-sm">Tem certeza que deseja remover este dentista? Essa ação não pode ser desfeita.</p>
-             <div className="flex space-x-3 w-full">
-                <button onClick={() => setDeleteId(null)} disabled={processing} className="flex-1 px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 font-bold transition">Cancelar</button>
-                <button onClick={confirmDelete} disabled={processing} className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold transition shadow-lg">{processing ? <Loader2 className="animate-spin" size={20}/> : 'Sim, Excluir'}</button>
-             </div>
-          </div>
-        </div>
-      )}
-
-      {/* HELP MODAL */}
+      {/* Help Modal */}
       {showHelp && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
           <div className="bg-gray-900 border border-white/10 p-6 rounded-lg shadow-xl w-full max-w-lg">
@@ -759,12 +782,12 @@ const DentistsPage: React.FC = () => {
                 <button onClick={() => setShowHelp(false)} className="text-gray-400 hover:text-white"><X size={20}/></button>
              </div>
              <div className="space-y-4 text-sm text-gray-400">
-                <p>Cadastre e gerencie a equipe de profissionais da clínica.</p>
+                <p>Aqui você cadastra e gerencia os profissionais da clínica.</p>
                 <ul className="list-disc pl-5 space-y-2">
-                   <li><strong>Disponibilidade:</strong> Configure os horários de atendimento de cada dentista.</li>
-                   <li><strong>Serviços:</strong> Defina quais procedimentos cada profissional realiza.</li>
-                   <li><strong>Importar Excel:</strong> Utilize a importação em massa para cadastrar sua equipe rapidamente.</li>
-                   <li><strong>Login:</strong> O dentista receberá um convite por e-mail para acessar o sistema.</li>
+                   <li><strong>Configuração de Agenda:</strong> Cada dentista tem seus horários, pausas e dias de folga (Datas Bloqueadas).</li>
+                   <li><strong>Serviços:</strong> Defina quais procedimentos o dentista realiza e os valores (ou "A combinar").</li>
+                   <li><strong>Convênios:</strong> Liste os planos aceitos para exibir no agendamento online.</li>
+                   <li><strong>Cor:</strong> Escolha uma cor para diferenciar o profissional na Agenda.</li>
                 </ul>
              </div>
           </div>

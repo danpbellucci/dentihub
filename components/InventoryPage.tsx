@@ -203,7 +203,7 @@ const InventoryPage: React.FC = () => {
           setEditingItem(item);
           
           const isCustUnit = !PREDEFINED_UNITS.includes(item.unit || '');
-          const isCustCat = !PREDEFINED_CATEGORIES.includes(item.category || '');
+          const isCustCat = !PREDEFINED_CATEGORIES.includes((item.category as string) || '');
           
           setIsCustomUnit(isCustUnit);
           setIsCustomCategory(isCustCat);

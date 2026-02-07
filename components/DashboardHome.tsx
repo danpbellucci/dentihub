@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
-import { useOutletContext } from 'react-router-dom';
+import { useDashboard } from './DashboardLayout';
 import { UserProfile } from '../types';
 import { 
   Building2, UserPlus, Users, Smile, X, CheckCircle2, Lock, ArrowRight, Check, 
@@ -22,7 +22,7 @@ interface OnboardingStep {
 }
 
 const DashboardHome: React.FC = () => {
-    const { userProfile } = useOutletContext<{ userProfile: UserProfile | null }>();
+    const { userProfile } = useDashboard() || {};
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState<{
         clients: number;
