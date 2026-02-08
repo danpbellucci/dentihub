@@ -113,8 +113,8 @@ const LearnMorePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-950 font-sans text-gray-100 overflow-x-hidden">
       
-      {/* BACKGROUND AMBIENT GLOWS */}
-      <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+      {/* BACKGROUND AMBIENT GLOWS - Oculto no Mobile para performance */}
+      <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 hidden md:block">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/20 rounded-full blur-[120px]"></div>
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/20 rounded-full blur-[120px]"></div>
       </div>
@@ -213,8 +213,8 @@ const LearnMorePage: React.FC = () => {
               <div className="flex-1 w-full">
                 <div className={`rounded-3xl p-8 bg-gray-900/40 backdrop-blur border border-white/5 relative overflow-hidden group hover:border-white/10 transition duration-500`}>
                   
-                  {/* Background Glow Effect based on feature color */}
-                  <div className={`absolute top-0 right-0 p-8 opacity-20 transform translate-x-1/4 -translate-y-1/4 group-hover:scale-110 transition duration-700 blur-2xl`}>
+                  {/* Background Glow Effect based on feature color - Otimizado para Mobile (removido blur excessivo) */}
+                  <div className={`absolute top-0 right-0 p-8 opacity-20 transform translate-x-1/4 -translate-y-1/4 group-hover:scale-110 transition duration-700 hidden md:block blur-2xl`}>
                     <feature.icon size={200} className={feature.color} />
                   </div>
                   
@@ -296,8 +296,8 @@ const LearnMorePage: React.FC = () => {
                     <span className="bg-white/10 border border-white/20 px-4 py-2 rounded-full text-white">Recepcionista (Operacional)</span>
                 </div>
             </div>
-            {/* Decorative BG */}
-            <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-bl from-blue-600/10 to-transparent pointer-events-none"></div>
+            {/* Decorative BG - hidden on mobile */}
+            <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-bl from-blue-600/10 to-transparent pointer-events-none hidden md:block"></div>
         </div>
 
         {/* CTA Final */}

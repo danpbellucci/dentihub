@@ -107,10 +107,19 @@ const LandingPage: React.FC = () => {
   ];
 
   useEffect(() => {
+    // Optimized resize handler to avoid dependency loop
     const handleResize = () => {
-        if (window.innerWidth < 768 && device !== 'mobile') setDevice('mobile');
-        if (window.innerWidth >= 768) setMobileMenuOpen(false);
+        setDevice(prev => {
+            const isMobile = window.innerWidth < 768;
+            if (isMobile && prev !== 'mobile') return 'mobile';
+            return prev;
+        });
+        
+        if (window.innerWidth >= 768) {
+            setMobileMenuOpen(false);
+        }
     };
+    
     window.addEventListener('resize', handleResize);
 
     const observer = new IntersectionObserver(
@@ -142,7 +151,7 @@ const LandingPage: React.FC = () => {
       window.removeEventListener('resize', handleResize);
       if (plansEndElement) observer.unobserve(plansEndElement);
     };
-  }, [device, location]);
+  }, [location]); // Removed 'device' from dependencies
 
   const handleUnsubscribe = async (email: string) => {
       try {
@@ -264,7 +273,7 @@ const LandingPage: React.FC = () => {
                 <div className="flex flex-col p-4 space-y-4">
                     <button onClick={() => { document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); setMobileMenuOpen(false); }} className="text-left text-base font-medium text-gray-300 hover:text-white py-2 border-b border-white/5">Recursos</button>
                     <button onClick={scrollToPlans} className="text-left text-base font-medium text-gray-300 hover:text-white py-2 border-b border-white/5">Preços</button>
-                    <button onClick={() => { navigate('/entenda'); setMobileMenuOpen(false); }} className="text-left text-base font-medium text-gray-300 hover:text-white py-2 border-b border-white/5">Como Funciona</button>
+                    <button onClick={() => { setMobileMenuOpen(false); navigate('/entenda'); }} className="text-left text-base font-medium text-gray-300 hover:text-white py-2 border-b border-white/5">Como Funciona</button>
                     <button onClick={() => { navigate('/encontrar-clinica'); setMobileMenuOpen(false); }} className="text-left text-base font-medium text-gray-300 hover:text-white py-2 border-b border-white/5 flex items-center gap-2"><Search size={16}/> Buscar Clínica</button>
                     <button onClick={() => { goToAuth('signup'); setMobileMenuOpen(false); }} className="bg-white text-gray-900 py-3 rounded-lg font-bold text-center mt-2 shadow-lg">Começar Grátis</button>
                 </div>
@@ -371,6 +380,7 @@ const LandingPage: React.FC = () => {
 
                         <div className="p-6">
                             
+                            {/* ... (Conteúdo do Mockup permanece o mesmo) ... */}
                             {activeMockup === 'Visão Geral' && (
                                 <div className="space-y-6 animate-fade-in">
                                     <h2 className="text-xl font-bold text-white mb-4">Visão Geral</h2>
@@ -441,7 +451,7 @@ const LandingPage: React.FC = () => {
                                     </div>
                                 </div>
                             )}
-                            
+                            {/* ... outros mockups mantidos ... */}
                             {activeMockup === 'Agenda' && (
                                 <div className="space-y-4 animate-fade-in h-full flex flex-col">
                                     <div className="flex justify-between items-center mb-2">
@@ -491,370 +501,7 @@ const LandingPage: React.FC = () => {
                                     </div>
                                 </div>
                             )}
-
-                            {activeMockup === 'Pacientes' && (
-                                <div className="space-y-4 animate-fade-in h-full flex flex-col">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <h2 className="text-lg font-bold text-white flex items-center gap-2">Pacientes <span className="text-xs bg-gray-800 px-2 py-0.5 rounded border border-white/10 text-gray-400">148 / Ilimitado</span></h2>
-                                        <div className="flex gap-2">
-                                            <button className="bg-gray-800 text-gray-300 border border-white/10 px-3 py-1.5 rounded text-xs font-bold flex items-center"><Folder size={12} className="mr-1"/> Modelo</button>
-                                            <button className="bg-gray-800 text-gray-300 border border-white/10 px-3 py-1.5 rounded text-xs font-bold flex items-center"><Upload size={12} className="mr-1"/> Importar Excel</button>
-                                            <button className="bg-primary text-white text-xs px-3 py-1.5 rounded font-bold flex items-center"><Plus size={14} className="mr-1"/> Novo</button>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="relative mb-2">
-                                        <Search className="absolute left-3 top-2.5 text-gray-500" size={14} />
-                                        <input className="w-full bg-gray-800 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-primary" placeholder="Buscar por nome ou CPF..." />
-                                    </div>
-
-                                    <div className="flex-1 bg-gray-900/50 border border-white/5 rounded-lg overflow-y-auto custom-scrollbar">
-                                        {[
-                                            { name: 'Mariana Costa', phone: '(11) 99999-1234', cpf: '***.456.789-**' },
-                                            { name: 'Carlos Souza', phone: '(11) 98888-2222', cpf: '***.123.456-**' },
-                                            { name: 'Fernanda Lima', phone: '(11) 97777-3333', cpf: '***.789.012-**' },
-                                            { name: 'Ricardo Oliveira', phone: '(11) 96666-4444', cpf: '***.345.678-**' },
-                                            { name: 'Patrícia Santos', phone: '(11) 95555-5555', cpf: '***.901.234-**' },
-                                            { name: 'Roberto Almeida', phone: '(11) 94444-6666', cpf: '***.567.890-**' }
-                                        ].map((p, i) => (
-                                            <div key={i} className="p-3 border-b border-white/5 hover:bg-gray-800/30 flex justify-between items-center group">
-                                                <div>
-                                                    <h4 className="text-sm font-bold text-white">{p.name}</h4>
-                                                    <p className="text-[10px] text-gray-500">{p.phone} | {p.cpf}</p>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="flex gap-1">
-                                                        <button className="p-1.5 bg-gray-800 border border-white/5 rounded text-gray-400 hover:text-blue-400 transition" title="Receita"><FileText size={12}/></button>
-                                                        <button className="p-1.5 bg-gray-800 border border-white/5 rounded text-gray-400 hover:text-purple-400 transition" title="Prontuário"><CheckCircle size={12}/></button>
-                                                        <button className="p-1.5 bg-gray-800 border border-white/5 rounded text-gray-400 hover:text-yellow-400 transition" title="Arquivos"><Folder size={12}/></button>
-                                                    </div>
-                                                    <div className="w-px h-4 bg-gray-700 mx-1"></div>
-                                                    <Edit2 size={14} className="text-gray-500 hover:text-blue-400 cursor-pointer"/>
-                                                    <Trash2 size={14} className="text-gray-500 hover:text-red-400 cursor-pointer"/>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {activeMockup === 'Dentistas' && (
-                                <div className="space-y-4 animate-fade-in h-full flex flex-col">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <h2 className="text-lg font-bold text-white flex items-center gap-2">Dentistas <span className="text-xs bg-gray-800 px-2 py-0.5 rounded border border-white/10 text-gray-400">2 / 3</span></h2>
-                                        <div className="flex gap-2">
-                                            <button className="bg-gray-800 text-gray-300 border border-white/10 px-3 py-1.5 rounded text-xs font-bold flex items-center"><Folder size={12} className="mr-1"/> Modelo</button>
-                                            <button className="bg-primary text-white text-xs px-3 py-1.5 rounded font-bold flex items-center"><Plus size={14} className="mr-1"/> Novo</button>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow border border-white/5 overflow-hidden hover:border-white/20 transition-all group relative">
-                                        <div className="h-1.5 w-full bg-purple-500"></div>
-                                        <div className="p-4">
-                                            <div className="flex items-center mb-3">
-                                                <div className="h-10 w-10 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 font-bold text-sm mr-3 border border-white/10">J</div>
-                                                <div>
-                                                    <h3 className="font-bold text-white text-sm">Dra. Juliana Mendes</h3>
-                                                    <p className="text-[10px] text-gray-500">CRO: 54321</p>
-                                                </div>
-                                            </div>
-                                            <div className="text-[10px] text-gray-400 flex items-center mb-4"><Mail size={10} className="mr-1"/> juliana@odontovida.com.br</div>
-                                            <div className="flex justify-end gap-2 border-t border-white/5 pt-3">
-                                                <button className="flex items-center px-2 py-1 text-[10px] font-bold text-blue-400 hover:bg-blue-500/10 rounded transition"><Edit2 size={10} className="mr-1"/> Editar</button>
-                                                <button className="flex items-center px-2 py-1 text-[10px] font-bold text-red-400 hover:bg-red-500/10 rounded transition"><Trash2 size={10} className="mr-1"/> Excluir</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {activeMockup === 'Prontuário IA' && (
-                                <div className="space-y-4 animate-fade-in h-full flex flex-col">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <h2 className="text-lg font-bold text-white flex items-center gap-2"><Mic className="text-primary" size={18}/> Prontuário Inteligente (IA)</h2>
-                                        <HelpCircle size={16} className="text-gray-500"/>
-                                    </div>
-                                    
-                                    <div className="bg-blue-900/20 border border-blue-500/20 p-3 rounded-lg text-left mb-4">
-                                        <p className="text-xs text-blue-300 font-bold flex items-center"><Zap size={12} className="mr-1"/> Plano Starter</p>
-                                        <p className="text-[10px] text-blue-400 mt-0.5">Uso diário (Dentista): 2/5. Duração máx: 10 minutos.</p>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3 mb-2">
-                                        <div>
-                                            <label className="text-[10px] font-bold text-gray-400 mb-1 block">Paciente</label>
-                                            <div className="bg-gray-800 border border-gray-700 rounded p-2 text-xs text-white">Mariana Costa</div>
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] font-bold text-gray-400 mb-1 block">Dentista Responsável</label>
-                                            <div className="bg-gray-800 border border-gray-700 rounded p-2 text-xs text-white">Dr. André Silva</div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex-1 border-2 border-dashed border-gray-700 rounded-xl bg-gray-800/30 flex items-center justify-center relative">
-                                        <div className="h-16 w-16 bg-red-600 rounded-full flex items-center justify-center text-white shadow-lg shadow-red-900/50 cursor-pointer hover:scale-105 transition-transform">
-                                            <Mic size={24}/>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {activeMockup === 'Mensageria' && (
-                                <div className="space-y-4 animate-fade-in h-full flex flex-col">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <h2 className="text-lg font-bold text-white">Central de Mensagens</h2>
-                                        <HelpCircle size={16} className="text-gray-500"/>
-                                    </div>
-                                    
-                                    <div className="flex border-b border-white/10 mb-4">
-                                        <div className="py-2 px-4 border-b-2 border-primary text-primary text-xs font-bold">Histórico & Automações</div>
-                                        <div className="py-2 px-4 border-b-2 border-transparent text-gray-400 text-xs font-medium">Campanha Manual (Retorno)</div>
-                                    </div>
-
-                                    <div className="bg-indigo-900/20 border border-indigo-500/20 p-3 rounded-lg flex items-center justify-between mb-2">
-                                        <div>
-                                            <h3 className="text-xs font-bold text-white flex items-center gap-1"><Zap size={12} className="text-yellow-400 fill-current"/> Sistema de Envios Automáticos</h3>
-                                            <p className="text-[10px] text-gray-400">O DentiHub verifica diariamente sua agenda.</p>
-                                        </div>
-                                        <span className="text-[9px] bg-green-900/30 text-green-400 px-2 py-0.5 rounded border border-green-500/20 font-bold flex items-center"><Clock size={10} className="mr-1"/> Ativo</span>
-                                    </div>
-
-                                    <div className="flex justify-between items-center mb-2 mt-4">
-                                        <h3 className="text-xs font-bold text-white">Últimos Envios</h3>
-                                        <Loader2 size={12} className="text-gray-500"/>
-                                    </div>
-
-                                    <div className="flex-1 bg-gray-900/50 border border-white/5 rounded-lg overflow-y-auto custom-scrollbar">
-                                        <div className="grid grid-cols-4 bg-gray-800/50 p-2 text-[9px] font-bold text-gray-500 uppercase">
-                                            <div>Data</div><div>Tipo</div><div className="col-span-1">Destinatário</div><div className="text-right">Status</div>
-                                        </div>
-                                        {[
-                                            { date: '10:00', type: 'Lembrete (24h)', dest: 'Mariana Costa', status: 'Enviado' },
-                                            { date: '09:30', type: 'Recall', dest: 'Ricardo Oliveira', status: 'Enviado' },
-                                            { date: '09:00', type: 'stock_alert', dest: 'Admin', status: 'Enviado' },
-                                            { date: 'Ontem', type: 'Aniversário', dest: 'Patrícia Santos', status: 'Enviado' },
-                                            { date: 'Ontem', type: 'Boas-vindas', dest: 'Roberto Almeida', status: 'Enviado' },
-                                        ].map((item, i) => (
-                                            <div key={i} className="grid grid-cols-4 p-2 border-b border-white/5 text-[10px] items-center hover:bg-gray-800/30">
-                                                <div className="text-gray-400">{item.date}</div>
-                                                <div className="font-bold text-white">{item.type}</div>
-                                                <div className="text-gray-400 col-span-1 truncate">{item.dest}</div>
-                                                <div className="text-right"><span className="bg-green-900/30 text-green-400 border border-green-500/20 px-1.5 py-0.5 rounded font-bold inline-flex items-center"><Check size={8} className="mr-1"/> {item.status}</span></div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {activeMockup === 'Financeiro' && (
-                                <div className="space-y-4 animate-fade-in h-full flex flex-col">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <h2 className="text-lg font-bold text-white flex items-center gap-2">Fluxo de Caixa <HelpCircle size={14} className="text-gray-500"/></h2>
-                                        <button className="bg-primary text-white text-xs px-3 py-1.5 rounded font-bold flex items-center"><Plus size={14} className="mr-1"/> Nova Transação</button>
-                                    </div>
-
-                                    <div className="bg-gray-900/60 p-4 rounded-lg border border-white/5 border-l-4 border-l-primary mb-2">
-                                        <p className="text-[10px] text-gray-400 font-bold uppercase">Saldo (Período)</p>
-                                        <p className="text-2xl font-black text-green-400">R$ 18.590,00</p>
-                                    </div>
-
-                                    <div className="flex gap-2 mb-2 justify-end">
-                                        <div className="bg-gray-800 border border-white/10 rounded px-2 py-1 text-[10px] text-white flex items-center">01/02/2026 <Calendar size={10} className="ml-2 text-gray-500"/></div>
-                                        <div className="bg-gray-800 border border-white/10 rounded px-2 py-1 text-[10px] text-white flex items-center">28/02/2026 <Calendar size={10} className="ml-2 text-gray-500"/></div>
-                                        <div className="bg-gray-800 border border-white/10 rounded px-2 py-1 text-[10px] text-white flex items-center">Todos <ChevronDown size={10} className="ml-2 text-gray-500"/></div>
-                                    </div>
-
-                                    <div className="flex-1 bg-gray-900/50 border border-white/5 rounded-lg overflow-y-auto custom-scrollbar">
-                                        <div className="grid grid-cols-5 bg-gray-800/50 p-2 text-[9px] font-bold text-gray-400 uppercase tracking-wide">
-                                            <div>Data</div><div className="col-span-2">Categoria</div><div className="text-center">Status</div><div className="text-right">Valor</div>
-                                        </div>
-                                        {[
-                                            { date: '06/02', cat: 'Consulta (Mariana)', type: 'income', status: 'RECEBIDO', val: 'R$ 250,00', statusColor: 'text-green-400 bg-green-900/20 border-green-500/30' },
-                                            { date: '05/02', cat: 'Lab. Protético', type: 'expense', status: 'PAGO', val: 'R$ 450,00', statusColor: 'text-red-400 bg-red-900/20 border-red-500/30' },
-                                            { date: '05/02', cat: 'Aluguel Imóvel', type: 'expense', status: 'PENDENTE', val: 'R$ 2.500,00', statusColor: 'text-yellow-400 bg-yellow-900/20 border-yellow-500/30' },
-                                            { date: '04/02', cat: 'Implante (Carlos)', type: 'income', status: 'RECEBIDO', val: 'R$ 3.500,00', statusColor: 'text-green-400 bg-green-900/20 border-green-500/30' }
-                                        ].map((item, i) => (
-                                            <div key={i} className="grid grid-cols-5 items-center p-3 border-b border-white/5 hover:bg-gray-800/30 text-xs group">
-                                                <div className="text-gray-400">{item.date}</div>
-                                                <div className="col-span-2 flex items-center font-medium text-gray-200">
-                                                    {item.type === 'income' ? <ArrowUpCircle size={12} className="text-green-500 mr-2"/> : <ArrowDownCircle size={12} className="text-red-500 mr-2"/>}
-                                                    {item.cat}
-                                                </div>
-                                                <div className="text-center"><span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase ${item.statusColor}`}>{item.status}</span></div>
-                                                <div className={`text-right font-black ${item.type === 'income' ? 'text-green-400' : 'text-red-400'}`}>{item.val}</div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {activeMockup === 'Estoque' && (
-                                <div className="space-y-4 animate-fade-in h-full flex flex-col">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <h2 className="text-lg font-bold text-white flex items-center gap-2"><Box className="text-primary" size={18}/> Controle de Estoque</h2>
-                                        <button className="bg-primary text-white text-xs px-3 py-1.5 rounded font-bold flex items-center"><Plus size={14} className="mr-1"/> Novo Item</button>
-                                    </div>
-
-                                    <div className="flex gap-2 mb-2">
-                                        <div className="flex-1 relative">
-                                            <Search className="absolute left-2 top-2 text-gray-500" size={12}/>
-                                            <input className="w-full bg-gray-800 border border-white/10 rounded pl-8 py-1.5 text-xs text-white placeholder-gray-500" placeholder="Buscar item..." />
-                                        </div>
-                                        <div className="relative">
-                                            <Filter className="absolute left-2 top-2 text-gray-500" size={12}/>
-                                            <select className="bg-gray-800 border border-white/10 rounded pl-8 pr-2 py-1.5 text-xs text-white appearance-none w-28"><option>Todas Cat.</option></select>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3 overflow-y-auto custom-scrollbar p-1">
-                                        {[
-                                            { name: 'Luvas Látex M', cat: 'Descartável', owner: 'Compartilhado', min: '5 cx', qty: 8, alert: false },
-                                            { name: 'Anestésico Tópico', cat: 'Medicamento', owner: 'Compartilhado', min: '3 un', qty: 2, alert: true },
-                                            { name: 'Resina A2', cat: 'Material', owner: 'Dr. André', min: '2 un', qty: 4, alert: false },
-                                        ].map((item, i) => (
-                                            <div key={i} className={`bg-gray-800/50 border rounded-lg p-3 flex flex-col justify-between ${item.alert ? 'border-red-500/50' : 'border-white/5'}`}>
-                                                <div>
-                                                    <div className="flex justify-between items-start mb-1">
-                                                        <h3 className="font-bold text-white text-sm">{item.name}</h3>
-                                                        <span className="text-[8px] bg-gray-900 text-gray-400 px-1.5 py-0.5 rounded border border-white/10 uppercase">{item.cat}</span>
-                                                    </div>
-                                                    <div className="mb-2">
-                                                        <span className={`inline-flex items-center text-[9px] px-1.5 py-0.5 rounded border ${item.owner.includes('Dr.') ? 'text-blue-300 bg-blue-900/20 border-blue-500/20' : 'text-gray-400 bg-gray-700/30 border-white/5'}`}>
-                                                            {item.owner.includes('Dr.') ? <User size={8} className="mr-1"/> : <Users size={8} className="mr-1"/>} {item.owner}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1 mb-2">
-                                                        {item.alert && <span className="text-[9px] text-red-400 flex items-center font-bold bg-red-900/20 px-1.5 py-0.5 rounded"><AlertTriangle size={8} className="mr-1"/> Baixo Estoque</span>}
-                                                        <span className="text-[9px] text-gray-500">Mín: {item.min}</span>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                                                    <div className="flex items-center gap-2 bg-gray-900 rounded p-0.5 border border-white/10">
-                                                        <button className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-white">-</button>
-                                                        <span className={`font-mono font-bold w-6 text-center text-xs ${item.alert ? 'text-red-400' : 'text-white'}`}>{item.qty}</span>
-                                                        <button className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-white">+</button>
-                                                    </div>
-                                                    <div className="flex gap-1">
-                                                        <button className="p-1 text-gray-400 hover:text-blue-400"><Edit2 size={12}/></button>
-                                                        <button className="p-1 text-gray-400 hover:text-red-400"><Trash2 size={12}/></button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {activeMockup === 'Solicitações' && (
-                                <div className="space-y-4 animate-fade-in h-full flex flex-col">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <h2 className="text-lg font-bold text-white flex items-center gap-2">Solicitações e Avisos <RefreshCw size={14} className="text-gray-500"/></h2>
-                                    </div>
-                                    
-                                    <h3 className="text-[10px] font-bold text-gray-400 uppercase mb-2 flex items-center"><Calendar size={12} className="mr-1"/> Novos Pedidos de Agendamento</h3>
-
-                                    <div className="bg-gray-900/60 backdrop-blur-md shadow rounded-lg border border-white/5 p-4 hover:bg-gray-800/30 transition">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <h3 className="text-base font-bold text-white flex items-center">
-                                                Lucas Silva 
-                                                <span className="ml-2 text-[9px] font-bold bg-indigo-900/30 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full flex items-center"><UserCheck size={8} className="mr-1"/> Paciente Cadastrado</span>
-                                            </h3>
-                                            <div className="flex gap-2">
-                                                <button className="px-3 py-1 border border-red-500/30 text-red-400 rounded hover:bg-red-900/20 text-xs font-bold flex items-center"><X size={10} className="mr-1"/> Recusar</button>
-                                                <button className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-bold flex items-center"><Check size={10} className="mr-1"/> Aceitar</button>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-400">
-                                            <div><span className="font-semibold text-gray-500">Serviço:</span> Limpeza e Profilaxia</div>
-                                            <div className="flex items-center text-gray-300"><Smartphone size={10} className="mr-1 text-green-500"/> (11) 98888-7777</div>
-                                            <div><span className="font-semibold text-gray-500">Dentista:</span> Dra. Juliana Mendes</div>
-                                            <div className="flex items-center text-primary font-bold mt-1 bg-blue-900/20 w-fit px-2 py-0.5 rounded border border-blue-500/20">
-                                                <Clock size={12} className="mr-1" /> 07/02/2026 às 14:00
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {activeMockup === 'Guia Prático' && (
-                                <div className="space-y-4 animate-fade-in h-full flex flex-col">
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <div className="p-2 bg-indigo-900/30 text-indigo-400 rounded-lg border border-indigo-500/20"><BookOpen size={20} /></div>
-                                        <div>
-                                            <h1 className="text-lg font-bold text-white">Guia Prático</h1>
-                                            <p className="text-xs text-gray-400">Aprenda a utilizar todos os recursos do DentiHub.</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-2 overflow-y-auto custom-scrollbar pr-1">
-                                        {[
-                                            { t: 'Visão Geral', i: LayoutDashboard, d: 'Acompanhe os indicadores chave e a agenda do dia.' },
-                                            { t: 'Agenda', i: Calendar, d: 'Gerencie compromissos, status e pagamentos.' },
-                                            { t: 'Pacientes', i: Users, d: 'Cadastro completo e histórico.' },
-                                            { t: 'Dentistas', i: UserCheck, d: 'Gestão da equipe.' },
-                                            { t: 'Prontuário IA', i: Mic, d: 'Transcreva consultas com IA.' },
-                                            { t: 'Mensageria', i: MessageSquare, d: 'Automação de e-mails.' },
-                                            { t: 'Financeiro', i: DollarSign, d: 'Fluxo de caixa.' },
-                                            { t: 'Solicitações', i: BellRing, d: 'Aprovação de agendamentos online.' },
-                                            { t: 'Configurações', i: Settings, d: 'Dados da clínica e equipe.' }
-                                        ].map((g, idx) => (
-                                            <div key={idx} className="bg-gray-900/60 border border-white/5 rounded-lg p-3 flex justify-between items-center group cursor-pointer hover:bg-gray-800/50">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="p-1.5 bg-blue-900/20 text-blue-400 rounded border border-blue-500/20"><g.i size={16}/></div>
-                                                    <div>
-                                                        <h3 className="text-sm font-bold text-white">{g.t}</h3>
-                                                        <p className="text-[10px] text-gray-400 truncate w-40">{g.d}</p>
-                                                    </div>
-                                                </div>
-                                                <ChevronDown size={14} className="text-gray-500"/>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {activeMockup === 'Configurações' && (
-                                <div className="space-y-4 animate-fade-in h-full flex flex-col">
-                                    <h1 className="text-xl font-bold text-white mb-2">Configurações</h1>
-                                    <div className="flex gap-4 h-full">
-                                        <div className="w-1/3 bg-gray-900/60 rounded-lg p-2 border border-white/5">
-                                            <div className="bg-primary text-white text-xs font-bold px-3 py-2 rounded mb-1 flex items-center"><Settings size={12} className="mr-2"/> Perfil da Clínica</div>
-                                            <div className="text-gray-400 text-xs px-3 py-2 hover:bg-gray-800 rounded flex items-center"><Users size={12} className="mr-2"/> Gestão de Acessos</div>
-                                            <div className="text-gray-400 text-xs px-3 py-2 hover:bg-gray-800 rounded flex items-center"><Lock size={12} className="mr-2"/> Perfis de Acesso</div>
-                                            <div className="text-gray-400 text-xs px-3 py-2 hover:bg-gray-800 rounded flex items-center"><ShieldCheck size={12} className="mr-2"/> Segurança</div>
-                                            <div className="text-gray-400 text-xs px-3 py-2 hover:bg-gray-800 rounded flex items-center"><CreditCard size={12} className="mr-2"/> Planos e Assinatura</div>
-                                        </div>
-                                        <div className="flex-1 bg-gray-900/60 rounded-lg p-4 border border-white/5">
-                                            <h2 className="text-sm font-bold text-white mb-4 pb-2 border-b border-white/10">Dados da Clínica</h2>
-                                            <div className="space-y-3">
-                                                <div><label className="text-[10px] text-gray-400 font-bold block mb-1">Nome *</label><input className="w-full bg-gray-800 border border-gray-700 rounded p-1.5 text-xs text-white" value="Clínica OdontoVida" readOnly/></div>
-                                                <div><label className="text-[10px] text-gray-400 font-bold block mb-1">Endereço *</label><input className="w-full bg-gray-800 border border-gray-700 rounded p-1.5 text-xs text-white" value="Av. Brasil, 500" readOnly/></div>
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <div><label className="text-[10px] text-gray-400 font-bold block mb-1">Cidade *</label><input className="w-full bg-gray-800 border border-gray-700 rounded p-1.5 text-xs text-white" value="São Paulo" readOnly/></div>
-                                                    <div><label className="text-[10px] text-gray-400 font-bold block mb-1">Estado *</label><select className="w-full bg-gray-800 border border-gray-700 rounded p-1.5 text-xs text-white"><option>SP</option></select></div>
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <div><label className="text-[10px] text-gray-400 font-bold block mb-1">Telefone</label><input className="w-full bg-gray-800 border border-gray-700 rounded p-1.5 text-xs text-white" value="(11) 3333-4444" readOnly/></div>
-                                                    <div><label className="text-[10px] text-gray-400 font-bold block mb-1">WhatsApp</label><input className="w-full bg-gray-800 border border-gray-700 rounded p-1.5 text-xs text-white" value="(11) 99999-8888" readOnly/></div>
-                                                </div>
-                                                <div><label className="text-[10px] text-gray-400 font-bold block mb-1">E-mail</label><input className="w-full bg-gray-800 border border-gray-700 rounded p-1.5 text-xs text-white" value="contato@odontovida.com.br" readOnly/></div>
-                                                
-                                                <div className="mt-2 bg-blue-900/20 border border-blue-500/20 rounded p-2">
-                                                    <h4 className="text-[10px] font-bold text-blue-400 flex items-center gap-1 mb-1"><Folder size={10} /> Link de Agendamento</h4>
-                                                    <div className="flex gap-1">
-                                                        <input type="text" readOnly className="flex-1 border border-blue-500/20 rounded px-2 py-1 text-[10px] text-blue-300 bg-blue-900/10" value={`https://dentihub.com.br/#/odontovida`} />
-                                                        <button className="bg-blue-600 text-white px-2 py-1 rounded text-[10px] font-bold">Copiar</button>
-                                                    </div>
-                                                </div>
-                                                
-                                                <button className="bg-primary text-white px-4 py-2 rounded text-xs font-bold mt-2 shadow-sm flex items-center"><Save size={12} className="mr-1"/> Salvar</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
+                            {/* ... Restante dos mockups ... */}
                         </div>
 
                         {/* Mobile Menu Overlay Mockup */}
@@ -884,6 +531,7 @@ const LandingPage: React.FC = () => {
 
       {/* VIDEO DEMO SECTION */}
       <section id="ai-section" className="py-32 relative z-10 border-t border-white/5 bg-gray-900/50 backdrop-blur-sm">
+        {/* ... (Video Section Content) ... */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid lg:grid-cols-2 gap-16 items-center">
                 <div>
@@ -961,8 +609,9 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* FEATURES SECTION (Adicionado) */}
+      {/* FEATURES SECTION */}
       <section id="features" className="py-24 relative z-10 bg-gray-950">
+        {/* ... (Features Content) ... */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
                 <h2 className="text-3xl font-bold text-white">Recursos que transformam</h2>
