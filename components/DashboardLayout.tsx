@@ -231,7 +231,8 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
     <DashboardContext.Provider value={{ userProfile, refreshProfile, refreshNotifications }}>
         <div className="flex h-screen h-[100dvh] bg-gray-950 text-gray-100 overflow-hidden font-sans">
         
-        <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+        {/* Otimização Mobile: Efeitos ocultos (hidden md:block) */}
+        <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 hidden md:block">
             <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/10 rounded-full blur-[120px]"></div>
             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/10 rounded-full blur-[120px]"></div>
         </div>
