@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import { useNavigate } from 'react-router-dom';
 import { Logo } from './Logo';
@@ -30,6 +30,9 @@ const FindClinicPage: React.FC = () => {
   // Estado do Menu Mobile
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Controle de cancelamento de requisições
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -51,6 +54,13 @@ const FindClinicPage: React.FC = () => {
   // Busca clínicas quando os filtros mudam
   useEffect(() => {
     fetchClinics();
+    
+    // Cleanup ao desmontar
+    return () => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+    };
   }, [debouncedName, selectedState, searchCity]);
 
   const fetchCities = async () => {
@@ -87,6 +97,15 @@ const FindClinicPage: React.FC = () => {
   };
 
   const fetchClinics = async () => {
+    // Cancela requisição anterior se houver
+    if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+    }
+    
+    // Cria novo controller para esta requisição
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     setError('');
     
@@ -109,25 +128,33 @@ const FindClinicPage: React.FC = () => {
 
         query = query.order('name');
 
-        const { data, error } = await query;
+        // Passa o sinal de abort para o Supabase
+        const { data, error } = await query.abortSignal(controller.signal);
 
         if (error) throw error;
 
         setClinics(data || []);
 
     } catch (err: any) {
+        if (err.name === 'AbortError') {
+            console.log('Busca cancelada (nova digitação)');
+            return;
+        }
         console.error('Erro na busca:', err);
         setError('Não foi possível carregar as clínicas no momento.');
     } finally {
-        setLoading(false);
+        // Só remove loading se não foi abortado
+        if (!controller.signal.aborted) {
+            setLoading(false);
+        }
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-950 font-sans text-gray-100 selection:bg-purple-500 selection:text-white flex flex-col">
       
-      {/* BACKGROUND GLOWS (Similar to Landing Page) */}
-      <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+      {/* BACKGROUND GLOWS - Otimizado: Oculto no Mobile para evitar travamento de GPU */}
+      <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 hidden md:block">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/20 rounded-full blur-[120px]"></div>
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/20 rounded-full blur-[120px]"></div>
       </div>
