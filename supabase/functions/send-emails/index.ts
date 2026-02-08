@@ -177,8 +177,8 @@ Deno.serve(async (req) => {
         const { patientName, serviceName, requestedTime, dentistName, patientPhone } = requestDetails;
         
         const dateObj = new Date(requestedTime);
-        const dateStr = dateObj.toLocaleDateString('pt-BR');
-        const timeStr = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const dateStr = dateObj.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+        const timeStr = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
 
         const subject = `🔔 Nova Solicitação: ${patientName}`;
         const htmlContent = `
@@ -220,8 +220,8 @@ Deno.serve(async (req) => {
         const { patientName, serviceName, requestedTime, dentistName } = requestDetails;
         
         const dateObj = new Date(requestedTime);
-        const dateStr = dateObj.toLocaleDateString('pt-BR');
-        const timeStr = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const dateStr = dateObj.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+        const timeStr = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
 
         const subject = `Solicitação Recebida - ${clinicName}`;
         const htmlContent = `

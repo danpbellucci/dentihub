@@ -57,41 +57,57 @@ const RequestsPage: React.FC = () => {
     if (processing) return;
     setProcessing(true);
     try {
+        // 0. Preparação de Dados Comuns
+        let duration = 60; // Default fallback
+        
+        // Busca info da clínica para o e-mail
+        const { data: clinicData } = await supabase.from('clinics').select('name, email').eq('id', request.clinic_id).single();
+        const clinicName = clinicData?.name || 'Clínica Odontológica';
+        const clinicEmail = clinicData?.email;
+
+        // Tenta achar a duração correta do serviço
+        if (request.dentist_id) {
+            const { data: dentistData } = await supabase.from('dentists').select('services').eq('id', request.dentist_id).single();
+            if (dentistData?.services && Array.isArray(dentistData.services)) {
+                const serviceItem = dentistData.services.find((s: any) => {
+                    let sName = '';
+                    if (typeof s === 'string') { try { sName = JSON.parse(s).name; } catch { sName = s; } } else { sName = s.name; }
+                    return sName === request.service_name;
+                });
+                if (serviceItem) {
+                    if (typeof serviceItem === 'string') { try { duration = Number(JSON.parse(serviceItem).duration) || 60; } catch { duration = 60; } } else { duration = Number(serviceItem.duration) || 60; }
+                }
+            }
+        }
+
+        const start = parseISO(request.requested_time);
+        const end = addMinutes(start, duration);
+
+        // --- VERIFICAÇÃO DE CADASTRO EXISTENTE (PARA E-MAIL) ---
+        let notificationEmail = request.patient_email; // Default: email do form
+        let finalClientId = null;
+        let existingClientData = null;
+
+        if (request.patient_cpf) {
+            const { data: existingClient } = await supabase
+                .from('clients')
+                .select('id, name, email, whatsapp, address, birth_date')
+                .eq('clinic_id', request.clinic_id)
+                .eq('cpf', request.patient_cpf)
+                .maybeSingle();
+            
+            if (existingClient) {
+                finalClientId = existingClient.id;
+                existingClientData = existingClient;
+                // Se o paciente já tem cadastro e tem email, usa o email do cadastro (mais confiável)
+                if (existingClient.email) {
+                    notificationEmail = existingClient.email;
+                }
+            }
+        }
+
         if (action === 'accepted') {
-          // 1. Determinar a duração correta do serviço
-          let duration = 60; // Default fallback
-          
-          if (request.dentist_id) {
-              const { data: dentistData } = await supabase
-                  .from('dentists')
-                  .select('services')
-                  .eq('id', request.dentist_id)
-                  .single();
-
-              if (dentistData?.services && Array.isArray(dentistData.services)) {
-                  // Procura o serviço na lista do dentista
-                  const serviceItem = dentistData.services.find((s: any) => {
-                      let sName = '';
-                      if (typeof s === 'string') {
-                          try { sName = JSON.parse(s).name; } catch { sName = s; }
-                      } else { sName = s.name; }
-                      return sName === request.service_name;
-                  });
-
-                  if (serviceItem) {
-                      if (typeof serviceItem === 'string') {
-                          try { duration = Number(JSON.parse(serviceItem).duration) || 60; } catch { duration = 60; }
-                      } else {
-                          duration = Number(serviceItem.duration) || 60;
-                      }
-                  }
-              }
-          }
-
-          const start = parseISO(request.requested_time);
-          const end = addMinutes(start, duration);
-          
-          // 2. Verificar conflitos com a duração correta
+          // 1. Verificar conflitos com a duração correta
           const { data: conflicts } = await supabase
             .from('appointments')
             .select('id')
@@ -106,38 +122,28 @@ const RequestsPage: React.FC = () => {
               return; 
           }
 
-          let finalClientId = null;
           let feedbackMessage = "Solicitação aceita!";
 
-          // 3. Verifica se já existe paciente com este CPF na base
-          if (request.patient_cpf) { 
-              const { data: existingClient } = await supabase
-                  .from('clients')
-                  .select('id, name, email, whatsapp, address, birth_date')
-                  .eq('clinic_id', request.clinic_id)
-                  .eq('cpf', request.patient_cpf)
-                  .maybeSingle();
+          // 2. Se encontrou cliente existente, atualiza dados se necessário
+          if (finalClientId && existingClientData) {
+              feedbackMessage = `Agendamento confirmado para o paciente já cadastrado: ${existingClientData.name}`;
               
-              if (existingClient) {
-                  // Se encontrou, usa o ID existente
-                  finalClientId = existingClient.id;
-                  feedbackMessage = `Agendamento confirmado para o paciente já cadastrado: ${existingClient.name}`;
+              // Lógica de Atualização: Se o cadastro tiver campos vazios e a solicitação tiver dados, atualiza.
+              const updates: any = {};
+              if (request.patient_email && !existingClientData.email) updates.email = request.patient_email;
+              if (request.patient_phone && !existingClientData.whatsapp) updates.whatsapp = request.patient_phone;
+              if (request.patient_address && !existingClientData.address) updates.address = request.patient_address;
+              if (request.patient_birth_date && !existingClientData.birth_date) updates.birth_date = request.patient_birth_date;
 
-                  // Lógica de Atualização: Se o cadastro tiver campos vazios e a solicitação tiver dados, atualiza.
-                  const updates: any = {};
-                  if (request.patient_email && !existingClient.email) updates.email = request.patient_email;
-                  if (request.patient_phone && !existingClient.whatsapp) updates.whatsapp = request.patient_phone;
-                  if (request.patient_address && !existingClient.address) updates.address = request.patient_address;
-                  if (request.patient_birth_date && !existingClient.birth_date) updates.birth_date = request.patient_birth_date;
-
-                  if (Object.keys(updates).length > 0) {
-                      await supabase.from('clients').update(updates).eq('id', existingClient.id);
-                      feedbackMessage += " (Cadastro atualizado com novas informações)";
-                  }
+              if (Object.keys(updates).length > 0) {
+                  await supabase.from('clients').update(updates).eq('id', finalClientId);
+                  feedbackMessage += " (Cadastro atualizado com novas informações)";
+                  // Atualiza notificationEmail se acabamos de salvar um
+                  if (updates.email) notificationEmail = updates.email;
               }
           }
 
-          // 4. Se não encontrou pelo CPF, cria um novo
+          // 3. Se não encontrou pelo CPF, cria um novo
           if (!finalClientId) {
               const { data: newClient, error: clientError } = await supabase.from('clients').insert({ 
                   clinic_id: request.clinic_id, 
@@ -153,10 +159,11 @@ const RequestsPage: React.FC = () => {
               if (newClient) { 
                   finalClientId = newClient.id; 
                   feedbackMessage = "Novo paciente cadastrado e agendamento confirmado!";
+                  if (newClient.email) notificationEmail = newClient.email;
               }
           }
 
-          // 5. Cria o agendamento vinculado ao ID final (seja novo ou existente)
+          // 4. Cria o agendamento vinculado
           if (finalClientId) {
             const { data: newAppt, error: apptError } = await supabase.from('appointments').insert({ 
                 clinic_id: request.clinic_id, 
@@ -170,20 +177,22 @@ const RequestsPage: React.FC = () => {
             
             if (apptError) throw apptError;
             
-            // Envia e-mail de confirmação com o ID CORRETO do agendamento
-            if (request.patient_email && newAppt) { 
+            // Envia e-mail de confirmação
+            if (notificationEmail && newAppt) { 
                 await supabase.functions.invoke('send-emails', { 
                     body: { 
                         type: 'appointment', 
                         subtype: 'created', 
                         appointment: { 
-                            id: newAppt.id, // ID real gerado pelo banco
+                            id: newAppt.id, 
                             date: format(start, "dd/MM/yyyy"), 
                             time: format(start, "HH:mm"), 
                             service_name: request.service_name, 
                             dentist_name: request.dentist?.name 
                         }, 
-                        client: { name: request.patient_name, email: request.patient_email }, 
+                        client: { name: request.patient_name, email: notificationEmail }, 
+                        clinicName: clinicName,
+                        clinicEmail: clinicEmail,
                         origin: window.location.href.split('#')[0].replace(/\/$/, '') 
                     } 
                 }); 
@@ -192,7 +201,30 @@ const RequestsPage: React.FC = () => {
             setToast({ message: feedbackMessage, type: 'success' });
           }
         } else {
-            setToast({ message: "Solicitação recusada.", type: 'success' });
+            // --- REJECTION FLOW ---
+            
+            // Envia e-mail de recusa se tiver e-mail disponível (do cadastro ou do request)
+            if (notificationEmail) {
+                await supabase.functions.invoke('send-emails', { 
+                    body: { 
+                        type: 'appointment', 
+                        subtype: 'deleted', // Usa template de cancelamento para recusa
+                        appointment: { 
+                            id: 'pending', // ID fictício
+                            date: format(start, "dd/MM/yyyy"), 
+                            time: format(start, "HH:mm"), 
+                            service_name: request.service_name, 
+                            dentist_name: request.dentist?.name 
+                        }, 
+                        client: { name: request.patient_name, email: notificationEmail }, 
+                        clinicName: clinicName,
+                        clinicEmail: clinicEmail
+                    } 
+                });
+                setToast({ message: "Solicitação recusada. E-mail de aviso enviado ao paciente.", type: 'success' });
+            } else {
+                setToast({ message: "Solicitação recusada. Paciente sem e-mail para aviso.", type: 'info' });
+            }
         }
 
         // Limpa a solicitação da lista
@@ -374,6 +406,7 @@ const RequestsPage: React.FC = () => {
           <div className="bg-gray-900 border border-white/10 p-6 rounded-lg shadow-xl w-full max-w-sm text-center">
              <div className="bg-red-900/20 p-3 rounded-full inline-block mb-4"><AlertTriangle className="text-red-500" size={32} /></div>
              <h3 className="text-lg font-bold text-white mb-2">Recusar Solicitação?</h3>
+             <p className="text-gray-400 mb-4 text-sm">O paciente receberá um e-mail informando que o agendamento não foi possível.</p>
              <div className="flex space-x-3 w-full">
                 <button onClick={() => setRejectId(null)} disabled={processing} className="flex-1 px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 font-bold transition">Cancelar</button>
                 <button onClick={() => { const req = requests.find(r => r.id === rejectId); if (req) handleRequestAction(req, 'rejected'); }} disabled={processing} className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold transition shadow-lg">{processing ? <Loader2 className="animate-spin" size={16}/> : 'Sim, Recusar'}</button>
