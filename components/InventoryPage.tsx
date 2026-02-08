@@ -301,7 +301,7 @@ const InventoryPage: React.FC = () => {
                   >
                       <option value="Todos">Todas Categorias</option>
                       {PREDEFINED_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                      {Array.from(new Set(items.map(i => i.category))).filter(c => c && !PREDEFINED_CATEGORIES.includes(c)).map(c => (
+                      {Array.from(new Set(items.map(i => i.category))).filter((c: any) => c && !PREDEFINED_CATEGORIES.includes(c)).map((c: any) => (
                           <option key={c} value={c}>{c}</option>
                       ))}
                   </select>
