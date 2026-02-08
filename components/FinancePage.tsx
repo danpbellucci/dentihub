@@ -20,6 +20,7 @@ const FinancePage: React.FC = () => {
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterDentistId, setFilterDentistId] = useState<string>('all'); // Novo Estado
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [clinicId, setClinicId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
@@ -39,7 +40,7 @@ const FinancePage: React.FC = () => {
   const expenseCategories = ['Aluguel Imóvel', 'Água', 'Luz', 'Telefone', 'Internet', 'Despesa Pessoal', 'Impostos', 'Fornecedores Gerais', 'Outros'];
   const paymentMethods = ['Pix', 'Dinheiro', 'Cartão de Crédito', 'Cartão de Débito', 'Boleto', 'Transferência', 'Convênio'];
 
-  useEffect(() => { initialize(); }, [startDate, endDate, filterStatus]);
+  useEffect(() => { initialize(); }, [startDate, endDate, filterStatus, filterDentistId]);
 
   const initialize = async () => {
     setLoading(true);
@@ -81,6 +82,14 @@ const FinancePage: React.FC = () => {
         .order('date', { ascending: false });
     
     if (filterStatus !== 'all') query = query.eq('status', filterStatus as any);
+    
+    // Filtro de Dentista
+    if (filterDentistId === 'clinic') {
+        query = query.is('dentist_id', null);
+    } else if (filterDentistId !== 'all') {
+        query = query.eq('dentist_id', filterDentistId);
+    }
+
     const { data } = await query;
     if (data) setTransactions(data as Transaction[]);
   };
@@ -238,6 +247,19 @@ const FinancePage: React.FC = () => {
                   <span className="text-gray-500">-</span>
                   <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="bg-transparent text-sm text-white focus:outline-none w-32" />
               </div>
+              
+              <select 
+                value={filterDentistId} 
+                onChange={(e) => setFilterDentistId(e.target.value)} 
+                className="bg-gray-800 border border-white/10 rounded px-3 py-2 text-sm text-white focus:border-primary outline-none max-w-[150px]"
+              >
+                <option value="all">Todos Responsáveis</option>
+                <option value="clinic">Clínica (Geral)</option>
+                {dentists.map(d => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+
               <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="bg-gray-800 border border-white/10 rounded px-3 py-2 text-sm text-white focus:border-primary outline-none">
                 <option value="all">Todos Status</option><option value="completed">Realizados</option><option value="pending">Pendentes</option>
               </select>

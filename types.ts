@@ -588,6 +588,7 @@ export interface ClinicalRecord {
   dentist_id: string | null;
   date: string;
   description: string;
+  created_at?: string;
   dentist?: { name: string };
 }
 

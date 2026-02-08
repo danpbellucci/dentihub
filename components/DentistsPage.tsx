@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import { Dentist, ServiceItem } from '../types';
-import { Plus, Edit2, Trash2, X, Loader2, User, Phone, Mail, HelpCircle, Clock, DollarSign, ShieldCheck, AlertTriangle, Check, Tag, Upload, Download, CheckCircle, Lock, Zap } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Loader2, User, Phone, Mail, HelpCircle, Clock, DollarSign, ShieldCheck, AlertTriangle, Check, Tag, Upload, Download, CheckCircle, Lock, Zap, Stethoscope } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Toast, { ToastType } from './Toast';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -211,6 +211,8 @@ const DentistsPage: React.FC = () => {
     if (!formData.cpf) { setToast({ message: "O CPF é obrigatório.", type: 'error' }); return; }
     if (!validateCPF(formData.cpf)) { setToast({ message: "CPF inválido.", type: 'error' }); return; }
     if (!formData.email) { setToast({ message: "O E-mail é obrigatório.", type: 'error' }); return; }
+    if (!formData.cro) { setToast({ message: "O CRO é obrigatório.", type: 'error' }); return; }
+    if (!formData.specialties) { setToast({ message: "Informe ao menos uma especialidade.", type: 'error' }); return; }
 
     setProcessing(true);
     try {
@@ -218,10 +220,10 @@ const DentistsPage: React.FC = () => {
       const payload = {
         clinic_id: clinicId,
         name: formData.name,
-        cro: formData.cro || null,
+        cro: formData.cro,
         phone: formData.phone || null,
         email: formData.email,
-        cpf: formData.cpf || null,
+        cpf: formData.cpf,
         specialties: specialtiesArray,
         color: formData.color,
         schedule_config: schedule,
@@ -235,7 +237,6 @@ const DentistsPage: React.FC = () => {
         if (error) throw error;
 
         // 2. Se o e-mail foi alterado, deve-se atualizar o Login (Auth) e o Perfil (User Profiles)
-        // Isso requer uma Edge Function pois Admin não pode atualizar auth.users de terceiros via Client direto.
         if (editingDentist.email && formData.email && editingDentist.email !== formData.email) {
             
             const { data, error: functionError } = await supabase.functions.invoke('update-user-email', {
@@ -452,50 +453,56 @@ const DentistsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Grid de Dentistas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Grid de Dentistas - Layout Compacto */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredDentists.map(dentist => (
-          <div key={dentist.id} className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow border border-white/5 overflow-hidden hover:border-white/20 transition-all group relative">
-            <div className={`h-2 w-full`} style={{ backgroundColor: dentist.color }}></div>
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
+          <div 
+            key={dentist.id} 
+            className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow border border-white/5 overflow-hidden hover:border-white/20 transition-all group relative flex flex-col h-full"
+            style={{ borderLeftWidth: '4px', borderLeftColor: dentist.color }}
+          >
+            <div className="p-4 flex-1">
+              <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center">
-                    <div className="h-12 w-12 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 font-bold text-lg mr-4 border border-white/10 shadow-sm">
+                    <div className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-sm mr-3 shadow-sm border border-white/10" style={{ backgroundColor: dentist.color }}>
                         {dentist.name.charAt(0)}
                     </div>
                     <div>
-                        <h3 className="font-bold text-white text-lg leading-tight">{dentist.name}</h3>
-                        <p className="text-xs text-gray-500">{dentist.cro ? `CRO: ${dentist.cro}` : 'Sem CRO'}</p>
+                        <h3 className="font-bold text-white text-sm leading-tight truncate max-w-[150px] sm:max-w-[200px]" title={dentist.name}>{dentist.name}</h3>
+                        <p className="text-xs text-gray-500 font-mono mt-0.5">{dentist.cro ? `CRO: ${dentist.cro}` : 'Sem CRO'}</p>
                     </div>
                 </div>
               </div>
               
-              <div className="space-y-2 text-sm text-gray-400 mb-6">
-                  {dentist.email && (
-                      <div className="flex items-center">
-                          <Mail size={14} className="mr-2 text-gray-500"/> {dentist.email}
-                      </div>
-                  )}
-                  {dentist.phone && (
-                      <div className="flex items-center">
-                          <Phone size={14} className="mr-2 text-gray-500"/> {dentist.phone}
-                      </div>
-                  )}
-                  <div className="flex flex-wrap gap-1 mt-2">
-                      {dentist.specialties?.map((spec, i) => (
-                          <span key={i} className="bg-gray-800 border border-white/10 text-gray-300 px-2 py-0.5 rounded text-[10px] font-bold uppercase">{spec}</span>
-                      ))}
+              <div className="space-y-1.5 mb-3 pt-2 border-t border-white/5">
+                  <div className="flex items-center text-xs text-gray-400 truncate" title={dentist.email || ''}>
+                      <Mail size={12} className="mr-2 text-gray-600 flex-shrink-0"/> 
+                      {dentist.email || '---'}
+                  </div>
+                  <div className="flex items-center text-xs text-gray-400 truncate">
+                      <Phone size={12} className="mr-2 text-gray-600 flex-shrink-0"/> 
+                      {dentist.phone || '---'}
                   </div>
               </div>
 
-              <div className="flex justify-end gap-2 border-t border-white/5 pt-4">
-                  <button onClick={() => handleOpenModal(dentist)} className="flex items-center px-3 py-1.5 text-sm font-bold text-blue-400 hover:bg-blue-500/10 rounded transition">
-                      <Edit2 size={14} className="mr-1"/> Editar
-                  </button>
-                  <button onClick={() => setDeleteId(dentist.id)} className="flex items-center px-3 py-1.5 text-sm font-bold text-red-400 hover:bg-red-500/10 rounded transition">
-                      <Trash2 size={14} className="mr-1"/> Excluir
-                  </button>
+              <div className="flex flex-wrap gap-1">
+                  {dentist.specialties && dentist.specialties.length > 0 ? (
+                      dentist.specialties.map((spec, i) => (
+                          <span key={i} className="bg-gray-800 border border-white/10 text-gray-300 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase truncate max-w-[100px]">{spec}</span>
+                      ))
+                  ) : (
+                      <span className="text-[10px] text-gray-600 italic">Clínico Geral</span>
+                  )}
               </div>
+            </div>
+
+            <div className="bg-gray-800/30 px-4 py-2 border-t border-white/5 flex justify-end gap-2 mt-auto">
+                <button onClick={() => handleOpenModal(dentist)} className="flex items-center px-2 py-1 text-xs font-bold text-blue-400 hover:bg-blue-500/10 rounded transition">
+                    <Edit2 size={12} className="mr-1"/> Editar
+                </button>
+                <button onClick={() => setDeleteId(dentist.id)} className="flex items-center px-2 py-1 text-xs font-bold text-red-400 hover:bg-red-500/10 rounded transition">
+                    <Trash2 size={12} className="mr-1"/> Excluir
+                </button>
             </div>
           </div>
         ))}
@@ -637,15 +644,22 @@ const DentistsPage: React.FC = () => {
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-gray-400 uppercase mb-1">E-mail (Login) *</label>
-                            <input required type="email" className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white focus:border-primary outline-none" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                            <input 
+                                required 
+                                type="email" 
+                                className={`w-full bg-gray-800 border border-gray-700 rounded p-2 text-white focus:border-primary outline-none ${editingDentist ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                                value={formData.email} 
+                                onChange={e => setFormData({...formData, email: e.target.value})} 
+                                disabled={!!editingDentist}
+                            />
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Telefone</label>
                             <input className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white focus:border-primary outline-none" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">CRO</label>
-                            <input className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white focus:border-primary outline-none" value={formData.cro} onChange={e => setFormData({...formData, cro: e.target.value})} />
+                            <label className="block text-xs font-bold text-gray-400 uppercase mb-1">CRO *</label>
+                            <input required className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white focus:border-primary outline-none" value={formData.cro} onChange={e => setFormData({...formData, cro: e.target.value})} />
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-gray-400 uppercase mb-1">CPF *</label>
@@ -658,8 +672,8 @@ const DentistsPage: React.FC = () => {
                         </div>
                         <div className="flex gap-4">
                             <div className="flex-1">
-                                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Especialidades</label>
-                                <input className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white focus:border-primary outline-none" placeholder="Separe por vírgula" value={formData.specialties} onChange={e => setFormData({...formData, specialties: e.target.value})} />
+                                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Especialidades *</label>
+                                <input required className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white focus:border-primary outline-none" placeholder="Ex: Ortodontia, Implantodontia" value={formData.specialties} onChange={e => setFormData({...formData, specialties: e.target.value})} />
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Cor</label>
@@ -697,11 +711,11 @@ const DentistsPage: React.FC = () => {
                     <div className="grid grid-cols-12 gap-2 items-end bg-gray-800/50 p-3 rounded-lg border border-white/5">
                         <div className="col-span-5">
                             <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Nome</label>
-                            <input className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-sm text-white focus:border-primary outline-none" value={newService.name} onChange={e => setNewService({...newService, name: e.target.value})}/>
+                            <input className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-sm text-white focus:border-primary outline-none" placeholder="Ex: Limpeza" value={newService.name} onChange={e => setNewService({...newService, name: e.target.value})}/>
                         </div>
                         <div className="col-span-3">
                             <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Preço (R$)</label>
-                            <input type="number" className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-sm text-white focus:border-primary outline-none" value={newService.price} onChange={e => setNewService({...newService, price: e.target.value})} disabled={newService.is_variable_price}/>
+                            <input type="number" className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-sm text-white focus:border-primary outline-none" placeholder="0.00" value={newService.price} onChange={e => setNewService({...newService, price: e.target.value})} disabled={newService.is_variable_price}/>
                         </div>
                         <div className="col-span-2">
                             <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Minutos</label>

@@ -4,8 +4,7 @@ import {
   LayoutDashboard, Calendar, Users, UserCheck, Mic, MessageSquare, DollarSign, BellRing, Settings, ChevronDown, ChevronUp, BookOpen, X, Send, Loader2, MessageCircle
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
-import { useOutletContext } from 'react-router-dom';
-import { UserProfile } from '../types';
+import { useDashboard } from './DashboardLayout'; // Alterado de useOutletContext para useDashboard
 import Toast, { ToastType } from './Toast';
 
 interface GuideSectionProps {
@@ -56,7 +55,7 @@ const GuideSection: React.FC<GuideSectionProps> = ({ title, icon: Icon, descript
 };
 
 const GuidePage: React.FC = () => {
-  const { userProfile } = useOutletContext<{ userProfile: UserProfile | null }>();
+  const { userProfile } = useDashboard() || {}; // Uso correto do Hook do Contexto
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
   const [supportForm, setSupportForm] = useState({ subject: '', message: '', email: '' });
   const [sending, setSending] = useState(false);
