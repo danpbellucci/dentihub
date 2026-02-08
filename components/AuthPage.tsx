@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase, SUPABASE_URL } from '../services/supabase';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -235,7 +234,7 @@ const AuthPage: React.FC = () => {
         </h2>
         <p className="mt-2 text-center text-sm text-gray-400">
           {view === 'login' && 'Gerencie sua clínica com inteligência.'}
-          {view === 'signup' && !isVerifying && 'Comece com 20 clientes gratuitos.'}
+          {view === 'signup' && !isVerifying && ''}
           {view === 'signup' && isVerifying && `Enviamos um código para ${email}`}
           {view === 'forgot' && 'Informe seu e-mail para receber o link.'}
         </p>
