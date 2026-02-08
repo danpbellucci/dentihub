@@ -281,8 +281,11 @@ const DashboardHome: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-2">
-                                    <div className={`w-2 h-2 rounded-full`} style={{ backgroundColor: appt.dentist?.color || '#ccc' }} title={appt.dentist?.name}></div>
+                                <div className="flex items-center gap-2 ml-2">
+                                    <div className={`w-2 h-2 rounded-full flex-shrink-0`} style={{ backgroundColor: appt.dentist?.color || '#ccc' }}></div>
+                                    <span className="text-xs text-gray-500 truncate max-w-[80px] sm:max-w-[120px]" title={appt.dentist?.name}>
+                                        {appt.dentist?.name}
+                                    </span>
                                 </div>
                             </div>
                         ))}

@@ -527,14 +527,14 @@ const SettingsPage: React.FC = () => {
                         <div className="border border-blue-500/30 rounded-xl p-6 bg-gray-800/50 flex flex-col relative overflow-hidden">
                             <div className="absolute top-0 right-0 bg-blue-500/20 text-blue-400 text-[10px] font-bold px-2 py-1 rounded-bl-lg border-l border-b border-blue-500/30">POPULAR</div>
                             <h4 className="font-bold text-blue-400 text-lg">Starter</h4>
-                            <div className="my-4"><span className="text-3xl font-black text-white">R$ 100</span><span className="text-sm text-gray-500">/mês</span></div>
+                            <div className="my-4"><span className="text-3xl font-black text-white">R$ 1</span><span className="text-sm text-gray-500">/mês</span></div>
                             <ul className="space-y-3 mb-6 flex-1">
                                 <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-blue-500"/> Até 3 Dentistas</li>
                                 <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-blue-500"/> Até 100 Pacientes</li>
                                 <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-blue-500"/> Prontuário IA (5 usos/dia/dentista)</li>
                                 <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-blue-500"/> Lembretes de Urgência</li>
                             </ul>
-                            {currentTier === 'starter' ? <button disabled className="w-full py-2 bg-blue-900/30 text-blue-400 rounded font-bold">Plano Atual</button> : <button onClick={() => openPaymentModal('Starter', 'R$ 100,00', 'price_1SlMYr2Obfcu36b5HzK9JQPO')} className="w-full py-2 bg-primary text-white rounded font-bold hover:bg-sky-600 shadow-lg shadow-blue-900/20">Assinar Starter</button>}
+                            {currentTier === 'starter' ? <button disabled className="w-full py-2 bg-blue-900/30 text-blue-400 rounded font-bold">Plano Atual</button> : <button onClick={() => openPaymentModal('Starter', 'R$ 1,00', 'price_1SrN3I2Obfcu36b5MmVEv6qq')} className="w-full py-2 bg-primary text-white rounded font-bold hover:bg-sky-600 shadow-lg shadow-blue-900/20">Assinar Starter</button>}
                         </div>
                         <div className="border border-yellow-500/30 rounded-xl p-6 bg-gray-800/50 flex flex-col relative overflow-hidden">
                             <div className="absolute top-0 right-0 p-4 opacity-10"><Zap size={100} className="text-yellow-500"/></div>
