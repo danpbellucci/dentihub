@@ -1,572 +1,355 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
-import { useDashboard } from './DashboardLayout';
-import { UserProfile } from '../types';
 import { 
-  Building2, UserPlus, Users, Smile, X, CheckCircle2, Lock, ArrowRight, Check, 
-  Calendar, DollarSign, Loader2, Link as LinkIcon, Clock, Copy, TrendingUp, TrendingDown,
-  Wallet, ArrowUpRight, ArrowDownRight
+  Users, Calendar, DollarSign, Activity, Filter, 
+  Clock, ArrowUpCircle, ArrowDownCircle, TrendingUp, TrendingDown,
+  ArrowRight
 } from 'lucide-react';
-import { ClinicOnboardingForm, DentistOnboardingForm, ClientOnboardingForm } from './OnboardingForms';
-import Toast, { ToastType } from './Toast';
-import { format, parseISO, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
+import { useDashboard } from './DashboardLayout';
+import { Dentist, Appointment } from '../types';
+import { startOfMonth, endOfMonth, startOfDay, endOfDay, startOfWeek, endOfWeek, parseISO, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-interface OnboardingStep {
-    id: string;
-    title: string;
-    desc: string;
-    icon: any;
-    done: boolean;
+interface DashboardMetrics {
+  patientsCount: number;
+  appointmentsToday: number;
+  balanceMonth: number;
+  incomeWeek: number;
+  expenseWeek: number;
+  incomeNext: number;
+  expenseNext: number;
 }
 
 const DashboardHome: React.FC = () => {
-    const { userProfile } = useDashboard() || {};
-    const [loading, setLoading] = useState(true);
-    const [stats, setStats] = useState<{
-        clients: number;
-        appointmentsToday: number;
-        revenueMonth: number;
-        recentAppointments: any[];
-        weeklyForecast: { 
-            incomeRealized: number; 
-            incomePending: number; 
-            expenseRealized: number; 
-            expensePending: number; 
-            hasAccess: boolean;
-        };
-    }>({
-        clients: 0,
-        appointmentsToday: 0,
-        revenueMonth: 0,
-        recentAppointments: [],
-        weeklyForecast: { 
-            incomeRealized: 0, 
-            incomePending: 0, 
-            expenseRealized: 0, 
-            expensePending: 0, 
-            hasAccess: false 
-        }
-    });
-    
-    // Onboarding State
-    const [showOnboarding, setShowOnboarding] = useState(false);
-    const [activeOnboardingModal, setActiveOnboardingModal] = useState<'clinic' | 'dentist' | 'client' | null>(null);
-    
-    const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStep[]>([
-        { id: 'clinic', title: 'Dados da Clínica', desc: 'Configure nome e endereço', icon: Building2, done: false },
-        { id: 'dentists', title: 'Cadastrar Dentista', desc: 'Adicione profissionais', icon: UserPlus, done: false },
-        { id: 'patients', title: 'Cadastrar Paciente', desc: 'Adicione seu primeiro paciente', icon: Users, done: false },
-    ]);
+  const { userProfile } = useDashboard() || {};
+  const [metrics, setMetrics] = useState<DashboardMetrics>({ 
+    patientsCount: 0, 
+    appointmentsToday: 0, 
+    balanceMonth: 0,
+    incomeWeek: 0,
+    expenseWeek: 0,
+    incomeNext: 0,
+    expenseNext: 0
+  });
+  const [nextAppointments, setNextAppointments] = useState<any[]>([]);
+  const [dentists, setDentists] = useState<Dentist[]>([]);
+  const [filterDentistId, setFilterDentistId] = useState('');
+  const [loading, setLoading] = useState(true);
 
-    const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
-    const [clinicSlug, setClinicSlug] = useState<string>('');
+  useEffect(() => {
+    if (userProfile?.clinic_id) {
+      fetchData(userProfile.clinic_id);
+    }
+  }, [userProfile?.clinic_id, filterDentistId]);
 
-    useEffect(() => {
-        if (userProfile?.clinic_id) {
-            loadStats();
-        }
-    }, [userProfile]);
+  const fetchData = async (clinicId: string) => {
+    setLoading(true);
+    try {
+      // 1. Fetch Dentists for filter
+      if (dentists.length === 0) {
+        const { data: dentistsData } = await supabase
+          .from('dentists')
+          .select('id, name, color')
+          .eq('clinic_id', clinicId);
+        setDentists((dentistsData as Dentist[]) || []);
+      }
 
-    const loadStats = async () => {
-        if (!userProfile?.clinic_id) return;
-        const clinicId = userProfile.clinic_id;
+      const now = new Date();
+      const todayStart = startOfDay(now).toISOString();
+      const todayEnd = endOfDay(now).toISOString();
+      const monthStart = startOfMonth(now).toISOString();
+      const monthEnd = endOfMonth(now).toISOString();
+      const weekStart = startOfWeek(now, { weekStartsOn: 0 }).toISOString(); // Sunday start
+      const weekEnd = endOfWeek(now, { weekStartsOn: 0 }).toISOString();
 
-        try {
-            // 1. Onboarding Checks
-            const { data: clinic } = await supabase.from('clinics').select('*').eq('id', clinicId).single();
-            const { count: dentistCount } = await supabase.from('dentists').select('*', { count: 'exact', head: true }).eq('clinic_id', clinicId);
-            const { count: clientCount } = await supabase.from('clients').select('*', { count: 'exact', head: true }).eq('clinic_id', clinicId);
+      // 2. Metrics Queries
+      // A. Patients
+      const { count: patientsCount } = await supabase
+        .from('clients')
+        .select('*', { count: 'exact', head: true })
+        .eq('clinic_id', clinicId);
+      
+      // B. Appointments Today (Excluding Cancelled)
+      let appointmentsQuery = supabase
+        .from('appointments')
+        .select('*', { count: 'exact', head: true })
+        .eq('clinic_id', clinicId)
+        .gte('start_time', todayStart)
+        .lte('start_time', todayEnd)
+        .neq('status', 'cancelled');
 
-            const isClinicDone = !!(clinic && clinic.address && clinic.city);
-            const isDentistsDone = (dentistCount || 0) > 0;
-            const isPatientsDone = (clientCount || 0) > 0;
+      if (filterDentistId) appointmentsQuery = appointmentsQuery.eq('dentist_id', filterDentistId);
+      const { count: appointmentsToday } = await appointmentsQuery;
 
-            if (clinic?.slug) setClinicSlug(clinic.slug);
+      // C. Financials (Month Balance)
+      let transactionsQuery = supabase
+        .from('transactions')
+        .select('amount, type, date, status')
+        .eq('clinic_id', clinicId)
+        .gte('date', monthStart)
+        .lte('date', monthEnd);
+      
+      const { data: transactionsMonth } = await transactionsQuery;
 
-            setOnboardingSteps(prev => prev.map(step => {
-                if (step.id === 'clinic') return { ...step, done: isClinicDone };
-                if (step.id === 'dentists') return { ...step, done: isDentistsDone };
-                if (step.id === 'patients') return { ...step, done: isPatientsDone };
-                return step;
-            }));
+      let incomeMonth = 0;
+      let expenseMonth = 0;
 
-            if ((!isClinicDone || !isDentistsDone || !isPatientsDone) && loading) {
-                setShowOnboarding(true);
-            }
+      transactionsMonth?.forEach(t => {
+          if (t.type === 'income') incomeMonth += Number(t.amount);
+          else expenseMonth += Number(t.amount);
+      });
 
-            // --- LÓGICA DE FILTRO POR DENTISTA ---
-            let filterDentistId = null;
-            if (userProfile.role === 'dentist') {
-                const { data: myDentistProfile } = await supabase
-                    .from('dentists')
-                    .select('id')
-                    .eq('email', userProfile.email)
-                    .eq('clinic_id', clinicId)
-                    .maybeSingle();
-                
-                if (myDentistProfile) {
-                    filterDentistId = myDentistProfile.id;
-                }
-            }
+      // D. Financials (Week Breakdown)
+      // Transactions (Completed or Manual Pending)
+      const { data: transactionsWeek } = await supabase
+        .from('transactions')
+        .select('amount, type, status')
+        .eq('clinic_id', clinicId)
+        .gte('date', weekStart)
+        .lte('date', weekEnd);
 
-            // 2. Stats Gerais
-            const today = new Date().toISOString().split('T')[0];
-            
-            // Appointments Today
-            let apptQuery = supabase
-                .from('appointments')
-                .select('*', { count: 'exact', head: true })
-                .eq('clinic_id', clinicId)
-                .gte('start_time', `${today}T00:00:00`)
-                .lte('start_time', `${today}T23:59:59`)
-                .neq('status', 'cancelled');
-            
-            if (filterDentistId) {
-                apptQuery = apptQuery.eq('dentist_id', filterDentistId);
-            }
+      let incWeek = 0;
+      let expWeek = 0;
+      let incNext = 0; // A receber (pendente)
+      let expNext = 0; // A pagar (pendente)
 
-            const { count: apptTodayCount } = await apptQuery;
+      transactionsWeek?.forEach(t => {
+          if (t.type === 'income') {
+              if (t.status === 'completed') incWeek += Number(t.amount);
+              else incNext += Number(t.amount);
+          } else {
+              if (t.status === 'completed') expWeek += Number(t.amount);
+              else expNext += Number(t.amount);
+          }
+      });
 
-            // 3. Financial Data & Permissions
-            let revenue = 0;
-            let weeklyForecastData = { 
-                incomeRealized: 0, 
-                incomePending: 0, 
-                expenseRealized: 0, 
-                expensePending: 0, 
-                hasAccess: false 
-            };
+      // Appointments (Pending Income from Schedule)
+      const { data: appointmentsWeek } = await supabase
+        .from('appointments')
+        .select('amount')
+        .eq('clinic_id', clinicId)
+        .gte('start_time', weekStart)
+        .lte('start_time', weekEnd)
+        .neq('status', 'cancelled')
+        .eq('payment_status', 'pending');
 
-            // Verificar permissão de acesso ao financeiro
-            let hasFinanceAccess = false;
-            if (userProfile.role === 'administrator') {
-                hasFinanceAccess = true;
-            } else {
-                const { data: perm } = await supabase
-                    .from('role_permissions')
-                    .select('is_allowed')
-                    .eq('clinic_id', clinicId)
-                    .eq('role', userProfile.role)
-                    .eq('module', 'finance')
-                    .maybeSingle();
-                
-                if (perm && perm.is_allowed) hasFinanceAccess = true;
-            }
+      if (appointmentsWeek) {
+          appointmentsWeek.forEach(a => {
+              incNext += Number(a.amount || 0);
+          });
+      }
 
-            if (hasFinanceAccess) {
-                // A. Receita do Mês Atual (Card Topo - Apenas realizado)
-                const startOfCurrentMonth = startOfMonth(new Date());
-                const endOfCurrentMonth = endOfMonth(new Date());
+      // E. Next Appointments List
+      let nextApptsQuery = supabase
+        .from('appointments')
+        .select('*, client:clients(name), dentist:dentists(name, color)')
+        .eq('clinic_id', clinicId)
+        .gte('start_time', now.toISOString()) // From now onwards
+        .neq('status', 'cancelled') // NO CANCELLED
+        .order('start_time', { ascending: true })
+        .limit(6);
 
-                const { data: monthTransactions } = await supabase
-                    .from('transactions')
-                    .select('amount, type, status')
-                    .eq('clinic_id', clinicId)
-                    .gte('date', startOfCurrentMonth.toISOString())
-                    .lte('date', endOfCurrentMonth.toISOString());
+      if (filterDentistId) nextApptsQuery = nextApptsQuery.eq('dentist_id', filterDentistId);
+      const { data: nextApptsData } = await nextApptsQuery;
 
-                revenue = monthTransactions?.filter(t => 
-                    t.type === 'income' && 
-                    t.status === 'completed'
-                ).reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
+      setMetrics({
+        patientsCount: patientsCount || 0,
+        appointmentsToday: appointmentsToday || 0,
+        balanceMonth: incomeMonth - expenseMonth,
+        incomeWeek: incWeek,
+        expenseWeek: expWeek,
+        incomeNext: incNext,
+        expenseNext: expNext
+      });
 
-                // B. Previsão Semanal Detalhada
-                const startWeek = startOfWeek(new Date(), { weekStartsOn: 0 }).toISOString();
-                const endWeek = endOfWeek(new Date(), { weekStartsOn: 0 }).toISOString();
+      setNextAppointments(nextApptsData || []);
 
-                // B1. Agendamentos Pendentes
-                const { data: pendingAppts } = await supabase
-                    .from('appointments')
-                    .select('amount')
-                    .eq('clinic_id', clinicId)
-                    .gte('start_time', startWeek)
-                    .lte('start_time', endWeek)
-                    .eq('payment_status', 'pending')
-                    .neq('status', 'cancelled');
-                
-                const incomePendingFromAppts = pendingAppts?.reduce((acc, curr) => acc + (curr.amount || 0), 0) || 0;
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-                // B2. Transações da Semana
-                const { data: weekTrans } = await supabase
-                    .from('transactions')
-                    .select('amount, type, status')
-                    .eq('clinic_id', clinicId)
-                    .gte('date', startWeek)
-                    .lte('date', endWeek);
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div>
+            <h1 className="text-2xl font-bold text-white">Visão Geral</h1>
+        </div>
+        
+        {/* Filter */}
+        <div className="w-full sm:w-auto bg-gray-900 p-1 rounded-lg border border-white/10 flex items-center shadow-sm">
+          <Filter size={16} className="text-gray-500 ml-2 mr-2" />
+          <select 
+            value={filterDentistId}
+            onChange={(e) => setFilterDentistId(e.target.value)}
+            className="bg-transparent text-white text-sm outline-none py-1 pr-4 cursor-pointer appearance-none"
+          >
+            <option value="" className="text-gray-900">Todos os Dentistas</option>
+            {dentists.map(d => (
+              <option key={d.id} value={d.id} className="text-gray-900">{d.name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
 
-                const incomeRealized = weekTrans?.filter(t => t.type === 'income' && t.status === 'completed').reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
-                const incomePendingTrans = weekTrans?.filter(t => t.type === 'income' && t.status === 'pending').reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
-                
-                const expenseRealized = weekTrans?.filter(t => t.type === 'expense' && t.status === 'completed').reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
-                const expensePending = weekTrans?.filter(t => t.type === 'expense' && t.status === 'pending').reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
-
-                weeklyForecastData = {
-                    incomeRealized,
-                    incomePending: incomePendingTrans + incomePendingFromAppts,
-                    expenseRealized,
-                    expensePending,
-                    hasAccess: true
-                };
-            }
-
-            // 4. Recent Appointments (Aumentado para 20 para permitir scroll)
-            let recentApptsQuery = supabase
-                .from('appointments')
-                .select('*, client:clients(name), dentist:dentists(name, color)')
-                .eq('clinic_id', clinicId)
-                .gte('start_time', new Date().toISOString())
-                .order('start_time', { ascending: true })
-                .limit(20);
-
-            if (filterDentistId) {
-                recentApptsQuery = recentApptsQuery.eq('dentist_id', filterDentistId);
-            }
-
-            const { data: recentAppts } = await recentApptsQuery;
-
-            setStats({
-                clients: clientCount || 0,
-                appointmentsToday: apptTodayCount || 0,
-                revenueMonth: revenue,
-                recentAppointments: recentAppts || [],
-                weeklyForecast: weeklyForecastData
-            });
-
-        } catch (error) {
-            console.error("Error loading stats", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleModalSuccess = () => {
-        setActiveOnboardingModal(null);
-        setToast({ message: "Dados salvos com sucesso!", type: 'success' });
-        loadStats(); 
-    };
-
-    const handleStepClick = (step: OnboardingStep, isLocked: boolean) => {
-        if (isLocked) return;
-        if (step.id === 'clinic') setActiveOnboardingModal('clinic');
-        if (step.id === 'dentists') setActiveOnboardingModal('dentist');
-        if (step.id === 'patients') setActiveOnboardingModal('client');
-    };
-
-    const copyLink = () => {
-        const link = `${window.location.origin}/#/${clinicSlug || userProfile?.clinic_id}`;
-        navigator.clipboard.writeText(link);
-        setToast({ message: "Link copiado para a área de transferência!", type: 'success' });
-    };
-
-    const closeOnboarding = () => {
-        setShowOnboarding(false);
-    };
-
-    const completedSteps = onboardingSteps.filter(s => s.done).length;
-    const progress = (completedSteps / onboardingSteps.length) * 100;
-    
-    const isClinicDone = onboardingSteps.find(s => s.id === 'clinic')?.done;
-    const isDentistsDone = onboardingSteps.find(s => s.id === 'dentists')?.done;
-    const isPatientsDone = onboardingSteps.find(s => s.id === 'patients')?.done;
-
-    if (loading) {
-        return (
-          <div className="flex h-96 w-full items-center justify-center">
-            <div className="flex flex-col items-center gap-3">
-              <Loader2 className="h-10 w-10 animate-spin text-primary" />
-              <span className="text-gray-500 font-medium">Carregando dados...</span>
+      {/* Top Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-gray-900/60 backdrop-blur-md p-6 rounded-xl border border-white/5 shadow-lg relative overflow-hidden group">
+          <div className="flex items-center gap-4 relative z-10">
+            <div className="p-3 bg-blue-500/20 rounded-lg text-blue-400 group-hover:scale-110 transition-transform">
+              <Users size={24} />
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 font-bold uppercase tracking-wide">Pacientes</p>
+              <h3 className="text-3xl font-black text-white mt-1">{loading ? '...' : metrics.patientsCount}</h3>
             </div>
           </div>
-        );
-    }
+          <Users size={100} className="absolute -right-6 -bottom-6 text-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        </div>
 
-    return (
-        <div className="space-y-6 relative pb-10">
-            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+        <div className="bg-gray-900/60 backdrop-blur-md p-6 rounded-xl border border-white/5 shadow-lg relative overflow-hidden group">
+          <div className="flex items-center gap-4 relative z-10">
+            <div className="p-3 bg-green-500/20 rounded-lg text-green-400 group-hover:scale-110 transition-transform">
+              <Calendar size={24} />
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 font-bold uppercase tracking-wide">Agendados Hoje</p>
+              <h3 className="text-3xl font-black text-white mt-1">{loading ? '...' : metrics.appointmentsToday}</h3>
+            </div>
+          </div>
+          <Calendar size={100} className="absolute -right-6 -bottom-6 text-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        </div>
+
+        <div className="bg-gray-900/60 backdrop-blur-md p-6 rounded-xl border border-white/5 shadow-lg relative overflow-hidden group">
+          <div className="flex items-center gap-4 relative z-10">
+            <div className={`p-3 rounded-lg group-hover:scale-110 transition-transform ${metrics.balanceMonth >= 0 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>
+              <DollarSign size={24} />
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 font-bold uppercase tracking-wide">Saldo (Mês)</p>
+              <h3 className={`text-3xl font-black mt-1 ${metrics.balanceMonth >= 0 ? 'text-white' : 'text-red-400'}`}>
+                {loading ? '...' : metrics.balanceMonth.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </h3>
+            </div>
+          </div>
+          <DollarSign size={100} className="absolute -right-6 -bottom-6 text-yellow-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        </div>
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Left: Next Appointments */}
+        <div className="lg:col-span-2 bg-gray-900/60 backdrop-blur-md rounded-xl border border-white/5 shadow-lg flex flex-col h-full">
+            <div className="p-5 border-b border-white/5 flex justify-between items-center bg-gray-800/20">
+                <h3 className="font-bold text-white flex items-center gap-2">
+                    <Clock size={18} className="text-gray-400"/> Próximos Agendamentos
+                </h3>
+                <span className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded border border-white/5 cursor-default">
+                    {loading ? '...' : nextAppointments.length} na fila
+                </span>
+            </div>
             
-            {/* Onboarding Modal - DARK MODE */}
-            {showOnboarding && userProfile?.role === 'administrator' && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 p-4 backdrop-blur-sm animate-fade-in text-white">
-                    <div className="bg-gray-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col md:flex-row relative h-[600px] md:h-auto">
-                        {/* Nested Form Modal */}
-                        {activeOnboardingModal && userProfile?.clinic_id && (
-                            <div className="absolute inset-0 z-[60] bg-gray-900 flex flex-col animate-fade-in">
-                                <div className="flex justify-between items-center p-4 border-b border-white/10 bg-gray-900">
-                                    <h3 className="font-bold text-white text-lg flex items-center gap-2">
-                                        {activeOnboardingModal === 'clinic' && <><Building2 className="text-primary"/> Perfil da Clínica</>}
-                                        {activeOnboardingModal === 'dentist' && <><UserPlus className="text-primary"/> Novo Dentista</>}
-                                        {activeOnboardingModal === 'client' && <><Users className="text-primary"/> Novo Paciente</>}
-                                    </h3>
-                                    <button onClick={() => setActiveOnboardingModal(null)} className="text-gray-400 hover:text-white"><X size={24}/></button>
+            <div className="p-4 flex-1 overflow-y-auto custom-scrollbar min-h-[300px]">
+                {loading ? (
+                    <div className="flex justify-center items-center h-full text-gray-500">Carregando...</div>
+                ) : nextAppointments.length === 0 ? (
+                    <div className="flex flex-col justify-center items-center h-full text-gray-500">
+                        <Calendar size={48} className="mb-3 opacity-20"/>
+                        <p>Sem agendamentos futuros.</p>
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {nextAppointments.map((appt) => (
+                            <div key={appt.id} className="flex items-center p-3 bg-gray-800/40 rounded-lg border border-white/5 hover:bg-gray-800/80 transition group">
+                                <div className="flex flex-col items-center justify-center w-12 h-12 bg-gray-900 rounded-lg border border-white/10 mr-4">
+                                    <span className="text-[10px] text-gray-500 font-bold uppercase">{format(parseISO(appt.start_time), 'MMM', {locale: ptBR})}</span>
+                                    <span className="text-lg font-black text-white leading-none">{format(parseISO(appt.start_time), 'dd')}</span>
                                 </div>
-                                <div className="flex-1 overflow-y-auto p-6 bg-gray-900 custom-scrollbar">
-                                    {activeOnboardingModal === 'clinic' && (
-                                        <ClinicOnboardingForm clinicId={userProfile.clinic_id} onSuccess={handleModalSuccess} onCancel={() => setActiveOnboardingModal(null)} />
-                                    )}
-                                    {activeOnboardingModal === 'dentist' && (
-                                        <DentistOnboardingForm clinicId={userProfile.clinic_id} onSuccess={handleModalSuccess} onCancel={() => setActiveOnboardingModal(null)} />
-                                    )}
-                                    {activeOnboardingModal === 'client' && (
-                                        <ClientOnboardingForm clinicId={userProfile.clinic_id} onSuccess={handleModalSuccess} onCancel={() => setActiveOnboardingModal(null)} />
-                                    )}
+                                
+                                <div className="flex-1 min-w-0">
+                                    <h4 className="font-bold text-white text-sm truncate">{appt.client?.name}</h4>
+                                    <div className="flex items-center text-xs text-gray-400 mt-1">
+                                        <span className="bg-gray-800 px-1.5 py-0.5 rounded text-gray-300 font-mono mr-2 border border-white/10">
+                                            {format(parseISO(appt.start_time), 'HH:mm')}
+                                        </span>
+                                        <span className="truncate">{appt.service_name}</span>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
 
-                        {/* Left Side */}
-                        <div className="bg-primary p-8 text-white md:w-1/3 flex flex-col justify-between relative overflow-hidden">
-                            <div className="relative z-10">
-                                <div className="bg-white/20 w-12 h-12 rounded-full flex items-center justify-center mb-6 backdrop-blur-md">
-                                    <Smile size={28} className="text-white"/>
-                                </div>
-                                <h2 className="text-2xl font-black mb-2 leading-tight">Bem-vindo ao DentiHub!</h2>
-                                <p className="text-blue-100 text-sm mb-6">Vamos configurar sua clínica para o sucesso em 3 passos rápidos.</p>
-                            </div>
-                            
-                            <div className="relative z-10">
-                                <div className="flex justify-between text-xs font-bold uppercase tracking-wider mb-2">
-                                    <span>Progresso</span>
-                                    <span>{completedSteps}/{onboardingSteps.length}</span>
-                                </div>
-                                <div className="h-2 bg-black/20 rounded-full overflow-hidden">
-                                    <div className="h-full bg-white transition-all duration-500" style={{ width: `${progress}%` }}></div>
+                                <div className="flex items-center gap-2">
+                                    <div className={`w-2 h-2 rounded-full`} style={{ backgroundColor: appt.dentist?.color || '#ccc' }} title={appt.dentist?.name}></div>
                                 </div>
                             </div>
-                            <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
-                        </div>
-
-                        {/* Right Side */}
-                        <div className="p-8 md:w-2/3 bg-gray-900 relative overflow-y-auto custom-scrollbar">
-                            <button onClick={closeOnboarding} className="absolute top-4 right-4 text-gray-400 hover:text-white">
-                                <X size={24} />
-                            </button>
-
-                            <h3 className="text-lg font-bold text-white mb-6">Passos Iniciais</h3>
-                            
-                            <div className="space-y-3 mb-6">
-                                {onboardingSteps.map((step) => {
-                                    return (
-                                        <div 
-                                            key={step.id} 
-                                            onClick={() => handleStepClick(step, false)}
-                                            className={`group flex items-center p-3 rounded-xl border transition-all ${
-                                                step.done 
-                                                    ? 'bg-green-900/20 border-green-500/20 cursor-pointer' 
-                                                    : 'bg-gray-800/50 border-white/5 hover:border-primary/50 hover:bg-gray-800 cursor-pointer'
-                                            }`}
-                                        >
-                                            <div className={`h-10 w-10 rounded-full flex items-center justify-center mr-4 transition-colors ${
-                                                step.done ? 'bg-green-500/20 text-green-400' : 'bg-gray-700 text-gray-400 group-hover:bg-primary/20 group-hover:text-primary'
-                                            }`}>
-                                                {step.done ? <CheckCircle2 size={20} /> : <step.icon size={20} />}
-                                            </div>
-                                            <div className="flex-1">
-                                                <h4 className={`font-bold text-sm ${step.done ? 'text-green-400' : 'text-white'}`}>{step.title}</h4>
-                                                <p className="text-xs text-gray-400">{step.desc}</p>
-                                            </div>
-                                            {!step.done && <ArrowRight size={16} className="text-gray-500 group-hover:text-primary transition-transform group-hover:translate-x-1" />}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-
-                            <div className="bg-blue-900/20 p-4 rounded-lg border border-blue-500/20 mb-6">
-                                <h4 className="font-bold text-blue-300 text-sm mb-2 flex items-center gap-2">
-                                    <LinkIcon size={16} /> Link de Agendamento
-                                </h4>
-                                <p className="text-xs text-blue-200/70 mb-3">
-                                    Compartilhe este link para que seus pacientes solicitem agendamentos online.
-                                </p>
-                                <div className="flex gap-2">
-                                    <input 
-                                        readOnly 
-                                        value={`${window.location.origin}/#/${clinicSlug || userProfile?.clinic_id}`}
-                                        className="flex-1 text-xs border border-blue-500/30 rounded px-2 py-1.5 text-blue-100 bg-blue-900/30 focus:outline-none"
-                                    />
-                                    <button 
-                                        onClick={copyLink}
-                                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-bold transition flex items-center"
-                                    >
-                                        <Copy size={12} className="mr-1"/> Copiar
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="pt-4 border-t border-white/10 flex justify-end">
-                                {isClinicDone && isDentistsDone && isPatientsDone ? (
-                                    <button onClick={closeOnboarding} className="bg-green-600 text-white hover:bg-green-700 text-sm font-bold px-6 py-2 rounded transition shadow-md flex items-center">
-                                        <Check size={16} className="mr-2" /> Encerrar
-                                    </button>
-                                ) : (
-                                    <button onClick={closeOnboarding} className="text-gray-400 hover:text-white text-sm font-bold px-4 py-2 hover:bg-white/5 rounded transition">
-                                        Pular por enquanto
-                                    </button>
-                                )}
-                            </div>
+                        ))}
+                        <div className="text-center pt-2">
+                            <button className="text-xs text-gray-500 hover:text-white transition">Rolar para ver mais</button>
                         </div>
                     </div>
-                </div>
-            )}
-
-            {/* Dashboard Content */}
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-white">Visão Geral</h1>
-                {!showOnboarding && completedSteps < 3 && userProfile?.role === 'administrator' && (
-                    <button onClick={() => setShowOnboarding(true)} className="text-sm text-primary font-bold hover:underline flex items-center">
-                        <CheckCircle2 size={16} className="mr-1"/> Continuar Configuração
-                    </button>
                 )}
             </div>
+        </div>
 
-            {/* Stats Cards - DARK MODE */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-gray-900/60 backdrop-blur-md p-6 rounded-xl shadow-lg border border-white/5 flex items-center relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 transform translate-x-1/4 -translate-y-1/4 group-hover:scale-110 transition duration-700">
-                        <Users size={100} className="text-blue-500" />
-                    </div>
-                    <div className="p-4 bg-blue-500/10 text-blue-400 rounded-xl mr-4 border border-blue-500/20 relative z-10">
-                        <Users size={24} />
-                    </div>
-                    <div className="relative z-10">
-                        <p className="text-sm text-gray-400 font-medium uppercase tracking-wider">Pacientes</p>
-                        <p className="text-3xl font-black text-white">{stats.clients}</p>
-                    </div>
-                </div>
+        {/* Right: Financial Stats */}
+        <div className="flex flex-col gap-6">
+            {/* Entradas */}
+            <div className="bg-gray-900/60 backdrop-blur-md rounded-xl border border-white/5 shadow-lg p-5 relative overflow-hidden flex-1">
+                <div className="absolute right-0 top-0 p-4 opacity-5"><TrendingUp size={80} className="text-green-500"/></div>
                 
-                <div className="bg-gray-900/60 backdrop-blur-md p-6 rounded-xl shadow-lg border border-white/5 flex items-center relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 transform translate-x-1/4 -translate-y-1/4 group-hover:scale-110 transition duration-700">
-                        <Calendar size={100} className="text-green-500" />
+                <h3 className="font-bold text-white flex items-center gap-2 text-sm mb-4">
+                    <span className="p-1.5 bg-green-500/20 rounded-lg text-green-400"><ArrowUpCircle size={16}/></span> 
+                    Entradas (Semana)
+                </h3>
+                
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-green-900/10 rounded-lg border border-green-500/20">
+                        <p className="text-[10px] text-green-400 font-bold uppercase tracking-wider">Realizado</p>
+                        <p className="text-lg font-black text-white truncate">
+                            {loading ? '...' : metrics.incomeWeek.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </p>
                     </div>
-                    <div className="p-4 bg-green-500/10 text-green-400 rounded-xl mr-4 border border-green-500/20 relative z-10">
-                        <Calendar size={24} />
-                    </div>
-                    <div className="relative z-10">
-                        <p className="text-sm text-gray-400 font-medium uppercase tracking-wider">Agendados Hoje</p>
-                        <p className="text-3xl font-black text-white">{stats.appointmentsToday}</p>
-                    </div>
-                </div>
-
-                <div className={`bg-gray-900/60 backdrop-blur-md p-6 rounded-xl shadow-lg border border-white/5 flex items-center relative overflow-hidden group ${!stats.weeklyForecast.hasAccess ? 'opacity-60 grayscale' : ''}`}>
-                    <div className="absolute top-0 right-0 p-4 opacity-10 transform translate-x-1/4 -translate-y-1/4 group-hover:scale-110 transition duration-700">
-                        <DollarSign size={100} className="text-yellow-500" />
-                    </div>
-                    <div className="p-4 bg-yellow-500/10 text-yellow-400 rounded-xl mr-4 border border-yellow-500/20 relative z-10">
-                        <DollarSign size={24} />
-                    </div>
-                    <div className="relative z-10">
-                        <p className="text-sm text-gray-400 font-medium uppercase tracking-wider">Receita (Mês)</p>
-                        <p className="text-3xl font-black text-white">
-                            {!stats.weeklyForecast.hasAccess
-                                ? '---' 
-                                : `R$ ${stats.revenueMonth.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                            }
+                    <div className="p-3 bg-gray-800/30 rounded-lg border border-white/5">
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">A Receber</p>
+                        <p className="text-lg font-black text-gray-300 truncate">
+                            {loading ? '...' : metrics.incomeNext.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </p>
                     </div>
                 </div>
             </div>
 
-            {/* MAIN LAYOUT: Split 50/50, Fixed Height */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:h-[520px]">
+            {/* Saídas */}
+            <div className="bg-gray-900/60 backdrop-blur-md rounded-xl border border-white/5 shadow-lg p-5 relative overflow-hidden flex-1">
+                <div className="absolute right-0 top-0 p-4 opacity-5"><TrendingDown size={80} className="text-red-500"/></div>
                 
-                {/* COLUMN 1: Appointments List */}
-                <div className="bg-gray-900/60 backdrop-blur-md rounded-xl shadow-lg border border-white/5 p-4 relative flex flex-col h-full overflow-hidden">
-                    <div className="flex justify-between items-center mb-4 shrink-0">
-                        <h3 className="font-bold text-white flex items-center text-lg">
-                            <Clock size={20} className="mr-2 text-primary"/> Próximos Agendamentos
-                        </h3>
-                        <span className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">Rolar para ver mais</span>
+                <h3 className="font-bold text-white flex items-center gap-2 text-sm mb-4">
+                    <span className="p-1.5 bg-red-500/20 rounded-lg text-red-400"><ArrowDownCircle size={16}/></span> 
+                    Saídas (Semana)
+                </h3>
+                
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-red-900/10 rounded-lg border border-red-500/20">
+                        <p className="text-[10px] text-red-400 font-bold uppercase tracking-wider">Pago</p>
+                        <p className="text-lg font-black text-white truncate">
+                            {loading ? '...' : metrics.expenseWeek.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </p>
                     </div>
-                    
-                    <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-2">
-                        {stats.recentAppointments.length === 0 ? (
-                            <div className="text-gray-500 text-sm text-center py-12 flex flex-col items-center justify-center h-full">
-                                <Calendar size={48} className="mb-3 opacity-20"/>
-                                Nenhum agendamento futuro.
-                            </div>
-                        ) : (
-                            stats.recentAppointments.map((appt: any) => (
-                                <div key={appt.id} className="flex items-center justify-between p-2.5 bg-gray-800/40 hover:bg-gray-800/80 transition rounded-lg border border-white/5 group">
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <div className="text-center bg-gray-800 border border-white/10 rounded px-2 py-1 min-w-[45px] shrink-0">
-                                            <p className="text-[9px] text-gray-400 font-bold uppercase">{format(parseISO(appt.start_time), 'MMM', { locale: ptBR })}</p>
-                                            <p className="text-base font-black text-white leading-none">{format(parseISO(appt.start_time), 'dd')}</p>
-                                        </div>
-                                        <div className="min-w-0 overflow-hidden">
-                                            <p className="font-bold text-white text-sm group-hover:text-primary transition-colors truncate">{appt.client?.name}</p>
-                                            <div className="flex items-center gap-2 mt-0.5">
-                                                <span className="text-xs font-mono text-gray-300 bg-gray-700/50 px-1.5 rounded">{format(parseISO(appt.start_time), 'HH:mm')}</span>
-                                                <span className="text-xs text-gray-500 truncate">{appt.service_name}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="hidden sm:block shrink-0 ml-2">
-                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: appt.dentist?.color || '#ccc' }} title={appt.dentist?.name}></div>
-                                    </div>
-                                </div>
-                            ))
-                        )}
+                    <div className="p-3 bg-gray-800/30 rounded-lg border border-white/5">
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">A Pagar</p>
+                        <p className="text-lg font-black text-gray-300 truncate">
+                            {loading ? '...' : metrics.expenseNext.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </p>
                     </div>
                 </div>
-
-                {/* COLUMN 2: Financial Flows (Expanded) */}
-                {stats.weeklyForecast.hasAccess ? (
-                    <div className="flex flex-col gap-6 h-full">
-                        {/* ENTRADAS - Metade da Altura */}
-                        <div className="flex-1 bg-gray-900/60 backdrop-blur-md p-6 rounded-xl shadow-lg border border-white/5 flex flex-col justify-center relative overflow-hidden group">
-                            <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                                <TrendingUp size={80} className="text-green-500"/>
-                            </div>
-                            <h3 className="font-bold text-white flex items-center gap-2 mb-6 text-base relative z-10">
-                                <div className="p-1.5 bg-green-500/20 rounded-lg text-green-400"><ArrowUpRight size={18} /></div>
-                                Entradas (Semana)
-                            </h3>
-                            <div className="grid grid-cols-2 gap-4 relative z-10">
-                                <div className="p-4 bg-green-900/10 rounded-xl border border-green-500/20">
-                                    <p className="text-xs text-green-400 font-bold uppercase mb-1">Realizado</p>
-                                    <p className="text-2xl font-black text-white">R$ {stats.weeklyForecast.incomeRealized.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                                </div>
-                                <div className="p-4 bg-gray-800/30 rounded-xl border border-white/5">
-                                    <p className="text-xs text-gray-400 font-bold uppercase mb-1">A Receber</p>
-                                    <p className="text-2xl font-black text-gray-300">R$ {stats.weeklyForecast.incomePending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* SAÍDAS - Metade da Altura */}
-                        <div className="flex-1 bg-gray-900/60 backdrop-blur-md p-6 rounded-xl shadow-lg border border-white/5 flex flex-col justify-center relative overflow-hidden group">
-                            <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                                <TrendingDown size={80} className="text-red-500"/>
-                            </div>
-                            <h3 className="font-bold text-white flex items-center gap-2 mb-6 text-base relative z-10">
-                                <div className="p-1.5 bg-red-500/20 rounded-lg text-red-400"><ArrowDownRight size={18} /></div>
-                                Saídas (Semana)
-                            </h3>
-                            <div className="grid grid-cols-2 gap-4 relative z-10">
-                                <div className="p-4 bg-red-900/10 rounded-xl border border-red-500/20">
-                                    <p className="text-xs text-red-400 font-bold uppercase mb-1">Pago</p>
-                                    <p className="text-2xl font-black text-white">R$ {stats.weeklyForecast.expenseRealized.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                                </div>
-                                <div className="p-4 bg-gray-800/30 rounded-xl border border-white/5">
-                                    <p className="text-xs text-gray-400 font-bold uppercase mb-1">A Pagar</p>
-                                    <p className="text-2xl font-black text-gray-300">R$ {stats.weeklyForecast.expensePending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="bg-gray-900/60 backdrop-blur-md p-6 rounded-xl shadow-lg border border-white/5 flex flex-col items-center justify-center text-center opacity-60 h-full">
-                        <div className="p-4 bg-gray-800 rounded-full mb-4">
-                            <Lock size={32} className="text-gray-500" />
-                        </div>
-                        <p className="text-gray-300 text-lg font-bold">Resumo Financeiro Bloqueado</p>
-                        <p className="text-sm text-gray-500 mt-2">Acesso restrito a administradores.</p>
-                    </div>
-                )}
             </div>
         </div>
-    );
+
+      </div>
+    </div>
+  );
 };
 
 export default DashboardHome;

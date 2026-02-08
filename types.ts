@@ -125,6 +125,7 @@ export interface Database {
           created_at: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          is_manual_override?: boolean
         }
         Insert: {
           id: string
@@ -141,6 +142,7 @@ export interface Database {
           subscription_tier?: 'free' | 'starter' | 'pro'
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          is_manual_override?: boolean
           created_at?: string
         }
         Update: {
@@ -158,6 +160,7 @@ export interface Database {
           subscription_tier?: 'free' | 'starter' | 'pro'
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          is_manual_override?: boolean
           created_at?: string
         }
         Relationships: []
@@ -341,6 +344,7 @@ export interface Database {
           appointment_id: string | null
           observation: string | null
           payment_method: string | null
+          dentist_id?: string | null
         }
         Insert: {
           id?: string
@@ -353,6 +357,7 @@ export interface Database {
           appointment_id?: string | null
           observation?: string | null
           payment_method?: string | null
+          dentist_id?: string | null
         }
         Update: {
           id?: string
@@ -365,6 +370,7 @@ export interface Database {
           appointment_id?: string | null
           observation?: string | null
           payment_method?: string | null
+          dentist_id?: string | null
         }
       }
       clinical_records: {
@@ -557,6 +563,8 @@ export interface Transaction {
   appointment_id?: string | null;
   observation?: string | null;
   payment_method?: string | null;
+  dentist_id?: string | null;
+  dentist?: { name: string };
 }
 
 export interface Appointment {

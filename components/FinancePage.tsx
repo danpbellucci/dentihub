@@ -1,14 +1,15 @@
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
-import { Transaction } from '../types';
+import { Transaction, Dentist } from '../types';
 import { format, endOfMonth, startOfMonth } from 'date-fns';
-import { ArrowUpCircle, ArrowDownCircle, Plus, Edit2, Trash2, X, Filter, HelpCircle, Loader2 } from 'lucide-react';
+import { ArrowUpCircle, ArrowDownCircle, Plus, Edit2, Trash2, X, Filter, HelpCircle, Loader2, User, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Toast, { ToastType } from './Toast';
 
 const FinancePage: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [dentists, setDentists] = useState<Dentist[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [currentTier, setCurrentTier] = useState<string>('free');
@@ -24,6 +25,7 @@ const FinancePage: React.FC = () => {
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   const navigate = useNavigate();
 
+  // Form States
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [type, setType] = useState<'income' | 'expense'>('expense');
@@ -31,6 +33,7 @@ const FinancePage: React.FC = () => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [observation, setObservation] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Pix');
+  const [dentistId, setDentistId] = useState(''); // '' means Clinic/Shared
 
   const incomeCategories = ['Consulta', 'Outros'];
   const expenseCategories = ['Aluguel Imóvel', 'Água', 'Luz', 'Telefone', 'Internet', 'Despesa Pessoal', 'Impostos', 'Fornecedores Gerais', 'Outros'];
@@ -46,12 +49,15 @@ const FinancePage: React.FC = () => {
     const { data: profile } = await supabase.from('user_profiles').select('clinic_id, role').eq('id', user.id).maybeSingle();
     if (profile) {
         targetClinicId = profile.clinic_id;
-        // Se o usuário está aqui, ele tem acesso ao módulo 'finance'.
-        // Portanto, ele tem permissão total de CRUD.
         setCanDelete(true);
     }
     setClinicId(targetClinicId);
-    await Promise.all([fetchTransactions(targetClinicId), checkSubscription(targetClinicId)]);
+    
+    await Promise.all([
+        fetchTransactions(targetClinicId), 
+        fetchDentists(targetClinicId),
+        checkSubscription(targetClinicId)
+    ]);
     setLoading(false);
   };
 
@@ -60,11 +66,23 @@ const FinancePage: React.FC = () => {
       if (data) setCurrentTier(data.subscription_tier || 'free');
   };
 
+  const fetchDentists = async (targetId: string) => {
+      const { data } = await supabase.from('dentists').select('id, name').eq('clinic_id', targetId).order('name');
+      if (data) setDentists(data as Dentist[]);
+  };
+
   const fetchTransactions = async (targetId: string) => {
-    let query = supabase.from('transactions').select('*').eq('clinic_id', targetId).gte('date', startDate).lte('date', endDate).order('date', { ascending: false });
+    let query = supabase
+        .from('transactions')
+        .select('*, dentist:dentists(name)')
+        .eq('clinic_id', targetId)
+        .gte('date', startDate)
+        .lte('date', endDate)
+        .order('date', { ascending: false });
+    
     if (filterStatus !== 'all') query = query.eq('status', filterStatus as any);
     const { data } = await query;
-    if (data) setTransactions(data);
+    if (data) setTransactions(data as Transaction[]);
   };
 
   const formatDateAdjusted = (dateString: string) => {
@@ -75,9 +93,25 @@ const FinancePage: React.FC = () => {
 
   const handleOpenModal = (t?: Transaction) => {
     if (t) {
-      setEditingTransaction(t); setAmount(t.amount.toString()); setCategory(t.category); setType(t.type); setStatus(t.status); setDate(new Date(t.date).toISOString().split('T')[0]); setObservation(t.observation || ''); setPaymentMethod(t.payment_method || 'Pix');
+      setEditingTransaction(t); 
+      setAmount(t.amount.toString()); 
+      setCategory(t.category); 
+      setType(t.type); 
+      setStatus(t.status); 
+      setDate(new Date(t.date).toISOString().split('T')[0]); 
+      setObservation(t.observation || ''); 
+      setPaymentMethod(t.payment_method || 'Pix');
+      setDentistId(t.dentist_id || '');
     } else {
-      setEditingTransaction(null); setAmount(''); setType('expense'); setCategory(expenseCategories[0]); setStatus('completed'); setDate(new Date().toISOString().split('T')[0]); setObservation(''); setPaymentMethod('Pix');
+      setEditingTransaction(null); 
+      setAmount(''); 
+      setType('expense'); 
+      setCategory(expenseCategories[0]); 
+      setStatus('completed'); 
+      setDate(new Date().toISOString().split('T')[0]); 
+      setObservation(''); 
+      setPaymentMethod('Pix');
+      setDentistId('');
     }
     setIsModalOpen(true);
   };
@@ -103,9 +137,21 @@ const FinancePage: React.FC = () => {
     e.preventDefault();
     if (!clinicId) return;
     try {
-      const payload = { clinic_id: clinicId, amount: parseFloat(amount), category, type, status, date: new Date(date).toISOString(), observation: observation || null, payment_method: paymentMethod };
+      const payload = { 
+          clinic_id: clinicId, 
+          amount: parseFloat(amount), 
+          category, 
+          type, 
+          status, 
+          date: new Date(date).toISOString(), 
+          observation: observation || null, 
+          payment_method: paymentMethod,
+          dentist_id: dentistId || null // Send null if empty string
+      };
+      
       if (editingTransaction) await supabase.from('transactions').update(payload).eq('id', editingTransaction.id);
       else await supabase.from('transactions').insert(payload);
+      
       setIsModalOpen(false);
       setToast({ message: "Salvo com sucesso!", type: 'success' });
       await fetchTransactions(clinicId);
@@ -163,7 +209,7 @@ const FinancePage: React.FC = () => {
             <thead className="bg-gray-800/50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase">Data</th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase">Categoria</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase">Categoria / Responsável</th>
                 <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase">Status</th>
                 <th className="px-6 py-3 text-right text-xs font-bold text-gray-400 uppercase">Valor</th>
                 <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase">Ações</th>
@@ -173,10 +219,23 @@ const FinancePage: React.FC = () => {
               {loading ? <tr><td colSpan={5} className="text-center py-8 text-gray-500">Carregando...</td></tr> : transactions.map((t) => (
                 <tr key={t.id} className="hover:bg-gray-800/50">
                   <td className="px-6 py-4 text-sm text-gray-400">{formatDateAdjusted(t.date)}</td>
-                  <td className="px-6 py-4 text-sm text-gray-200">
-                    <div className="flex items-center font-medium">
-                       {t.type === 'income' ? <ArrowUpCircle size={16} className="text-green-500 mr-2" /> : <ArrowDownCircle size={16} className="text-red-500 mr-2" />}
-                       {t.category}
+                  <td className="px-6 py-4 text-sm">
+                    <div className="flex flex-col">
+                        <div className="flex items-center font-medium text-gray-200">
+                            {t.type === 'income' ? <ArrowUpCircle size={16} className="text-green-500 mr-2" /> : <ArrowDownCircle size={16} className="text-red-500 mr-2" />}
+                            {t.category}
+                        </div>
+                        <div className="ml-6 mt-1">
+                            {t.dentist ? (
+                                <span className="inline-flex items-center text-[10px] bg-blue-900/30 text-blue-300 px-2 py-0.5 rounded border border-blue-500/20">
+                                    <User size={10} className="mr-1"/> {t.dentist.name}
+                                </span>
+                            ) : (
+                                <span className="inline-flex items-center text-[10px] bg-gray-700/50 text-gray-400 px-2 py-0.5 rounded border border-white/5">
+                                    <Users size={10} className="mr-1"/> Clínica (Geral)
+                                </span>
+                            )}
+                        </div>
                     </div>
                   </td>
                    <td className="px-6 py-4 text-sm text-center">
@@ -226,9 +285,30 @@ const FinancePage: React.FC = () => {
                 <button type="button" onClick={() => handleTypeChange('income')} className={`flex-1 py-3 rounded-lg text-sm font-bold uppercase border transition-all ${type === 'income' ? 'bg-green-900/30 border-green-500 text-green-400' : 'bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700'}`}>Receita</button>
               </div>
 
+              {/* Dentist / Owner Selection */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Valor (R$)</label>
-                <input type="number" step="0.01" required placeholder="0,00" className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-lg font-medium text-white outline-none focus:border-primary" value={amount} onChange={(e) => setAmount(e.target.value)} />
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Responsável / Vínculo</label>
+                  <select 
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-primary"
+                      value={dentistId}
+                      onChange={(e) => setDentistId(e.target.value)}
+                  >
+                      <option value="">Clínica (Geral)</option>
+                      {dentists.map(d => (
+                          <option key={d.id} value={d.id}>{d.name}</option>
+                      ))}
+                  </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Valor (R$)</label>
+                    <input type="number" step="0.01" required placeholder="0,00" className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-lg font-medium text-white outline-none focus:border-primary" value={amount} onChange={(e) => setAmount(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Data</label>
+                    <input type="date" required className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-primary" value={date} onChange={(e) => setDate(e.target.value)} />
+                  </div>
               </div>
 
               <div>
@@ -238,25 +318,20 @@ const FinancePage: React.FC = () => {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Forma de Pagamento</label>
-                <select className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-primary" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-                  {paymentMethods.map((method) => <option key={method} value={method}>{method}</option>)}
-                </select>
-              </div>
-
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Data</label>
-                  <input type="date" required className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-primary" value={date} onChange={(e) => setDate(e.target.value)} />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Situação</label>
-                  <select className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-primary" value={status} onChange={(e) => setStatus(e.target.value as 'pending' | 'completed')}>
-                    <option value="completed">{type === 'income' ? 'Recebido' : 'Pago'}</option>
-                    <option value="pending">Pendente</option>
-                  </select>
-                </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Forma Pagto.</label>
+                    <select className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-primary" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                      {paymentMethods.map((method) => <option key={method} value={method}>{method}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Situação</label>
+                    <select className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white outline-none focus:border-primary" value={status} onChange={(e) => setStatus(e.target.value as 'pending' | 'completed')}>
+                        <option value="completed">{type === 'income' ? 'Recebido' : 'Pago'}</option>
+                        <option value="pending">Pendente</option>
+                    </select>
+                  </div>
               </div>
 
               <div>
@@ -299,9 +374,9 @@ const FinancePage: React.FC = () => {
              <div className="space-y-4 text-sm text-gray-400">
                 <p>Gerencie as finanças da sua clínica de forma simples.</p>
                 <ul className="list-disc pl-5 space-y-2">
+                   <li><strong>Vínculo:</strong> Você pode atribuir uma receita ou despesa a um dentista específico ou deixá-la como geral da clínica.</li>
                    <li><strong>Edição Rápida:</strong> Clique no status ("Pendente" ou "Recebido/Pago") na tabela para alterá-lo rapidamente.</li>
-                   <li><strong>Receitas:</strong> O sistema lança automaticamente pagamentos de consultas quando você marca como "Pago" na Agenda.</li>
-                   <li><strong>Despesas:</strong> Registre seus gastos com fornecedores, aluguel, etc.</li>
+                   <li><strong>Receitas:</strong> O sistema lança automaticamente pagamentos de consultas quando você marca como "Pago" na Agenda (geralmente atribuídas ao dentista do agendamento).</li>
                 </ul>
              </div>
           </div>
