@@ -66,6 +66,7 @@ const CalendarPage: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [hideCompletedPaid, setHideCompletedPaid] = useState(false);
   const [hideCancelled, setHideCancelled] = useState(true); // Default true para limpar a visualização
+  const [showFilters, setShowFilters] = useState(false);
 
   // Modal Principal (Novo/Editar)
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -665,7 +666,7 @@ const CalendarPage: React.FC = () => {
   );
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex flex-col sm:h-full">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* Header and Filters */}
@@ -692,6 +693,14 @@ const CalendarPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button 
+                onClick={() => setShowFilters(!showFilters)} 
+                className={`sm:hidden p-2 rounded-lg font-bold transition shadow-sm flex items-center justify-center border ${showFilters ? 'bg-primary text-white border-primary' : 'bg-gray-900 border-white/10 text-gray-400'}`}
+                title="Filtrar"
+            >
+                <Filter size={20} />
+            </button>
+
             <div className="bg-gray-900 p-1 rounded-lg border border-white/10 shadow-sm flex items-center">
                 <button 
                     onClick={() => setViewMode('month')} 
@@ -711,7 +720,7 @@ const CalendarPage: React.FC = () => {
 
             <button 
             onClick={() => handleOpenModal()} 
-            className="flex items-center px-4 py-2 bg-primary text-white rounded hover:bg-sky-600 transition shadow-sm font-bold w-full sm:w-auto justify-center"
+            className="flex-1 sm:flex-none flex items-center px-4 py-2 bg-primary text-white rounded hover:bg-sky-600 transition shadow-sm font-bold justify-center"
             >
             <Plus size={18} className="mr-2" />
             <span className="hidden md:inline">Novo Agendamento</span>
@@ -721,7 +730,7 @@ const CalendarPage: React.FC = () => {
       </div>
 
       {/* Grid Filters - DARK MODE */}
-      <div className="bg-gray-900/60 backdrop-blur-md p-4 rounded-lg shadow-lg border border-white/5 mb-4">
+      <div className={`bg-gray-900/60 backdrop-blur-md p-4 rounded-lg shadow-lg border border-white/5 mb-4 ${showFilters ? 'block' : 'hidden sm:block'}`}>
         <div className="flex flex-col sm:flex-row items-center justify-between border-b border-white/5 pb-3 mb-3 gap-3">
             <div className="flex items-center text-gray-400 text-sm font-bold">
               <Filter size={16} className="mr-2" /> Filtros Avançados:
@@ -840,7 +849,7 @@ const CalendarPage: React.FC = () => {
       {/* VIEW CONTENT - DARK MODE */}
       {viewMode === 'month' ? (
           /* Grid View */
-          <div className="flex-1 bg-gray-900 rounded-lg shadow-lg border border-white/5 overflow-hidden flex flex-col">
+          <div className="flex-1 bg-gray-900 rounded-lg shadow-lg border border-white/5 sm:overflow-hidden flex flex-col">
             <div className="grid grid-cols-7 border-b border-white/5 bg-gray-800/50">
               {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
                 <div key={day} className="py-2 text-center text-xs font-bold text-gray-400 uppercase tracking-wide">
@@ -849,7 +858,7 @@ const CalendarPage: React.FC = () => {
               ))}
             </div>
 
-            <div className="grid grid-cols-7 flex-1 auto-rows-fr overflow-y-auto custom-scrollbar">
+            <div className="grid grid-cols-7 flex-1 auto-rows-fr sm:overflow-y-auto custom-scrollbar">
                 {days.map((day, idx) => {
                   const dayAppts = getDayAppointments(day);
                   const isCurrentMonth = isSameMonth(day, currentMonth);
@@ -896,8 +905,8 @@ const CalendarPage: React.FC = () => {
           </div>
       ) : (
           /* Table View */
-          <div className="flex-1 bg-gray-900 rounded-lg shadow-lg border border-white/5 overflow-hidden flex flex-col">
-             <div className="overflow-auto flex-1 custom-scrollbar">
+          <div className="flex-1 bg-gray-900 rounded-lg shadow-lg border border-white/5 sm:overflow-hidden flex flex-col">
+             <div className="sm:overflow-auto flex-1 custom-scrollbar">
                 {appointments.length === 0 ? (
                     <div className="flex flex-col items-center justify-center p-12 h-full text-gray-500">
                         <Calendar size={48} className="mb-4 opacity-20"/>

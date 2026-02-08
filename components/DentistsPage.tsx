@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import { Dentist, ServiceItem } from '../types';
@@ -229,9 +230,32 @@ const DentistsPage: React.FC = () => {
       };
 
       if (editingDentist) {
+        // 1. Atualiza dados na tabela de Dentistas (Dados de Negócio)
         const { error } = await supabase.from('dentists').update(payload).eq('id', editingDentist.id);
         if (error) throw error;
-        setToast({ message: "Dentista atualizado!", type: 'success' });
+
+        // 2. Se o e-mail foi alterado, deve-se atualizar o Login (Auth) e o Perfil (User Profiles)
+        // Isso requer uma Edge Function pois Admin não pode atualizar auth.users de terceiros via Client direto.
+        if (editingDentist.email && formData.email && editingDentist.email !== formData.email) {
+            
+            const { data, error: functionError } = await supabase.functions.invoke('update-user-email', {
+                body: { 
+                    oldEmail: editingDentist.email, 
+                    newEmail: formData.email,
+                    clinicId: clinicId
+                }
+            });
+            
+            if (functionError || (data && data.error)) {
+                console.error("Erro ao atualizar login:", functionError || data?.error);
+                setToast({ message: "Dentista salvo, mas houve erro ao atualizar o e-mail de login. Contate o suporte.", type: 'warning' });
+            } else {
+                setToast({ message: "Dentista e acesso atualizados!", type: 'success' });
+            }
+        } else {
+            setToast({ message: "Dentista atualizado!", type: 'success' });
+        }
+
       } else {
         const { error } = await supabase.from('dentists').insert(payload);
         if (error) throw error;

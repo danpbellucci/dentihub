@@ -80,7 +80,7 @@ const InventoryPage: React.FC = () => {
 
   const checkLowStockAlert = async (item: InventoryItem, newQty: number) => {
       if (newQty <= item.min_quantity) {
-          // 1. Busca configurações de notificação
+          // 1. Busca configurações de notificação (Quem DEVE receber por configuração)
           const { data: configs } = await supabase
               .from('role_notifications')
               .select('role')
@@ -88,23 +88,20 @@ const InventoryPage: React.FC = () => {
               .eq('notification_type', 'stock_low')
               .eq('is_enabled', true);
           
-          if (!configs || configs.length === 0) return;
-
-          const roles = configs.map(c => c.role);
+          const roles = configs?.map(c => c.role) || [];
           
-          // 2. Busca todos os usuários com esses perfis
-          const { data: potentialRecipients } = await supabase
+          // Busca usuários com esses perfis
+          const { data: configuredUsers } = await supabase
               .from('user_profiles')
               .select('email, role')
               .eq('clinic_id', userProfile?.clinic_id)
               .in('role', roles);
           
-          if (!potentialRecipients || potentialRecipients.length === 0) return;
+          let recipientsList = configuredUsers || [];
 
-          let finalRecipients = potentialRecipients;
-
-          // 3. Se o item tem um dentista dono, filtra os destinatários
+          // 2. Lógica de Destinatários Específicos
           if (item.dentist_id) {
+              // --- ITEM COM DONO ESPECÍFICO ---
               // Busca e-mail do dentista dono
               const { data: dentistOwner } = await supabase
                   .from('dentists')
@@ -114,23 +111,45 @@ const InventoryPage: React.FC = () => {
               
               const ownerEmail = dentistOwner?.email;
 
-              finalRecipients = potentialRecipients.filter(user => {
-                  // Se não é dentista (ex: admin, funcionário), mantém na lista se estiver configurado
-                  if (user.role !== 'dentist') return true;
-                  
-                  // Se é dentista, só mantém se for o dono do item
+              // Filtra a lista: Mantém não-dentistas (admins/staff) E apenas o dentista dono
+              recipientsList = recipientsList.filter(user => {
+                  if (user.role !== 'dentist') return true; 
                   return user.email === ownerEmail;
               });
+          } else {
+              // --- ITEM COMPARTILHADO ---
+              // Regra: Enviar para todos os dentistas da clínica + usuários configurados
+              
+              const { data: allDentists } = await supabase
+                  .from('user_profiles')
+                  .select('email, role')
+                  .eq('clinic_id', userProfile?.clinic_id)
+                  .eq('role', 'dentist');
+              
+              if (allDentists) {
+                  // Adiciona todos os dentistas à lista de envio
+                  recipientsList = [...recipientsList, ...allDentists];
+              }
           }
 
-          if (finalRecipients.length === 0) return;
+          if (recipientsList.length === 0) return;
+
+          // 3. Remove duplicatas de e-mail e formata para envio
+          const uniqueEmails = new Set();
+          const finalRecipients = [];
+          
+          for (const user of recipientsList) {
+              if (user.email && !uniqueEmails.has(user.email)) {
+                  uniqueEmails.add(user.email);
+                  finalRecipients.push({ email: user.email });
+              }
+          }
 
           // 4. Envia e-mail via Edge Function
-          const uniqueRecipients = finalRecipients.map(r => ({ email: r.email }));
           await supabase.functions.invoke('send-emails', {
               body: {
                   type: 'stock_alert',
-                  recipients: uniqueRecipients,
+                  recipients: finalRecipients,
                   item: { ...item, quantity: newQty }
               }
           });
