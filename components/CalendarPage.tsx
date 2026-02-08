@@ -17,7 +17,8 @@ import {
   isToday,
   addMinutes,
   isWithinInterval,
-  areIntervalsOverlapping
+  areIntervalsOverlapping,
+  addWeeks
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -55,6 +56,9 @@ const CalendarPage: React.FC = () => {
   const [processing, setProcessing] = useState(false);
   const [clinicId, setClinicId] = useState<string | null>(null);
   
+  // Custom Date Range Override (for filters like This Week)
+  const [customDateRange, setCustomDateRange] = useState<{start: string, end: string} | null>(null);
+
   // Filters
   const [filterClientId, setFilterClientId] = useState('');
   const [filterDentistId, setFilterDentistId] = useState('');
@@ -124,7 +128,7 @@ const CalendarPage: React.FC = () => {
     if (clinicId) {
         fetchAppointments();
     }
-  }, [currentMonth, filterClientId, filterDentistId, filterPaymentStatus, filterStatus, hideCompletedPaid, hideCancelled, clinicId]);
+  }, [currentMonth, filterClientId, filterDentistId, filterPaymentStatus, filterStatus, hideCompletedPaid, hideCancelled, clinicId, customDateRange]);
 
   // Recalcula horários quando muda o dentista, a data ou a DURAÇÃO no formulário
   useEffect(() => {
@@ -156,13 +160,8 @@ const CalendarPage: React.FC = () => {
     
     if (profile) {
         targetClinicId = profile.clinic_id;
-        
-        // Se o usuário está aqui, ele tem acesso ao módulo 'calendar' (validado no Layout).
-        // Portanto, ele tem permissão total de CRUD.
         setCanDelete(true); 
         
-        // Mantemos apenas a lógica de filtro automático se o papel for explicitamente 'dentist',
-        // para facilitar a UX deles verem apenas a própria agenda por padrão.
         if (profile.role === 'dentist') {
             setIsDentistUser(true);
             const { data: myDentistRecord } = await supabase
@@ -229,8 +228,15 @@ const CalendarPage: React.FC = () => {
   const fetchAppointments = async () => {
     if (!clinicId) return;
     
-    const start = startOfWeek(startOfMonth(currentMonth)).toISOString();
-    const end = endOfWeek(endOfMonth(currentMonth)).toISOString();
+    let start, end;
+
+    if (customDateRange) {
+        start = customDateRange.start;
+        end = customDateRange.end;
+    } else {
+        start = startOfWeek(startOfMonth(currentMonth)).toISOString();
+        end = endOfWeek(endOfMonth(currentMonth)).toISOString();
+    }
 
     let query = supabase
       .from('appointments')
@@ -245,7 +251,6 @@ const CalendarPage: React.FC = () => {
     if (filterPaymentStatus !== 'all') query = query.eq('payment_status', filterPaymentStatus as "paid" | "pending");
     if (filterStatus !== 'all') query = query.eq('status', filterStatus as "scheduled" | "completed" | "cancelled" | "confirmed");
     
-    // Apply server-side filtering for Cancelled if checkbox is checked
     if (hideCancelled) query = query.neq('status', 'cancelled');
 
     const { data, error } = await query;
@@ -254,7 +259,6 @@ const CalendarPage: React.FC = () => {
     } else {
       let filteredData = data as any || [];
       
-      // Apply client-side filtering for Completed & Paid
       if (hideCompletedPaid) {
           filteredData = filteredData.filter((a: any) => !(a.status === 'completed' && a.payment_status === 'paid'));
       }
@@ -266,17 +270,51 @@ const CalendarPage: React.FC = () => {
 
   const clearFilters = () => {
       setFilterClientId('');
-      // Only clear dentist filter if NOT a dentist user
       if (!isDentistUser) {
           setFilterDentistId('');
       }
       setFilterPaymentStatus('all');
       setFilterStatus('all');
       setHideCompletedPaid(false);
-      setHideCancelled(true); // Reset to default true
+      setHideCancelled(true);
+      setCustomDateRange(null); // Clear date preset
   };
 
-  // --- LÓGICA DE HORÁRIOS CORRIGIDA ---
+  const handleDatePreset = (preset: 'thisWeek' | 'thisMonth' | 'lastMonth' | 'nextWeek') => {
+      const now = new Date();
+      let start, end;
+
+      // Update currentMonth to ensure calendar grid is in the ballpark (even if filtered)
+      if (preset === 'nextWeek') setCurrentMonth(addWeeks(now, 1));
+      else if (preset === 'lastMonth') setCurrentMonth(subMonths(now, 1));
+      else setCurrentMonth(now);
+
+      switch(preset) {
+          case 'thisWeek':
+              start = startOfWeek(now, { weekStartsOn: 0 }).toISOString();
+              end = endOfWeek(now, { weekStartsOn: 0 }).toISOString();
+              setCustomDateRange({ start, end });
+              setViewMode('list'); // Switch to list for better view of specific range
+              break;
+          case 'nextWeek':
+              const next = addWeeks(now, 1);
+              start = startOfWeek(next, { weekStartsOn: 0 }).toISOString();
+              end = endOfWeek(next, { weekStartsOn: 0 }).toISOString();
+              setCustomDateRange({ start, end });
+              setViewMode('list');
+              break;
+          case 'lastMonth':
+              // For month presets, we can just let standard logic take over by clearing custom range
+              // but setting currentMonth correctly
+              setCustomDateRange(null);
+              break;
+          case 'thisMonth':
+          default:
+              setCustomDateRange(null);
+              break;
+      }
+  };
+
   const generateTimeSlots = () => {
       const dentist = dentists.find(d => d.id === formData.dentist_id);
       if (!dentist || !dentist.schedule_config) {
@@ -284,7 +322,7 @@ const CalendarPage: React.FC = () => {
           return;
       }
 
-      const dateStr = formData.date; // YYYY-MM-DD
+      const dateStr = formData.date; 
       const dateObj = new Date(dateStr + 'T00:00:00'); 
       const dayIndex = dateObj.getDay(); 
       const daysMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -293,11 +331,8 @@ const CalendarPage: React.FC = () => {
       const config = dentist.schedule_config as any;
       const dayConfig = config[dayKey];
       const blockedDates = config.blocked_dates || [];
-      
-      // Get Duration from form
       const duration = formData.duration || 30;
 
-      // 1. Verifica se o dia inteiro está bloqueado
       const isFullDayBlocked = blockedDates.some((entry: any) => {
           if (typeof entry === 'string') return entry === dateStr;
           return entry.date === dateStr && entry.allDay;
@@ -308,15 +343,13 @@ const CalendarPage: React.FC = () => {
           return;
       }
 
-      // 2. Prepara agendamentos existentes no dia para verificar colisão
       const existingAppts = appointments.filter(a => 
           a.dentist_id === formData.dentist_id &&
           a.status !== 'cancelled' &&
-          a.id !== editingAppointment?.id && // Não colidir consigo mesmo na edição
+          a.id !== editingAppointment?.id && 
           isSameDay(parseISO(a.start_time), dateObj)
       );
 
-      // 3. Prepara bloqueios parciais do dia
       const partialBlocks = blockedDates.filter((entry: any) => {
           return typeof entry === 'object' && entry.date === dateStr && !entry.allDay;
       });
@@ -337,19 +370,15 @@ const CalendarPage: React.FC = () => {
           pauseEndMins = pe[0] * 60 + pe[1];
       }
 
-      // Loop de 30 em 30 min (Horários de início possíveis)
       while (startMins < endMins) {
           const currentSlotStartMins = startMins;
-          const currentSlotEndMins = startMins + duration; // Projeta o término baseado na duração
+          const currentSlotEndMins = startMins + duration; 
 
-          // A. Verifica se o serviço termina DEPOIS do expediente
           if (currentSlotEndMins > endMins) {
               startMins += 30;
               continue;
           }
 
-          // B. Verifica Colisão com Almoço
-          // Lógica de sobreposição: (StartA < EndB) && (EndA > StartB)
           if (pauseStartMins !== -1) {
               const overlapsLunch = (currentSlotStartMins < pauseEndMins) && (currentSlotEndMins > pauseStartMins);
               if (overlapsLunch) {
@@ -358,7 +387,6 @@ const CalendarPage: React.FC = () => {
               }
           }
 
-          // C. Verifica Colisão com Bloqueios Parciais
           const overlapsBlock = partialBlocks.some((block: any) => {
               const bStartParts = block.start.split(':').map(Number);
               const bEndParts = block.end.split(':').map(Number);
@@ -373,16 +401,14 @@ const CalendarPage: React.FC = () => {
               continue;
           }
 
-          // D. Conflito com Agendamentos Existentes
           const slotStart = new Date(dateObj);
           slotStart.setHours(Math.floor(currentSlotStartMins / 60), currentSlotStartMins % 60, 0, 0);
           
-          const slotEnd = addMinutes(slotStart, duration); // Usa a duração real selecionada
+          const slotEnd = addMinutes(slotStart, duration); 
 
           const hasConflict = existingAppts.some(appt => {
               const apptStart = parseISO(appt.start_time);
               const apptEnd = parseISO(appt.end_time);
-              // Verifica se o intervalo proposto (slotStart até slotEnd) sobrepõe o agendamento existente
               return areIntervalsOverlapping(
                   { start: slotStart, end: slotEnd },
                   { start: apptStart, end: apptEnd }
@@ -478,9 +504,18 @@ const CalendarPage: React.FC = () => {
     }
   };
 
-  const handlePreviousMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
-  const handleNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
-  const handleToday = () => setCurrentMonth(new Date());
+  const handlePreviousMonth = () => {
+      setCurrentMonth(subMonths(currentMonth, 1));
+      setCustomDateRange(null); // Reseta filtro de semana
+  };
+  const handleNextMonth = () => {
+      setCurrentMonth(addMonths(currentMonth, 1));
+      setCustomDateRange(null); // Reseta filtro de semana
+  };
+  const handleToday = () => {
+      setCurrentMonth(new Date());
+      setCustomDateRange(null); // Reseta filtro de semana
+  };
 
   const handleOpenModal = (date?: Date, appointment?: Appointment, isReturn = false) => {
     setIsCustomService(false); 
@@ -525,10 +560,7 @@ const CalendarPage: React.FC = () => {
       try {
           const client = clients.find(c => c.id === appointment.client_id);
           const dentist = dentists.find(d => d.id === appointment.dentist_id);
-          
-          if (!client?.email) return; // Não envia se não tiver email
-
-          // Prepara objeto seguro para envio
+          if (!client?.email) return; 
           const apptData = {
               id: appointment.id,
               date: format(parseISO(appointment.start_time), "dd/MM/yyyy"),
@@ -536,25 +568,14 @@ const CalendarPage: React.FC = () => {
               service_name: appointment.service_name,
               dentist_name: dentist?.name || 'Clínica'
           };
-
-          // Obter a URL base correta (origem), removendo a barra final se existir
           const getOrigin = () => {
               const url = window.location.href.split('#')[0].split('?')[0]; 
               return url.replace(/\/$/, '');
           };
-
           await supabase.functions.invoke('send-emails', {
-              body: {
-                  type: 'appointment',
-                  subtype: type,
-                  appointment: apptData,
-                  client: { name: client.name, email: client.email },
-                  origin: getOrigin()
-              }
+              body: { type: 'appointment', subtype: type, appointment: apptData, client: { name: client.name, email: client.email }, origin: getOrigin() }
           });
-      } catch (err) {
-          console.error("Erro ao enviar notificação de agendamento:", err);
-      }
+      } catch (err) { console.error("Erro notificação:", err); }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -592,35 +613,21 @@ const CalendarPage: React.FC = () => {
         }
       }
 
-      // Feedback e Notificação
       const clientHasEmail = clients.find(c => c.id === formData.client_id)?.email;
       const successMessage = actionType === 'created' ? 'Agendamento criado com sucesso!' : 'Agendamento atualizado com sucesso!';
-      const emailNote = clientHasEmail ? ' Notificação enviada ao paciente (e-mail cadastrado).' : ' Paciente sem e-mail para notificação.';
-      
-      setToast({ 
-          message: successMessage + emailNote, 
-          type: 'success' 
-      });
+      const emailNote = clientHasEmail ? ' Notificação enviada ao paciente.' : ' Paciente sem e-mail.';
+      setToast({ message: successMessage + emailNote, type: 'success' });
 
-      // Envia notificação por e-mail (Background)
-      if (finalAppt) {
-          sendNotification(actionType, finalAppt);
-      }
-
+      if (finalAppt) { sendNotification(actionType, finalAppt); }
       setIsModalOpen(false);
       fetchAppointments();
-    } catch (err: any) {
-      setToast({ message: 'Erro ao salvar agendamento: ' + err.message, type: 'error' });
-    } finally {
-      setProcessing(false);
-    }
+    } catch (err: any) { setToast({ message: 'Erro ao salvar: ' + err.message, type: 'error' }); } 
+    finally { setProcessing(false); }
   };
 
   const handleDelete = async () => {
     if (!deleteId) return;
     setProcessing(true);
-    
-    // Recupera o agendamento antes de deletar para enviar o email
     const apptToDelete = appointments.find(a => a.id === deleteId);
     const clientHasEmail = apptToDelete?.client?.email;
 
@@ -629,28 +636,14 @@ const CalendarPage: React.FC = () => {
         const { error } = await supabase.from('appointments').delete().eq('id', deleteId);
         if (error) throw error;
         
-        const successMessage = 'Agendamento excluído com sucesso.';
-        const emailNote = clientHasEmail ? ' Notificação de cancelamento enviada ao paciente.' : ' Paciente sem e-mail para notificação.';
-
-        setToast({ 
-            message: successMessage + emailNote, 
-            type: 'success' 
-        });
-
-        // Envia notificação de exclusão
-        if (apptToDelete) {
-            sendNotification('deleted', apptToDelete);
-        }
+        setToast({ message: 'Agendamento excluído.' + (clientHasEmail ? ' Notificação enviada.' : ''), type: 'success' });
+        if (apptToDelete) { sendNotification('deleted', apptToDelete); }
 
         setIsModalOpen(false);
         setEditingAppointment(null);
         fetchAppointments();
-    } catch (err: any) {
-        setToast({ message: 'Erro ao excluir: ' + err.message, type: 'error' });
-    } finally {
-        setProcessing(false);
-        setDeleteId(null);
-    }
+    } catch (err: any) { setToast({ message: 'Erro: ' + err.message, type: 'error' }); } 
+    finally { setProcessing(false); setDeleteId(null); }
   };
 
   const days = eachDayOfInterval({
@@ -662,27 +655,18 @@ const CalendarPage: React.FC = () => {
     return appointments.filter(appt => isSameDay(parseISO(appt.start_time), day));
   };
 
-  if (loading) {
-    return (
+  if (loading) return (
       <div className="flex h-96 w-full items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
           <span className="text-gray-500 font-medium">Carregando dados...</span>
         </div>
       </div>
-    );
-  }
+  );
 
   return (
     <div className="h-full flex flex-col">
-      {/* Toast Notification */}
-      {toast && (
-        <Toast 
-          message={toast.message} 
-          type={toast.type} 
-          onClose={() => setToast(null)} 
-        />
-      )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* Header and Filters */}
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
@@ -738,8 +722,18 @@ const CalendarPage: React.FC = () => {
 
       {/* Grid Filters - DARK MODE */}
       <div className="bg-gray-900/60 backdrop-blur-md p-4 rounded-lg shadow-lg border border-white/5 mb-4">
-        <div className="flex items-center text-gray-400 text-sm font-bold mb-3">
-          <Filter size={16} className="mr-2" /> Filtros Avançados:
+        <div className="flex flex-col sm:flex-row items-center justify-between border-b border-white/5 pb-3 mb-3 gap-3">
+            <div className="flex items-center text-gray-400 text-sm font-bold">
+              <Filter size={16} className="mr-2" /> Filtros Avançados:
+            </div>
+            
+            {/* DATE PRESET BUTTONS */}
+            <div className="flex gap-2 flex-wrap justify-end">
+                <button onClick={() => handleDatePreset('thisWeek')} className="text-xs font-bold px-3 py-1 rounded border border-white/10 hover:bg-primary hover:text-white transition bg-gray-800 text-gray-300">Esta Semana</button>
+                <button onClick={() => handleDatePreset('nextWeek')} className="text-xs font-bold px-3 py-1 rounded border border-white/10 hover:bg-primary hover:text-white transition bg-gray-800 text-gray-300">Próx. Semana</button>
+                <button onClick={() => handleDatePreset('thisMonth')} className="text-xs font-bold px-3 py-1 rounded border border-white/10 hover:bg-primary hover:text-white transition bg-gray-800 text-gray-300">Este Mês</button>
+                <button onClick={() => handleDatePreset('lastMonth')} className="text-xs font-bold px-3 py-1 rounded border border-white/10 hover:bg-primary hover:text-white transition bg-gray-800 text-gray-300">Mês Passado</button>
+            </div>
         </div>
         
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">

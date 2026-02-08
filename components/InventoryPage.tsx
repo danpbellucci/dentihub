@@ -1,16 +1,16 @@
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
-import { InventoryItem, UserProfile, Dentist } from '../types';
+import { InventoryItem, Dentist } from '../types';
 import { Box, Plus, Edit2, Trash2, Loader2, AlertTriangle, Save, X, Search, Filter, HelpCircle, Users, User } from 'lucide-react';
 import Toast, { ToastType } from './Toast';
-import { useOutletContext } from 'react-router-dom';
+import { useDashboard } from './DashboardLayout';
 
 const PREDEFINED_CATEGORIES = ['Geral', 'Descartável', 'Instrumento', 'Medicamento', 'Papelaria', 'Limpeza'];
 const PREDEFINED_UNITS = ['un', 'cx', 'ml', 'l', 'g', 'kg', 'pct'];
 
 const InventoryPage: React.FC = () => {
-  const { userProfile } = useOutletContext<{ userProfile: UserProfile | null }>();
+  const { userProfile } = useDashboard() || {};
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [dentists, setDentists] = useState<Dentist[]>([]);
   const [loading, setLoading] = useState(true);

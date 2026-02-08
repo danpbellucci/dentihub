@@ -488,6 +488,20 @@ const ClientsPage: React.FC = () => {
 
     setProcessing(true);
     try {
+      // Check for uniqueness before saving
+      if (formData.cpf) {
+          const { data: existingCPF } = await supabase
+              .from('clients')
+              .select('id')
+              .eq('clinic_id', clinicId)
+              .eq('cpf', formData.cpf)
+              .maybeSingle();
+
+          if (existingCPF && (!editingClient || existingCPF.id !== editingClient.id)) {
+              throw new Error("Este CPF já está cadastrado para outro paciente.");
+          }
+      }
+
       const payload = { ...formData, clinic_id: clinicId };
       
       if (editingClient) {

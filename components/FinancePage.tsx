@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { Transaction, Dentist } from '../types';
-import { format, endOfMonth, startOfMonth } from 'date-fns';
-import { ArrowUpCircle, ArrowDownCircle, Plus, Edit2, Trash2, X, Filter, HelpCircle, Loader2, User, Users } from 'lucide-react';
+import { format, endOfMonth, startOfMonth, startOfWeek, endOfWeek, addWeeks, subMonths } from 'date-fns';
+import { ArrowUpCircle, ArrowDownCircle, Plus, Edit2, Trash2, X, Filter, HelpCircle, Loader2, User, Users, Calendar as CalendarIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Toast, { ToastType } from './Toast';
 
@@ -170,6 +170,35 @@ const FinancePage: React.FC = () => {
       }
   };
 
+  const handleDatePreset = (preset: 'thisWeek' | 'thisMonth' | 'lastMonth' | 'nextWeek') => {
+      const now = new Date();
+      let start, end;
+
+      switch(preset) {
+          case 'thisWeek':
+              start = startOfWeek(now, { weekStartsOn: 0 }); // Domingo
+              end = endOfWeek(now, { weekStartsOn: 0 });
+              break;
+          case 'nextWeek':
+              const next = addWeeks(now, 1);
+              start = startOfWeek(next, { weekStartsOn: 0 });
+              end = endOfWeek(next, { weekStartsOn: 0 });
+              break;
+          case 'lastMonth':
+              const last = subMonths(now, 1);
+              start = startOfMonth(last);
+              end = endOfMonth(last);
+              break;
+          case 'thisMonth':
+          default:
+              start = startOfMonth(now);
+              end = endOfMonth(now);
+              break;
+      }
+      setStartDate(format(start, 'yyyy-MM-dd'));
+      setEndDate(format(end, 'yyyy-MM-dd'));
+  };
+
   const balance = transactions.reduce((acc, curr) => curr.type === 'income' ? acc + Number(curr.amount) : acc - Number(curr.amount), 0);
 
   return (
@@ -191,13 +220,26 @@ const FinancePage: React.FC = () => {
           <p className="text-gray-400 font-medium text-sm">Saldo (Período)</p>
           <p className={`text-3xl font-black ${balance >= 0 ? 'text-white' : 'text-red-400'}`}>R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
         </div>
-        <div className="bg-gray-900/60 backdrop-blur-md p-6 rounded-lg shadow border border-white/5 lg:col-span-2 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center text-gray-400 min-w-fit self-start sm:self-center"><Filter size={18} className="mr-2" /> <span className="font-bold text-sm uppercase">Filtros:</span></div>
+        <div className="bg-gray-900/60 backdrop-blur-md p-6 rounded-lg shadow border border-white/5 lg:col-span-2 flex flex-col justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-2 border-b border-white/5 pb-3">
+                <div className="flex items-center text-gray-400"><Filter size={18} className="mr-2" /> <span className="font-bold text-sm uppercase">Filtros</span></div>
+                <div className="flex gap-2 flex-wrap justify-end">
+                    <button onClick={() => handleDatePreset('thisWeek')} className="text-xs font-bold px-3 py-1 rounded border border-white/10 hover:bg-primary hover:text-white transition bg-gray-800 text-gray-300">Esta Semana</button>
+                    <button onClick={() => handleDatePreset('nextWeek')} className="text-xs font-bold px-3 py-1 rounded border border-white/10 hover:bg-primary hover:text-white transition bg-gray-800 text-gray-300">Próx. Semana</button>
+                    <button onClick={() => handleDatePreset('thisMonth')} className="text-xs font-bold px-3 py-1 rounded border border-white/10 hover:bg-primary hover:text-white transition bg-gray-800 text-gray-300">Este Mês</button>
+                    <button onClick={() => handleDatePreset('lastMonth')} className="text-xs font-bold px-3 py-1 rounded border border-white/10 hover:bg-primary hover:text-white transition bg-gray-800 text-gray-300">Mês Passado</button>
+                </div>
+            </div>
+            
             <div className="flex flex-wrap items-center gap-3 w-full justify-end">
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="bg-gray-800 border border-white/10 rounded px-3 py-2 text-sm text-white focus:border-primary outline-none" />
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="bg-gray-800 border border-white/10 rounded px-3 py-2 text-sm text-white focus:border-primary outline-none" />
+              <div className="flex items-center gap-2 bg-gray-800 p-1 rounded border border-white/10">
+                  <CalendarIcon size={14} className="text-gray-500 ml-2" />
+                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="bg-transparent text-sm text-white focus:outline-none w-32" />
+                  <span className="text-gray-500">-</span>
+                  <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="bg-transparent text-sm text-white focus:outline-none w-32" />
+              </div>
               <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="bg-gray-800 border border-white/10 rounded px-3 py-2 text-sm text-white focus:border-primary outline-none">
-                <option value="all">Todos</option><option value="completed">Realizados</option><option value="pending">Pendentes</option>
+                <option value="all">Todos Status</option><option value="completed">Realizados</option><option value="pending">Pendentes</option>
               </select>
             </div>
         </div>

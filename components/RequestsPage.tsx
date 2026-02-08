@@ -3,9 +3,9 @@ import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import { format, parseISO, addMinutes } from 'date-fns';
 import { Check, X, Clock, AlertTriangle, CalendarCheck, Smartphone, Mail, User, UserCheck, Loader2, HelpCircle, RefreshCw, RefreshCcw } from 'lucide-react';
-import { useOutletContext, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Toast, { ToastType } from './Toast';
-import { UserProfile } from '../types';
+import { useDashboard } from './DashboardLayout';
 
 const RequestsPage: React.FC = () => {
   const [requests, setRequests] = useState<any[]>([]);
@@ -20,7 +20,7 @@ const RequestsPage: React.FC = () => {
   
   const intervalRef = useRef<any>(null);
   const navigate = useNavigate();
-  const { refreshNotifications, userProfile } = useOutletContext<{ refreshNotifications?: () => void, userProfile: UserProfile | null }>() || {};
+  const { refreshNotifications, userProfile } = useDashboard() || {};
 
   useEffect(() => {
     fetchData();
@@ -385,67 +385,67 @@ const RequestsPage: React.FC = () => {
                       </div>
                   </div>
               )}
-          </div>
-      )}
 
-      {/* MODAL DE AVISO */}
-      {warningMessage && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <div className="bg-gray-900 border border-white/10 p-6 rounded-lg shadow-xl w-full max-w-sm text-center">
-             <div className="bg-yellow-900/20 p-3 rounded-full inline-block mb-4"><AlertTriangle className="text-yellow-500" size={32} /></div>
-             <h3 className="text-lg font-bold text-white mb-2">Atenção</h3>
-             <p className="text-gray-400 mb-6">{warningMessage}</p>
-             <button onClick={() => setWarningMessage(null)} className="w-full px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 font-bold transition">Entendi</button>
-          </div>
-        </div>
-      )}
+              {/* MODAL DE AVISO */}
+              {warningMessage && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+                  <div className="bg-gray-900 border border-white/10 p-6 rounded-lg shadow-xl w-full max-w-sm text-center">
+                     <div className="bg-yellow-900/20 p-3 rounded-full inline-block mb-4"><AlertTriangle className="text-yellow-500" size={32} /></div>
+                     <h3 className="text-lg font-bold text-white mb-2">Atenção</h3>
+                     <p className="text-gray-400 mb-6">{warningMessage}</p>
+                     <button onClick={() => setWarningMessage(null)} className="w-full px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 font-bold transition">Entendi</button>
+                  </div>
+                </div>
+              )}
 
-      {/* MODAL RECUSA */}
-      {rejectId && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <div className="bg-gray-900 border border-white/10 p-6 rounded-lg shadow-xl w-full max-w-sm text-center">
-             <div className="bg-red-900/20 p-3 rounded-full inline-block mb-4"><AlertTriangle className="text-red-500" size={32} /></div>
-             <h3 className="text-lg font-bold text-white mb-2">Recusar Solicitação?</h3>
-             <p className="text-gray-400 mb-4 text-sm">O paciente receberá um e-mail informando que o agendamento não foi possível.</p>
-             <div className="flex space-x-3 w-full">
-                <button onClick={() => setRejectId(null)} disabled={processing} className="flex-1 px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 font-bold transition">Cancelar</button>
-                <button onClick={() => { const req = requests.find(r => r.id === rejectId); if (req) handleRequestAction(req, 'rejected'); }} disabled={processing} className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold transition shadow-lg">{processing ? <Loader2 className="animate-spin" size={16}/> : 'Sim, Recusar'}</button>
-             </div>
-          </div>
-        </div>
-      )}
+              {/* MODAL RECUSA */}
+              {rejectId && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+                  <div className="bg-gray-900 border border-white/10 p-6 rounded-lg shadow-xl w-full max-w-sm text-center">
+                     <div className="bg-red-900/20 p-3 rounded-full inline-block mb-4"><AlertTriangle className="text-red-500" size={32} /></div>
+                     <h3 className="text-lg font-bold text-white mb-2">Recusar Solicitação?</h3>
+                     <p className="text-gray-400 mb-4 text-sm">O paciente receberá um e-mail informando que o agendamento não foi possível.</p>
+                     <div className="flex space-x-3 w-full">
+                        <button onClick={() => setRejectId(null)} disabled={processing} className="flex-1 px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 font-bold transition">Cancelar</button>
+                        <button onClick={() => { const req = requests.find(r => r.id === rejectId); if (req) handleRequestAction(req, 'rejected'); }} disabled={processing} className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold transition shadow-lg">{processing ? <Loader2 className="animate-spin" size={16}/> : 'Sim, Recusar'}</button>
+                     </div>
+                  </div>
+                </div>
+              )}
 
-      {/* MODAL ACEITE */}
-      {acceptId && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <div className="bg-gray-900 border border-white/10 p-6 rounded-lg shadow-xl w-full max-w-sm text-center">
-             <div className="bg-green-900/20 p-3 rounded-full inline-block mb-4"><CalendarCheck className="text-green-500" size={32} /></div>
-             <h3 className="text-lg font-bold text-white mb-2">Confirmar Agendamento?</h3>
-             <p className="text-gray-400 mb-6 text-sm">Deseja confirmar para <strong>{requests.find(r => r.id === acceptId)?.patient_name}</strong>?</p>
-             <div className="flex space-x-3 w-full">
-                <button onClick={() => setAcceptId(null)} disabled={processing} className="flex-1 px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 font-bold transition">Cancelar</button>
-                <button onClick={() => { const req = requests.find(r => r.id === acceptId); if (req) handleRequestAction(req, 'accepted'); }} disabled={processing} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold transition shadow-lg">{processing ? <Loader2 className="animate-spin" size={16}/> : 'Sim, Confirmar'}</button>
-             </div>
-          </div>
-        </div>
-      )}
+              {/* MODAL ACEITE */}
+              {acceptId && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+                  <div className="bg-gray-900 border border-white/10 p-6 rounded-lg shadow-xl w-full max-w-sm text-center">
+                     <div className="bg-green-900/20 p-3 rounded-full inline-block mb-4"><CalendarCheck className="text-green-500" size={32} /></div>
+                     <h3 className="text-lg font-bold text-white mb-2">Confirmar Agendamento?</h3>
+                     <p className="text-gray-400 mb-6 text-sm">Deseja confirmar para <strong>{requests.find(r => r.id === acceptId)?.patient_name}</strong>?</p>
+                     <div className="flex space-x-3 w-full">
+                        <button onClick={() => setAcceptId(null)} disabled={processing} className="flex-1 px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 font-bold transition">Cancelar</button>
+                        <button onClick={() => { const req = requests.find(r => r.id === acceptId); if (req) handleRequestAction(req, 'accepted'); }} disabled={processing} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold transition shadow-lg">{processing ? <Loader2 className="animate-spin" size={16}/> : 'Sim, Confirmar'}</button>
+                     </div>
+                  </div>
+                </div>
+              )}
 
-      {showHelp && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <div className="bg-gray-900 border border-white/10 p-6 rounded-lg shadow-xl w-full max-w-lg">
-             <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
-                <h3 className="text-xl font-bold flex items-center text-white gap-2"><HelpCircle className="text-primary"/> Central de Notificações</h3>
-                <button onClick={() => setShowHelp(false)} className="text-gray-400 hover:text-white"><X size={20}/></button>
-             </div>
-             <div className="space-y-4 text-sm text-gray-400">
-                <p>Aqui você gerencia tudo o que chega para a clínica:</p>
-                <ul className="list-disc pl-5 space-y-2">
-                   <li><strong>Respostas de E-mail:</strong> Quando um paciente interage com o lembrete.</li>
-                   <li><strong>Pedidos Online:</strong> Solicitações de agendamento via link público.</li>
-                </ul>
-             </div>
+              {showHelp && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+                  <div className="bg-gray-900 border border-white/10 p-6 rounded-lg shadow-xl w-full max-w-lg">
+                     <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
+                        <h3 className="text-xl font-bold flex items-center text-white gap-2"><HelpCircle className="text-primary"/> Central de Notificações</h3>
+                        <button onClick={() => setShowHelp(false)} className="text-gray-400 hover:text-white"><X size={20}/></button>
+                     </div>
+                     <div className="space-y-4 text-sm text-gray-400">
+                        <p>Aqui você gerencia tudo o que chega para a clínica:</p>
+                        <ul className="list-disc pl-5 space-y-2">
+                           <li><strong>Respostas de E-mail:</strong> Quando um paciente interage com o lembrete.</li>
+                           <li><strong>Pedidos Online:</strong> Solicitações de agendamento via link público.</li>
+                        </ul>
+                     </div>
+                  </div>
+                </div>
+              )}
           </div>
-        </div>
       )}
     </div>
   );

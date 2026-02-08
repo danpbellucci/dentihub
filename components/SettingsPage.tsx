@@ -5,7 +5,8 @@ import { UserProfile, ClinicRole } from '../types';
 import { Save, Loader2, Shield, Users, CreditCard, Trash2, AlertTriangle, CheckCircle, X, Building, Upload, Copy, Send, Zap, Settings, Lock, Plus, Pencil, Bell, Folder, Box, Gift, Award, Clock } from 'lucide-react';
 import Toast, { ToastType } from './Toast';
 import SubscriptionPaymentModal from './SubscriptionPaymentModal';
-import { useOutletContext, useNavigate, useLocation } from 'react-router-dom';
+import { useDashboard } from './DashboardLayout';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import { format, parseISO } from 'date-fns';
@@ -32,7 +33,7 @@ const NOTIFICATION_TYPES = [
 const DEFAULT_ROLES: ClinicRole[] = [ { name: 'dentist', label: 'Dentista' }, { name: 'employee', label: 'Funcionário' } ];
 
 const SettingsPage: React.FC = () => {
-  const { userProfile: contextProfile, refreshProfile } = useOutletContext<{ userProfile: UserProfile | null; refreshProfile?: () => Promise<void>; }>() || {};
+  const { userProfile: contextProfile, refreshProfile } = useDashboard() || {};
   const navigate = useNavigate();
   const location = useLocation();
   const [loading, setLoading] = useState(true);
@@ -77,7 +78,6 @@ const SettingsPage: React.FC = () => {
       }
   }, [contextProfile?.clinic_id, location.state]);
 
-  // Carregar indicados quando a aba for aberta
   useEffect(() => {
       if (activeTab === 'referrals' && clinicData?.id) {
           fetchReferredClinics();
@@ -123,38 +123,23 @@ const SettingsPage: React.FC = () => {
   const fetchReferredClinics = async () => {
       setLoadingReferrals(true);
       try {
-          // Usa a nova RPC para buscar clínicas + contagem de pacientes
           const { data, error } = await supabase.rpc('get_my_referrals_stats');
-          
-          if (error) {
-              console.error("Erro RPC:", error);
-              throw error;
-          }
+          if (error) throw error;
           setReferredClinics(data || []);
       } catch (err: any) {
-          console.error("Erro ao buscar indicações:", err);
-          // Se der erro na RPC (ex: 404 se não foi criada), tenta fallback básico sem contagem
           if (err.message?.includes('function') || err.code === 'PGRST202') {
              try {
-                const { data: fallbackData } = await supabase
-                    .from('clinics')
-                    .select('id, name, created_at, subscription_tier')
-                    .eq('referred_by', clinicData.id);
+                const { data: fallbackData } = await supabase.from('clinics').select('id, name, created_at, subscription_tier').eq('referred_by', clinicData.id);
                 setReferredClinics(fallbackData || []);
-                setToast({ message: "Aviso: Contagem de pacientes indisponível. Execute o script SQL.", type: 'warning' });
-             } catch (e) {
-                 setReferredClinics([]);
-             }
+             } catch (e) { setReferredClinics([]); }
           }
-      } finally {
-          setLoadingReferrals(false);
-      }
+      } finally { setLoadingReferrals(false); }
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
-    if (file.size > 2 * 1024 * 1024) { setToast({ message: "Máximo 2MB.", type: 'warning' }); return; }
+    if (file.size > 5 * 1024 * 1024) { setToast({ message: "Máximo 5MB.", type: 'warning' }); return; }
     setUploadingLogo(true);
     try {
         const fileExt = file.name.split('.').pop();
@@ -177,7 +162,18 @@ const SettingsPage: React.FC = () => {
       let slug = clinicData.slug || sanitizeSlug(clinicData.name);
       if (/^[0-9a-f]{8}-/.test(slug)) slug = sanitizeSlug(clinicData.name);
       const { data: existing } = await supabase.from('clinics').select('id').eq('id', clinicData.id).maybeSingle();
-      const payload = { name: clinicData.name, slug, address: clinicData.address, city: clinicData.city, state: clinicData.state, phone: clinicData.phone, whatsapp: clinicData.whatsapp, email: clinicData.email, logo_url: clinicData.logo_url };
+      const payload = { 
+          name: clinicData.name, 
+          slug, 
+          address: clinicData.address, 
+          city: clinicData.city, 
+          state: clinicData.state, 
+          phone: clinicData.phone, 
+          whatsapp: clinicData.whatsapp, 
+          email: clinicData.email, 
+          logo_url: clinicData.logo_url,
+          observation: clinicData.observation 
+      };
       if (existing) await supabase.from('clinics').update(payload).eq('id', clinicData.id); else await supabase.from('clinics').insert({ id: clinicData.id, ...payload, subscription_tier: 'free' });
       setToast({ message: "Perfil atualizado!", type: 'success' }); if (refreshProfile) await refreshProfile();
     } catch (err: any) { setToast({ message: "Erro: " + err.message, type: 'error' }); } finally { setSaving(false); }
@@ -259,7 +255,18 @@ const SettingsPage: React.FC = () => {
                             <div><label className="block text-sm font-medium text-gray-400 mb-1">Telefone</label><input className="w-full bg-gray-800 border border-gray-700 rounded p-2.5 text-white" value={clinicData.phone || ''} onChange={e => setClinicData({...clinicData, phone: maskPhone(e.target.value)})} maxLength={15}/></div>
                             <div><label className="block text-sm font-medium text-gray-400 mb-1">WhatsApp</label><input className="w-full bg-gray-800 border border-gray-700 rounded p-2.5 text-white" value={clinicData.whatsapp || ''} onChange={e => setClinicData({...clinicData, whatsapp: maskPhone(e.target.value)})} maxLength={15}/></div>
                         </div>
-                        <div><label className="block text-sm font-medium text-gray-400 mb-1">E-mail</label><input type="email" className="w-full bg-gray-800 border border-gray-700 rounded p-2.5 text-white" value={clinicData.email || ''} onChange={e => setClinicData({...clinicData, email: e.target.value})} /></div>
+                        
+                        <div><label className="block text-sm font-medium text-gray-400 mb-1">E-mail de contato</label><input type="email" className="w-full bg-gray-800 border border-gray-700 rounded p-2.5 text-white" value={clinicData.email || ''} onChange={e => setClinicData({...clinicData, email: e.target.value})} /></div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium text-gray-400 mb-1">Observações</label>
+                            <textarea 
+                                className="w-full bg-gray-800 border border-gray-700 rounded p-2.5 text-white focus:border-primary outline-none resize-none h-24" 
+                                value={clinicData.observation || ''} 
+                                onChange={e => setClinicData({...clinicData, observation: e.target.value})} 
+                                placeholder="Informações adicionais sobre a clínica..."
+                            />
+                        </div>
                         
                         <div>
                             <label className="block text-sm font-medium text-gray-400 mb-2">Logo</label>
@@ -282,8 +289,7 @@ const SettingsPage: React.FC = () => {
                     </div>
                 </div>
             )}
-
-            {/* TAB: REFERRALS (INDICAÇÕES) */}
+            
             {activeTab === 'referrals' && (
                 <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow-sm p-6 animate-fade-in border border-white/5">
                     <h2 className="text-xl font-bold text-white mb-6 pb-2 border-b border-white/10 flex items-center gap-2">
@@ -386,12 +392,9 @@ const SettingsPage: React.FC = () => {
                     </div>
                 </div>
             )}
-
-            {/* ... Other Tabs ... */}
             
             {activeTab === 'team' && (
                 <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow-sm p-6 animate-fade-in border border-white/5">
-                    {/* ... (Team Content) ... */}
                     <h2 className="text-xl font-bold text-white mb-6 pb-2 border-b border-white/10">Gestão de Acessos</h2>
                     <div className="mb-8">
                         <label className="block text-sm font-bold text-gray-400 mb-2">Convidar membro</label>
@@ -573,8 +576,8 @@ const SettingsPage: React.FC = () => {
             {memberToDelete && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"><div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-6 w-full max-w-sm text-center"><h3 className="text-xl font-bold text-white mb-2">Remover Membro?</h3><div className="flex flex-col gap-3"><button onClick={confirmDeleteMember} disabled={!!deletingMemberId} className="w-full bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition shadow-md">{deletingMemberId ? <Loader2 className="animate-spin mr-2" size={18}/> : 'Sim, Remover'}</button><button onClick={() => setMemberToDelete(null)} disabled={!!deletingMemberId} className="w-full bg-gray-800 text-gray-300 py-3 rounded-lg font-bold hover:bg-gray-700 transition">Cancelar</button></div></div></div>}
             {showDeleteAccountModal && <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"><div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-6 w-full max-w-md"><h3 className="text-xl font-bold text-red-500 mb-4">Excluir Conta?</h3><label className="flex items-start cursor-pointer"><input type="checkbox" className="mt-1 mr-3 h-5 w-5 bg-gray-800 border-gray-600 text-red-600" checked={deleteConfirmed} onChange={(e) => setDeleteConfirmed(e.target.checked)} /><span className="text-sm text-gray-300">Estou ciente de que esta ação é <strong>irreversível</strong>.</span></label><div className="flex gap-3 justify-end mt-6"><button onClick={() => setShowDeleteAccountModal(false)} disabled={isDeletingAccount} className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg font-bold hover:bg-gray-700">Cancelar</button><button onClick={handleDeleteAccount} disabled={!deleteConfirmed || isDeletingAccount} className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 flex items-center">{isDeletingAccount ? <Loader2 className="animate-spin mr-2" size={18}/> : <Trash2 className="mr-2" size={18}/>}Confirmar</button></div></div></div>}
         </div>
-        </div>
-        </div>
+      </div>
+    </div>
   );
 };
 
