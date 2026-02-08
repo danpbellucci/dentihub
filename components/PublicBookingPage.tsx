@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import { Dentist, ServiceItem } from '../types';
 import { Logo } from './Logo';
-import { Smile, Clock, CheckCircle, MapPin, Info, Phone, ShieldCheck, Smartphone, ArrowLeft, AlertTriangle, Loader2 } from 'lucide-react';
+import { Smile, Clock, CheckCircle, MapPin, Info, Phone, ShieldCheck, Smartphone, ArrowLeft, AlertTriangle, Loader2, Calendar } from 'lucide-react';
 import { addDays, format, startOfToday, addMinutes, parseISO, isAfter, startOfDay, endOfDay, areIntervalsOverlapping } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { validateCPF } from '../utils/validators';
@@ -18,7 +18,7 @@ const PublicBookingPage: React.FC = () => {
   const [step, setStep] = useState(1);
   const [selectedDentist, setSelectedDentist] = useState<Dentist | null>(null);
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(startOfToday());
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [loadingSlots, setLoadingSlots] = useState(false);
@@ -440,20 +440,26 @@ const PublicBookingPage: React.FC = () => {
                 <h2 className="text-xl font-bold mb-6 text-white flex items-center"><span className="bg-primary text-white w-6 h-6 rounded-full flex items-center justify-center text-xs mr-3">3</span> Escolha Data e Horário</h2>
                 
                 <div className="bg-gray-900/60 backdrop-blur-md p-6 rounded-xl shadow-lg border border-white/5 mb-6">
-                    <label className="block text-sm font-bold text-gray-400 mb-3">Data Disponível</label>
-                    <div className="flex space-x-2 overflow-x-auto pb-2 custom-scrollbar">
-                        {Array.from({length: 14}).map((_, i) => {
-                            const date = addDays(startOfToday(), i); 
-                            const isSelected = format(date, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd');
-                            const blocked = isDateBlocked(date);
-                            return (
-                                <button key={i} disabled={blocked} onClick={() => setSelectedDate(date)} className={`flex-shrink-0 w-16 h-20 rounded-xl flex flex-col items-center justify-center border transition-all ${blocked ? 'bg-gray-800/50 opacity-30 cursor-not-allowed border-transparent' : isSelected ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'bg-gray-800 border-white/5 text-gray-400 hover:bg-gray-700 hover:text-white'}`}>
-                                    <span className="text-[10px] uppercase font-bold tracking-wider">{format(date, 'EEE', {locale: ptBR})}</span>
-                                    <span className={`text-xl font-black ${blocked ? 'line-through' : ''}`}>{format(date, 'd')}</span>
-                                </button>
-                            )
-                        })}
+                    <label className="block text-sm font-bold text-gray-400 mb-3">Selecione a Data</label>
+                    <div className="relative">
+                        <Calendar className="absolute left-4 top-1/2 transform -translate-y-1/2 text-primary pointer-events-none" size={24} />
+                        <input
+                            type="date"
+                            min={format(startOfToday(), 'yyyy-MM-dd')}
+                            value={format(selectedDate, 'yyyy-MM-dd')}
+                            onChange={(e) => {
+                                if (!e.target.value) return;
+                                const [y, m, d] = e.target.value.split('-').map(Number);
+                                const newDate = new Date(y, m - 1, d);
+                                setSelectedDate(newDate);
+                                setSelectedTime('');
+                            }}
+                            className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-12 pr-4 py-4 text-white text-lg font-bold focus:ring-2 focus:ring-primary outline-none transition-all cursor-pointer hover:bg-gray-750"
+                        />
                     </div>
+                    <p className="mt-3 text-primary font-medium text-center text-sm">
+                        {format(selectedDate, "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                    </p>
                 </div>
 
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 min-h-[200px]">
