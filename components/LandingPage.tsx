@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../services/supabase';
@@ -10,7 +9,7 @@ import {
   TrendingUp, TrendingDown, Filter, ArrowRight, ArrowDown, Lock, Image as ImageIcon,
   ChevronLeft, ChevronRight, Plus, Folder, Brain, Clock, MoreHorizontal, FileText, Trash2,
   BookOpen, Settings, HelpCircle, AlertTriangle, Box, Cloud, Edit2, ArrowUpCircle, ArrowDownCircle, CreditCard,
-  ChevronDown, Upload, User, RefreshCw, Save
+  ChevronDown, Upload, User, RefreshCw, Save, Crown
 } from 'lucide-react';
 import Toast, { ToastType } from './Toast';
 
@@ -27,6 +26,10 @@ const LandingPage: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mockupMobileMenuOpen, setMockupMobileMenuOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+
+  // States for Enterprise Calculator
+  const [entDentists, setEntDentists] = useState(6);
+  const [entAiUsage, setEntAiUsage] = useState(20);
 
   const features = [
     {
@@ -1094,7 +1097,7 @@ const LandingPage: React.FC = () => {
             <p className="mt-4 text-gray-400">Comece grátis e cresça conforme sua clínica expande.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
             {/* Free */}
             <div className="bg-gray-900/40 backdrop-blur rounded-2xl border border-white/5 p-8 relative flex flex-col hover:border-white/20 transition-colors">
               <h3 className="text-lg font-bold text-white">Gratuito</h3>
@@ -1132,6 +1135,51 @@ const LandingPage: React.FC = () => {
               </ul>
               <button onClick={() => goToAuth('signup')} className="w-full py-3 rounded-lg bg-white text-gray-900 font-bold hover:bg-gray-100 transition">Assinar Pro</button>
             </div>
+
+            {/* Enterprise - Custom */}
+            <div className="border border-purple-500/30 bg-gradient-to-b from-purple-900/20 to-gray-900 rounded-xl p-6 flex flex-col relative overflow-hidden ring-1 ring-purple-500/50">
+                <div className="absolute top-0 right-0 p-2"><Crown size={20} className="text-purple-400"/></div>
+                <h4 className="font-bold text-purple-400 text-lg flex items-center gap-2">Enterprise</h4>
+                <p className="text-xs text-gray-400 mb-4 mt-1">Acima de 5 dentistas</p>
+                
+                <div className="space-y-4 mb-4 flex-1">
+                    <div>
+                        <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Dentistas ({entDentists})</label>
+                        <input 
+                            type="range" min="6" max="50" step="1" 
+                            value={entDentists} 
+                            onChange={(e) => setEntDentists(parseInt(e.target.value))}
+                            className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                        />
+                        <div className="text-right text-xs text-purple-300 font-bold">R$ {entDentists * 60},00</div>
+                    </div>
+                    
+                    <div>
+                        <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Usos IA/dia/dentista ({entAiUsage})</label>
+                        <select 
+                            value={entAiUsage} 
+                            onChange={(e) => setEntAiUsage(parseInt(e.target.value))}
+                            className="w-full bg-gray-800 border border-gray-600 rounded text-xs text-white p-1"
+                        >
+                            {[5, 10, 15, 20, 25, 30, 50].map(v => <option key={v} value={v}>{v} usos</option>)}
+                        </select>
+                        <div className="text-right text-xs text-purple-300 font-bold mt-1">
+                            + R$ {Math.ceil(entAiUsage / 5) * 15 * entDentists},00
+                        </div>
+                    </div>
+
+                    <div className="bg-purple-900/30 p-3 rounded border border-purple-500/30 mt-2">
+                        <div className="flex justify-between items-center text-sm font-bold text-white">
+                            <span>Total:</span>
+                            <span>R$ {(entDentists * 60) + (Math.ceil(entAiUsage / 5) * 15 * entDentists)},00</span>
+                        </div>
+                        <span className="text-[10px] text-purple-300 block text-right">/mês</span>
+                    </div>
+                </div>
+                
+                <button onClick={() => goToAuth('signup')} className="w-full py-2 bg-purple-600 text-white rounded font-bold hover:bg-purple-500 transition shadow-lg shadow-purple-900/20 text-sm">Contratar Enterprise</button>
+            </div>
+
           </div>
         </div>
         
@@ -1144,6 +1192,13 @@ const LandingPage: React.FC = () => {
             <Logo className="w-6 h-6" />
             <span>Denti<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Hub</span></span>
           </div>
+          
+          <div className="mb-6">
+            <button onClick={() => navigate('/blog')} className="text-gray-400 hover:text-white transition-colors font-medium">
+                Blog
+            </button>
+          </div>
+
           <p className="text-gray-500 text-sm mb-2">© {new Date().getFullYear()} DentiHub. Todos os direitos reservados.</p>
           <p className="text-gray-500 text-sm">Contato: <a href="mailto:contato@dentihub.com.br" className="hover:text-white transition-colors">contato@dentihub.com.br</a></p>
         </div>

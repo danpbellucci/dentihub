@@ -456,7 +456,11 @@ const SettingsPage: React.FC = () => {
                                 <li className="flex items-center text-sm text-gray-400"><CheckCircle size={16} className="mr-2 text-gray-600"/> Até 30 Pacientes</li>
                                 <li className="flex items-center text-sm text-gray-400"><CheckCircle size={16} className="mr-2 text-gray-600"/> IA (3 usos totais)</li>
                             </ul>
-                            <button disabled className="w-full py-2 bg-gray-700 text-gray-400 rounded font-bold">Plano Atual</button>
+                            {currentTier === 'free' ? (
+                                <button disabled className="w-full py-2 bg-gray-700 text-gray-400 rounded font-bold">Plano Atual</button>
+                            ) : (
+                                <button disabled className="w-full py-2 bg-gray-800 text-gray-600 rounded font-bold border border-white/5 opacity-50">Incluído</button>
+                            )}
                         </div>
                         
                         {/* Starter */}

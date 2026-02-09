@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from './services/supabase';
@@ -20,6 +21,7 @@ import GuidePage from './components/GuidePage';
 import InventoryPage from './components/InventoryPage'; 
 import AppointmentActionPage from './components/AppointmentActionPage';
 import LearnMorePage from './components/LearnMorePage';
+import BlogPage from './components/BlogPage';
 import SuperAdminPage from './components/SuperAdminPage';
 import SuperAdminCampaigns from './components/SuperAdminCampaigns';
 import SuperAdminLeads from './components/SuperAdminLeads';
@@ -185,6 +187,7 @@ const App: React.FC = () => {
           {/* Specific Public Routes */}
           <Route path="/encontrar-clinica" element={<FindClinicPage />} />
           <Route path="/entenda" element={<LearnMorePage />} />
+          <Route path="/blog" element={<BlogPage />} />
           <Route path="/auth" element={<AuthPage />} />
           
           {/* Rota de senha acessível diretamente */}
