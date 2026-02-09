@@ -8,47 +8,23 @@ declare const Deno: {
   serve(handler: (req: Request) => Promise<Response>): void;
 };
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
-async function sendEmail(apiKey: string, to: string, subject: string, html: string, replyTo: string) {
-    const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-            from: "DentiHub <naoresponda@dentihub.com.br>",
-            to: [to],
-            subject: subject,
-            html: html,
-            reply_to: replyTo
-        })
-    });
-
-    if (!res.ok) {
-        const data = await res.json();
-        throw new Error(`Erro Resend: ${data.message || data.name}`);
-    }
-    return await res.json();
-}
-
-const getUnsubscribeLink = (email: string) => {
-    return `https://dentihub.com.br/#/?action=unsubscribe&email=${encodeURIComponent(email)}`;
-};
-
-const getFooter = (email: string) => `
-    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; font-size: 11px; color: #999;">
-        <p>Você recebeu este e-mail porque se cadastrou em nossa lista de interesse.</p>
-        <p><a href="${getUnsubscribeLink(email)}" style="color: #999; text-decoration: underline;">Parar de receber estes e-mails</a></p>
-    </div>
-`;
-
 Deno.serve(async (req) => {
+  // Configuração de CORS Segura
+  const origin = req.headers.get('origin') ?? '';
+  const allowedOrigins = [
+    'http://localhost:5173', 
+    'https://dentihub.com.br', 
+    'https://www.dentihub.com.br', 
+    'https://app.dentihub.com.br'
+  ];
+  const corsOrigin = allowedOrigins.includes(origin) ? origin : 'https://dentihub.com.br';
+
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': corsOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
+
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
@@ -60,6 +36,41 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
     const { type, email } = await req.json();
+
+    // Helper de envio de e-mail
+    async function sendEmail(apiKey: string, to: string, subject: string, html: string, replyTo: string) {
+        const res = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                from: "DentiHub <naoresponda@dentihub.com.br>",
+                to: [to],
+                subject: subject,
+                html: html,
+                reply_to: replyTo
+            })
+        });
+
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(`Erro Resend: ${data.message || data.name}`);
+        }
+        return await res.json();
+    }
+
+    const getUnsubscribeLink = (email: string) => {
+        return `https://dentihub.com.br/#/?action=unsubscribe&email=${encodeURIComponent(email)}`;
+    };
+
+    const getFooter = (email: string) => `
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; font-size: 11px; color: #999;">
+            <p>Você recebeu este e-mail porque se cadastrou em nossa lista de interesse.</p>
+            <p><a href="${getUnsubscribeLink(email)}" style="color: #999; text-decoration: underline;">Parar de receber estes e-mails</a></p>
+        </div>
+    `;
 
     // 1. BOAS VINDAS (Imediato)
     if (type === 'welcome_lead' && email) {

@@ -7,6 +7,7 @@ import {
   Eye, Code, Loader2, CheckCircle, AlertTriangle, MessageSquare, X, Mail
 } from 'lucide-react';
 import Toast, { ToastType } from './Toast';
+import DOMPurify from 'dompurify';
 
 interface Message {
     role: 'user' | 'ai';
@@ -295,9 +296,10 @@ const SuperAdminCampaigns: React.FC = () => {
                     <div className="flex-1 overflow-hidden relative">
                         {viewMode === 'preview' ? (
                             <div className="w-full h-full overflow-y-auto bg-gray-100 p-8 flex justify-center">
+                                {/* HTML Sanitized via DOMPurify */}
                                 <div 
                                     className="bg-white w-full max-w-[600px] shadow-lg min-h-[400px] p-0"
-                                    dangerouslySetInnerHTML={{ __html: htmlContent || '<div style="padding:40px; text-align:center; color:#ccc;">O conteúdo do e-mail aparecerá aqui.</div>' }}
+                                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent || '<div style="padding:40px; text-align:center; color:#ccc;">O conteúdo do e-mail aparecerá aqui.</div>') }}
                                 />
                             </div>
                         ) : (

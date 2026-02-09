@@ -39,9 +39,18 @@ async function sendEmailViaResend(apiKey: string, to: string[], subject: string,
 }
 
 Deno.serve(async (req) => {
-  // CORS Permissivo (*)
+  const origin = req.headers.get('origin') ?? '';
+  
+  // HARDENED SECURITY: Localhost removido
+  const allowedOrigins = [
+    'https://dentihub.com.br', 
+    'https://www.dentihub.com.br', 
+    'https://app.dentihub.com.br'
+  ];
+  const corsOrigin = allowedOrigins.includes(origin) ? origin : 'https://dentihub.com.br';
+
   const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': corsOrigin,
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   };
@@ -74,7 +83,7 @@ Deno.serve(async (req) => {
     let user;
     if (authHeader.includes(supabaseServiceKey)) {
         // Chamada interna confiável, não precisa validar usuário
-        user = { id: 'system' };
+        user = { id: 'system', email: 'system@dentihub.com.br' };
     } else {
         const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, { global: { headers: { Authorization: authHeader } } });
         const { data } = await supabaseAuth.auth.getUser(authHeader.replace('Bearer ', ''));
@@ -102,16 +111,35 @@ Deno.serve(async (req) => {
 
     // 1. SUPORTE
     if (type === 'support_ticket') {
-        const htmlContent = `User: ${userName} (${contactEmail})<br>Msg: ${message}`;
+        // Sanitização básica: message é tratado como texto puro no template
+        const safeMessage = (message || '').replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const safeUserName = (userName || 'Usuário').replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        
+        const htmlContent = `User: ${safeUserName} (${contactEmail})<br>Msg: ${safeMessage}`;
         await sendEmailViaResend(resendApiKey, ['contato@dentihub.com.br'], `[Suporte] ${reqSubject}`, htmlContent, 'DentiHub System', contactEmail);
         success = true;
     } 
-    // 2. MARKETING EM MASSA
+    // 2. MARKETING EM MASSA (PERIGOSO - REQUER VALIDAÇÃO DE SUPER ADMIN)
     else if (type === 'marketing_campaign') {
+        // Validação de Segurança: Verifica se o usuário é um Super Admin na tabela
+        const { data: isSuperAdmin } = await supabaseAdmin
+            .from('super_admins')
+            .select('id')
+            .eq('email', user.email)
+            .maybeSingle();
+
+        if (!isSuperAdmin && user.id !== 'system') {
+            return new Response(JSON.stringify({ error: "Não autorizado. Apenas Super Admins podem enviar campanhas customizadas." }), {
+                status: 403,
+                headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
+        }
+
         if (recipients && Array.isArray(recipients) && reqSubject && reqHtmlContent) {
             for (const r of recipients) {
                 if(r.email) {
                     try {
+                        // Aqui permitimos o HTML customizado pois validamos o Admin
                         await sendEmailViaResend(resendApiKey, [r.email], reqSubject, reqHtmlContent, clinicName, clinicEmail);
                         results.count++;
                     } catch (err) {
@@ -124,6 +152,7 @@ Deno.serve(async (req) => {
     }
     // 3. AGENDAMENTO (Criação, Edição ou Cancelamento)
     else if (type === 'appointment' && client) {
+        // Usa templates fixos - IGNORA reqHtmlContent
         const baseUrl = 'https://dentihub.com.br';
         let subject = '';
         let htmlContent = '';
@@ -174,6 +203,7 @@ Deno.serve(async (req) => {
     }
     // 4. NOVA SOLICITAÇÃO DE AGENDAMENTO (Notificação para a Clínica)
     else if (type === 'new_request_notification' && requestDetails) {
+        // Usa templates fixos - IGNORA reqHtmlContent
         const { patientName, serviceName, requestedTime, dentistName, patientPhone } = requestDetails;
         
         const dateObj = new Date(requestedTime);
@@ -215,8 +245,9 @@ Deno.serve(async (req) => {
         }
         success = true;
     }
-    // 5. NOTIFICAÇÃO PARA O PACIENTE (Solicitação Recebida) - NOVO
+    // 5. NOTIFICAÇÃO PARA O PACIENTE (Solicitação Recebida)
     else if (type === 'request_received_patient' && client && requestDetails) {
+        // Usa templates fixos - IGNORA reqHtmlContent
         const { patientName, serviceName, requestedTime, dentistName } = requestDetails;
         
         const dateObj = new Date(requestedTime);
@@ -340,6 +371,7 @@ Deno.serve(async (req) => {
     }
     // 9. RECALL / WELCOME
     else if ((type === 'recall' || type === 'welcome') && recipients) {
+         // Usa templates fixos - IGNORA reqHtmlContent
          const subject = type === 'recall' 
             ? `Como está o seu sorriso? 🦷 - ${clinicName}`
             : `Bem-vindo(a) à ${clinicName}!`;

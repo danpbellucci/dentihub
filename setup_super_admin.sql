@@ -1,22 +1,44 @@
 
 -- ============================================================================
--- CONFIGURAÇÃO DE SUPER ADMIN (GOD MODE)
+-- CONFIGURAÇÃO DE SUPER ADMIN (GOD MODE) - VERSÃO SEGURA (Tabela)
 -- ============================================================================
--- Este script concede acesso irrestrito de leitura e escrita a todas as clínicas
--- para o usuário especificado, ignorando o isolamento de dados (multitenancy).
 
--- 1. Criar função verificadora de Super Admin
+-- 1. Criar tabela de admins
+CREATE TABLE IF NOT EXISTS public.super_admins (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.super_admins ENABLE ROW LEVEL SECURITY;
+
+-- Bloquear acesso direto via API
+DROP POLICY IF EXISTS "No API access" ON public.super_admins;
+CREATE POLICY "No API access" ON public.super_admins FOR ALL USING (false);
+
+-- Inserir Admin Inicial
+INSERT INTO public.super_admins (email)
+VALUES ('danilobellucci@gmail.com')
+ON CONFLICT (email) DO NOTHING;
+
+-- 2. Criar função verificadora
 CREATE OR REPLACE FUNCTION public.is_super_admin()
 RETURNS BOOLEAN
-LANGUAGE sql
-SECURITY DEFINER -- Roda com privilégios de sistema para ler o JWT com segurança
+LANGUAGE plpgsql
+SECURITY DEFINER -- Roda com privilégios de sistema
+SET search_path = public
 STABLE
 AS $$
-  -- Substitua o e-mail abaixo se precisar adicionar mais admins no futuro
-  SELECT auth.jwt() ->> 'email' = 'danilobellucci@gmail.com';
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 
+    FROM public.super_admins 
+    WHERE email = (auth.jwt() ->> 'email')
+  );
+END;
 $$;
 
--- 2. Atualizar Políticas RLS para incluir o bypass do Super Admin
+-- 3. Atualizar Políticas RLS para incluir o bypass do Super Admin
 
 -- --- CLINICS ---
 DROP POLICY IF EXISTS "Ver Clinica Vinculada" ON public.clinics;
@@ -100,7 +122,6 @@ FOR ALL USING (
 );
 
 -- --- APPOINTMENT REQUESTS ---
--- (Insert público mantido separado, update/delete restrito)
 DROP POLICY IF EXISTS "Membros Requests" ON public.appointment_requests;
 CREATE POLICY "Membros Requests" ON public.appointment_requests
 FOR ALL USING ( 
@@ -127,8 +148,6 @@ FOR SELECT USING (
   clinic_id = get_my_clinic_id() OR is_super_admin()
 );
 
--- Permissão de escrita para configs (Roles, Permissões, Notificações)
--- Normalmente restrito a Admin da clínica, mas Super Admin também pode
 DROP POLICY IF EXISTS "Admins gerenciam roles" ON public.clinic_roles;
 CREATE POLICY "Admins gerenciam roles" ON public.clinic_roles
 FOR ALL USING (

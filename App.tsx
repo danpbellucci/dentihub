@@ -22,6 +22,7 @@ import InventoryPage from './components/InventoryPage';
 import AppointmentActionPage from './components/AppointmentActionPage';
 import LearnMorePage from './components/LearnMorePage';
 import BlogPage from './components/BlogPage';
+import AboutPage from './components/AboutPage';
 import SuperAdminPage from './components/SuperAdminPage';
 import SuperAdminCampaigns from './components/SuperAdminCampaigns';
 import SuperAdminLeads from './components/SuperAdminLeads';
@@ -92,16 +93,8 @@ const SuperAdminRoute = ({ children }: { children?: React.ReactNode }) => {
     useEffect(() => {
         const verifyAdmin = async () => {
             try {
-                // 1. Verificação Rápida de E-mail (Front-end First Layer)
-                const { data: { user } } = await supabase.auth.getUser();
-                
-                // Hardcoded para segurança imediata no frontend, deve bater com o SQL is_super_admin()
-                if (user?.email !== 'danilobellucci@gmail.com') {
-                    setIsAuthorized(false);
-                    return;
-                }
-
-                // 2. Verificação Robusta via RPC (Back-end Authority)
+                // Verificação Robusta via RPC (Back-end Authority)
+                // O e-mail é verificado dentro do banco de dados, não no código JS.
                 const { data: isSuperAdmin, error } = await supabase.rpc('is_super_admin');
                 
                 if (error || !isSuperAdmin) {
@@ -188,6 +181,7 @@ const App: React.FC = () => {
           <Route path="/encontrar-clinica" element={<FindClinicPage />} />
           <Route path="/entenda" element={<LearnMorePage />} />
           <Route path="/blog" element={<BlogPage />} />
+          <Route path="/sobre" element={<AboutPage />} />
           <Route path="/auth" element={<AuthPage />} />
           
           {/* Rota de senha acessível diretamente */}

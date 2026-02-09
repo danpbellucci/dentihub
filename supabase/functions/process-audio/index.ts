@@ -11,8 +11,9 @@ declare const Deno: {
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin') ?? '';
+  
+  // HARDENED SECURITY: Localhost removido
   const allowedOrigins = [
-    'http://localhost:5173', 
     'https://dentihub.com.br', 
     'https://www.dentihub.com.br',
     'https://app.dentihub.com.br'
@@ -29,7 +30,7 @@ Deno.serve(async (req) => {
   }
 
   if (!origin || !allowedOrigins.includes(origin)) {
-      return new Response(JSON.stringify({ error: "Acesso negado." }), {
+      return new Response(JSON.stringify({ error: "Acesso negado: Origem não autorizada." }), {
           status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -71,6 +72,25 @@ Deno.serve(async (req) => {
         .single();
     
     const clinicId = profile?.clinic_id || user.id;
+
+    // --- SEGURANÇA: VALIDAÇÃO DE PROPRIEDADE DO DENTISTA ---
+    // Verifica se o dentista informado pertence à clínica do usuário logado
+    if (dentistId) {
+        const { data: validDentist } = await supabaseAdmin
+            .from('dentists')
+            .select('id')
+            .eq('id', dentistId)
+            .eq('clinic_id', clinicId)
+            .single();
+        
+        if (!validDentist) {
+            return new Response(JSON.stringify({ error: 'Dentista inválido ou não pertence à sua clínica.', limitReached: true }), { 
+                status: 403, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            });
+        }
+    }
+    // --------------------------------------------------------
 
     const { data: clinic } = await supabaseClient
         .from('clinics')

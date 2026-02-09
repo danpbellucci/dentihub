@@ -10,8 +10,9 @@ declare const Deno: {
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin') ?? '';
+  
+  // HARDENED SECURITY: Localhost removido
   const allowedOrigins = [
-    'http://localhost:5173', 
     'https://dentihub.com.br', 
     'https://www.dentihub.com.br', 
     'https://app.dentihub.com.br',
@@ -28,6 +29,14 @@ Deno.serve(async (req) => {
 
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  // BLOQUEIO DE SEGURANÇA RIGOROSO
+  if (!origin || !allowedOrigins.includes(origin)) {
+      return new Response(JSON.stringify({ error: "Acesso negado: Origem não autorizada." }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
   }
 
   try {

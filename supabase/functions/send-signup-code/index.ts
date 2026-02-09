@@ -9,9 +9,18 @@ declare const Deno: {
 };
 
 Deno.serve(async (req) => {
-  // CORS Permissivo (*)
+  // Configuração de CORS Segura
+  const origin = req.headers.get('origin') ?? '';
+  const allowedOrigins = [
+    'http://localhost:5173', 
+    'https://dentihub.com.br', 
+    'https://www.dentihub.com.br', 
+    'https://app.dentihub.com.br'
+  ];
+  const corsOrigin = allowedOrigins.includes(origin) ? origin : 'https://dentihub.com.br';
+
   const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin": corsOrigin,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
   };

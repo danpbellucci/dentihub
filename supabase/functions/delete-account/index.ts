@@ -10,8 +10,9 @@ declare const Deno: {
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin') ?? '';
+  
+  // HARDENED SECURITY: Localhost removido
   const allowedOrigins = [
-    'http://localhost:5173', 
     'https://dentihub.com.br', 
     'https://www.dentihub.com.br',
     'https://app.dentihub.com.br'

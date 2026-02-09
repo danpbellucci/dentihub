@@ -8,34 +8,22 @@ declare const Deno: {
   serve(handler: (req: Request) => Promise<Response>): void;
 };
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-async function sendEmail(apiKey: string, to: string, subject: string, html: string) {
-    const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-            from: "DentiHub System <naoresponda@dentihub.com.br>",
-            to: [to],
-            subject: subject,
-            html: html
-        })
-    });
-
-    if (!res.ok) {
-        const data = await res.json();
-        throw new Error(`Erro Resend: ${data.message || data.name}`);
-    }
-    return await res.json();
-}
-
 Deno.serve(async (req) => {
+  // Configuração de CORS Segura
+  const origin = req.headers.get('origin') ?? '';
+  const allowedOrigins = [
+    'http://localhost:5173', 
+    'https://dentihub.com.br', 
+    'https://www.dentihub.com.br', 
+    'https://app.dentihub.com.br'
+  ];
+  const corsOrigin = allowedOrigins.includes(origin) ? origin : 'https://dentihub.com.br';
+
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': corsOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
+
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
@@ -136,6 +124,28 @@ Deno.serve(async (req) => {
             </div>
         </div>
     `;
+
+    async function sendEmail(apiKey: string, to: string, subject: string, html: string) {
+        const res = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                from: "DentiHub System <naoresponda@dentihub.com.br>",
+                to: [to],
+                subject: subject,
+                html: html
+            })
+        });
+
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(`Erro Resend: ${data.message || data.name}`);
+        }
+        return await res.json();
+    }
 
     await sendEmail(resendApiKey, adminEmail, `Relatório Diário (${dateLabel}) - DentiHub`, htmlContent);
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../services/supabase';
@@ -299,7 +300,7 @@ const LandingPage: React.FC = () => {
           
           <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-400 mb-12 leading-relaxed">
             Abandone o papel e os sistemas do passado. Experimente a <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 font-bold">gestão com inteligência artificial</span>, 
-            agendamento online e marketing automático em uma interface que você vai amar usar.
+            agendamento online e mensageria automática em uma interface que você vai amar usar.
           </p>
           
           <div className="flex flex-col sm:flex-row justify-center gap-4 mb-20">
@@ -1193,9 +1194,12 @@ const LandingPage: React.FC = () => {
             <span>Denti<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Hub</span></span>
           </div>
           
-          <div className="mb-6">
+          <div className="mb-6 flex justify-center gap-6">
             <button onClick={() => navigate('/blog')} className="text-gray-400 hover:text-white transition-colors font-medium">
                 Blog
+            </button>
+            <button onClick={() => navigate('/sobre')} className="text-gray-400 hover:text-white transition-colors font-medium">
+                Sobre Nós
             </button>
           </div>
 

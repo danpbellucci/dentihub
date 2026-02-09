@@ -42,7 +42,7 @@ serve(async (req) => {
 
     const ai = new GoogleGenAI({ apiKey })
     
-    // 2. Modelo Definido (gemini-3-flash-preview)
+    // 2. Modelo Definido (gemini-3-flash-preview para velocidade e raciocínio)
     const MODEL_NAME = "gemini-3-flash-preview"
 
     let effectiveTaskType = taskType;
@@ -91,25 +91,44 @@ serve(async (req) => {
         `;
     }
     else if (effectiveTaskType === 'ads_strategy') {
+        // Schema Robusto para Google e Meta Ads
         responseSchema = {
           type: Type.OBJECT,
           properties: {
             campaign_name: { type: Type.STRING },
             target_audience: { type: Type.STRING },
-            keywords: { type: Type.ARRAY, items: { type: Type.STRING } },
-            headlines: { type: Type.ARRAY, items: { type: Type.STRING } },
-            descriptions: { type: Type.ARRAY, items: { type: Type.STRING } },
-            primary_text: { type: Type.STRING },
-            call_to_action: { type: Type.STRING }
+            keywords: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Palavras-chave para Google Ads" },
+            negative_keywords: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Palavras-chave negativas" },
+            google_ads: {
+                type: Type.OBJECT,
+                properties: {
+                    headlines: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Títulos curtos (max 30 caracteres)" },
+                    long_headlines: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Títulos longos (max 90 caracteres)" },
+                    descriptions: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Descrições (max 90 caracteres)" }
+                }
+            },
+            meta_ads: {
+                type: Type.OBJECT,
+                properties: {
+                    primary_text: { type: Type.STRING, description: "Texto principal do anúncio (Copy)" },
+                    headline: { type: Type.STRING, description: "Título do card" },
+                    call_to_action: { type: Type.STRING, description: "Botão CTA (ex: Saiba Mais)" },
+                    image_suggestion: { type: Type.STRING, description: "Sugestão visual para o criativo" }
+                }
+            }
           },
-          required: ["campaign_name", "headlines", "descriptions", "primary_text"],
+          required: ["campaign_name", "keywords", "google_ads", "meta_ads"],
         };
         systemContext = `
-          Você é um Gestor de Tráfego Pago experiente.
-          Crie uma estratégia completa para Google Ads e Meta Ads.
-          Foco: Conversão e Leads.
-          Google Ads: Headlines curtas (máx 30 chars).
-          Meta Ads: Copy persuasiva usando framework AIDA.
+          Você é um Gestor de Tráfego Pago Senior especializado em Clínicas Odontológicas.
+          Sua tarefa é criar uma estrutura completa de campanha para Google Ads e Meta Ads.
+          
+          REGRAS RÍGIDAS:
+          1. Google Ads Headlines: Máximo 30 caracteres. Seja impactante.
+          2. Google Ads Descriptions: Máximo 90 caracteres. Foque em benefícios.
+          3. Palavras-chave: Devem ser relevantes e com intenção de compra.
+          4. Meta Ads: Utilize copywriting persuasivo (AIDA - Atenção, Interesse, Desejo, Ação).
+          5. Tudo em Português do Brasil.
         `;
     }
     else if (effectiveTaskType === 'email_campaign_chat') {
