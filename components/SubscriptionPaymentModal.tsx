@@ -54,22 +54,22 @@ const SubscriptionPaymentModal: React.FC<SubscriptionPaymentModalProps> = ({ pla
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-70 p-4 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in">
+      <div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="bg-gray-50 p-5 border-b flex justify-between items-center">
+        <div className="bg-gray-900 p-5 border-b border-white/10 flex justify-between items-center">
           <div>
-            <h3 className="font-bold text-lg text-gray-900">Assinar Plano {planName}</h3>
-            <p className="text-sm text-gray-500 font-medium">{price} / mês</p>
+            <h3 className="font-bold text-lg text-white">Assinar Plano {planName}</h3>
+            <p className="text-sm text-gray-400 font-medium">{price} / mês</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
             <X size={24} />
           </button>
         </div>
         
         {/* Body */}
-        <div className="p-6 overflow-y-auto custom-scrollbar">
-          <div className="flex items-center justify-center mb-6 text-green-600 bg-green-50 p-3 rounded-lg border border-green-100">
+        <div className="p-6 overflow-y-auto custom-scrollbar bg-gray-900">
+          <div className="flex items-center justify-center mb-6 text-green-400 bg-green-900/20 p-3 rounded-lg border border-green-500/20">
              <ShieldCheck className="mr-2 h-5 w-5" />
              <span className="text-sm font-bold">Ambiente Seguro (SSL)</span>
           </div>
@@ -78,9 +78,9 @@ const SubscriptionPaymentModal: React.FC<SubscriptionPaymentModalProps> = ({ pla
             {/* Esqueleto de carregamento */}
             {!isReady && (
               <div className="space-y-4 mb-6">
-                <div className="h-10 bg-gray-100 rounded w-full animate-pulse"></div>
-                <div className="h-10 bg-gray-100 rounded w-full animate-pulse"></div>
-                <div className="h-10 bg-gray-100 rounded w-full animate-pulse"></div>
+                <div className="h-10 bg-gray-800 rounded w-full animate-pulse"></div>
+                <div className="h-10 bg-gray-800 rounded w-full animate-pulse"></div>
+                <div className="h-10 bg-gray-800 rounded w-full animate-pulse"></div>
               </div>
             )}
 
@@ -98,7 +98,7 @@ const SubscriptionPaymentModal: React.FC<SubscriptionPaymentModalProps> = ({ pla
             </div>
             
             {errorMessage && (
-              <div className="mt-4 p-3 bg-red-50 text-red-600 text-sm rounded border border-red-200 flex items-start">
+              <div className="mt-4 p-3 bg-red-900/20 text-red-400 text-sm rounded border border-red-500/20 flex items-start">
                  <span className="font-bold mr-1">Erro:</span> {errorMessage}
               </div>
             )}
@@ -106,7 +106,7 @@ const SubscriptionPaymentModal: React.FC<SubscriptionPaymentModalProps> = ({ pla
             <button 
               type="submit" 
               disabled={!stripe || processing || !isReady}
-              className="w-full mt-2 bg-gray-900 text-white py-3.5 rounded-lg font-bold hover:bg-black transition disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center shadow-lg"
+              className="w-full mt-2 bg-primary text-white py-3.5 rounded-lg font-bold hover:bg-sky-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center shadow-lg shadow-blue-900/20"
             >
               {processing ? (
                 <>
@@ -120,8 +120,8 @@ const SubscriptionPaymentModal: React.FC<SubscriptionPaymentModalProps> = ({ pla
         </div>
         
         {/* Footer */}
-        <div className="bg-gray-50 p-3 text-center border-t">
-          <p className="text-xs text-gray-400 flex items-center justify-center">
+        <div className="bg-gray-900 p-3 text-center border-t border-white/10">
+          <p className="text-xs text-gray-500 flex items-center justify-center">
             <Lock size={10} className="mr-1" /> 
             Pagamento processado seguramente pelo Stripe
           </p>
