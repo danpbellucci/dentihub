@@ -26,7 +26,8 @@ import AboutPage from './components/AboutPage';
 import SuperAdminPage from './components/SuperAdminPage';
 import SuperAdminCampaigns from './components/SuperAdminCampaigns';
 import SuperAdminLeads from './components/SuperAdminLeads';
-import SuperAdminSubscriptions from './components/SuperAdminSubscriptions'; 
+import SuperAdminSubscriptions from './components/SuperAdminSubscriptions';
+import SuperAdminAds from './components/SuperAdminAds'; // Importado
 import UpdatePasswordPage from './components/UpdatePasswordPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Loader2 } from 'lucide-react';
@@ -219,6 +220,7 @@ const App: React.FC = () => {
                   <Route path="campaigns" element={<SuperAdminCampaigns />} />
                   <Route path="leads" element={<SuperAdminLeads />} />
                   <Route path="subscriptions" element={<SuperAdminSubscriptions />} />
+                  <Route path="ads" element={<SuperAdminAds />} />
                 </Routes>
               </SuperAdminRoute>
             </PrivateRoute>
