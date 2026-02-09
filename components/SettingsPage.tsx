@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import { UserProfile, ClinicRole } from '../types';
-import { Save, Loader2, Shield, Users, CreditCard, Trash2, AlertTriangle, CheckCircle, X, Building, Upload, Copy, Send, Zap, Settings, Lock, Plus, Pencil, Bell, Folder, Box, Gift, Award, Clock } from 'lucide-react';
+import { Save, Loader2, Shield, Users, CreditCard, Trash2, AlertTriangle, CheckCircle, X, Building, Upload, Copy, Send, Zap, Settings, Lock, Plus, Pencil, Bell, Folder, Box, Gift, Award, Clock, Crown, Calculator } from 'lucide-react';
 import Toast, { ToastType } from './Toast';
 import SubscriptionPaymentModal from './SubscriptionPaymentModal';
 import { useDashboard } from './DashboardLayout';
@@ -60,10 +60,17 @@ const SettingsPage: React.FC = () => {
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
   const [showSubscriptionDetails, setShowSubscriptionDetails] = useState(false);
   const [processing, setProcessing] = useState(false);
+  
+  // Payment States
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<{name: string, price: string, priceId: string} | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<{name: string, price: string, priceId?: string, items?: any[], limits?: any} | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [loadingPayment, setLoadingPayment] = useState(false);
+  
+  // Enterprise Config States
+  const [entDentists, setEntDentists] = useState(6);
+  const [entAiUsage, setEntAiUsage] = useState(20);
+
   const [passwordData, setPasswordData] = useState({ newPassword: '', confirmPassword: '' });
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
   const [deleteConfirmed, setDeleteConfirmed] = useState(false);
@@ -200,7 +207,50 @@ const SettingsPage: React.FC = () => {
   const processCancellation = async () => { if (!subscription?.id) return; setProcessing(true); try { const { data, error } = await supabase.functions.invoke('cancel-subscription', { body: { subscriptionId: subscription.id } }); if (error) throw error; setToast({ message: "Cancelado com sucesso.", type: 'info' }); setShowCancelConfirmation(false); fetchSubscription(); } catch (err: any) { setToast({ message: "Erro: " + err.message, type: 'error' }); } finally { setProcessing(false); } };
   const handlePasswordChange = async (e: React.FormEvent) => { e.preventDefault(); if (passwordData.newPassword !== passwordData.confirmPassword) { setToast({ message: "Senhas não coincidem.", type: 'warning' }); return; } setSaving(true); try { const { error } = await supabase.auth.updateUser({ password: passwordData.newPassword }); if (error) throw error; setToast({ message: "Senha alterada!", type: 'success' }); setPasswordData({ newPassword: '', confirmPassword: '' }); } catch (err: any) { setToast({ message: "Erro: " + err.message, type: 'error' }); } finally { setSaving(false); } };
   const handleDeleteAccount = async () => { if (!deleteConfirmed) return; setIsDeletingAccount(true); try { const { data: { session } } = await supabase.auth.getSession(); if (!session) throw new Error("Sessão inválida."); const { error } = await supabase.functions.invoke('delete-account', { headers: { Authorization: `Bearer ${session.access_token}` } }); if (error) throw error; await supabase.auth.signOut(); setToast({ message: "Conta excluída. Adeus!", type: 'success' }); setTimeout(() => { navigate('/'); window.location.reload(); }, 2000); } catch (err: any) { setToast({ message: "Erro: " + err.message, type: 'error' }); setIsDeletingAccount(false); setShowDeleteAccountModal(false); } };
-  const openPaymentModal = async (planName: string, price: string, priceId: string) => { setSelectedPlan({ name: planName, price, priceId }); setShowPaymentModal(true); setLoadingPayment(true); try { const { data, error } = await supabase.functions.invoke('create-subscription', { body: { priceId } }); if (error || !data?.clientSecret) throw new Error("Falha no pagamento."); setClientSecret(data.clientSecret); } catch (err: any) { setToast({ message: err.message, type: 'error' }); setShowPaymentModal(false); } finally { setLoadingPayment(false); } };
+  
+  const openPaymentModal = async (planName: string, priceDisplay: string, priceId?: string, items?: any[], limits?: any) => { 
+      setSelectedPlan({ name: planName, price: priceDisplay, priceId, items, limits }); 
+      setShowPaymentModal(true); 
+      setLoadingPayment(true); 
+      try { 
+          const { data, error } = await supabase.functions.invoke('create-subscription', { 
+              body: { priceId, items, limits } 
+          }); 
+          if (error || !data?.clientSecret) throw new Error("Falha no pagamento."); 
+          setClientSecret(data.clientSecret); 
+      } catch (err: any) { 
+          setToast({ message: err.message, type: 'error' }); 
+          setShowPaymentModal(false); 
+      } finally { 
+          setLoadingPayment(false); 
+      } 
+  };
+  
+  const handleEnterpriseCheckout = () => {
+      const dentistPrice = 60;
+      const aiBlockPrice = 15;
+      const usesPerBlock = 5;
+      
+      const aiBlocksPerDentist = Math.ceil(entAiUsage / usesPerBlock);
+      const totalAiBlocks = entDentists * aiBlocksPerDentist;
+      
+      const totalDentistCost = entDentists * dentistPrice;
+      const totalAiCost = totalAiBlocks * aiBlockPrice;
+      const total = totalDentistCost + totalAiCost;
+      
+      const items = [
+          { price: 'price_1SykFl2Obfcu36b5rdtYse4m', quantity: entDentists },
+          { price: 'price_1SykGo2Obfcu36b5TmDgIM4d', quantity: totalAiBlocks }
+      ];
+
+      const limits = {
+          dentists: entDentists,
+          aiDaily: entDentists * entAiUsage
+      };
+
+      openPaymentModal('Enterprise Personalizado', `R$ ${total},00`, undefined, items, limits);
+  };
+
   const copyToClipboard = (text: string) => { navigator.clipboard.writeText(text); setToast({ message: "Copiado para a área de transferência!", type: 'success' }); };
   const currentTier = contextProfile?.clinics?.subscription_tier || 'free';
 
@@ -236,6 +286,96 @@ const SettingsPage: React.FC = () => {
         </div>
 
         <div className="flex-1">
+            {activeTab === 'referrals' && (
+                <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow-sm p-6 animate-fade-in border border-white/5">
+                    <h2 className="text-xl font-bold text-white mb-6 pb-2 border-b border-white/10 flex items-center gap-2">
+                        <Gift className="text-primary" size={24}/> Programa de Indicações
+                    </h2>
+
+                    <div className="relative bg-gradient-to-r from-blue-900/40 to-purple-900/40 border border-white/10 rounded-2xl p-8 mb-8 overflow-hidden">
+                        <div className="absolute top-0 right-0 p-4 opacity-10">
+                            <Award size={120} className="text-purple-400"/>
+                        </div>
+                        <div className="relative z-10 text-center">
+                            <h3 className="text-2xl font-black text-white mb-2">Indique e Ganhe!</h3>
+                            <p className="text-gray-300 max-w-lg mx-auto mb-8">Ajude outros colegas a modernizar suas clínicas e ganhe benefícios exclusivos no DentiHub.</p>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+                                <div className="bg-gray-800/50 p-4 rounded-xl border border-white/5 flex items-start text-left">
+                                    <div className="p-3 bg-blue-500/20 rounded-lg text-blue-400 mr-4"><Users size={24}/></div>
+                                    <div>
+                                        <h4 className="font-bold text-white text-sm">Ganhe 1 Mês de Starter</h4>
+                                        <p className="text-xs text-gray-400 mt-1">Para cada indicação que atingir 10 pacientes cadastrados.</p>
+                                    </div>
+                                </div>
+                                <div className="bg-gray-800/50 p-4 rounded-xl border border-white/5 flex items-start text-left">
+                                    <div className="p-3 bg-yellow-500/20 rounded-lg text-yellow-400 mr-4"><Zap size={24}/></div>
+                                    <div>
+                                        <h4 className="font-bold text-white text-sm">Ganhe 1 Mês de Pro</h4>
+                                        <p className="text-xs text-gray-400 mt-1">Para cada indicação que assinar um plano pago.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="text-center mb-12">
+                        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">SEU CÓDIGO DE INDICAÇÃO</h3>
+                        <div className="relative max-w-md mx-auto">
+                            <div className="border-2 border-dashed border-blue-500/30 bg-blue-900/10 rounded-xl p-4 flex items-center justify-between gap-4">
+                                <span className="text-3xl font-mono font-bold text-white tracking-widest w-full text-center">
+                                    {clinicData.referral_code || '------'}
+                                </span>
+                                <button onClick={() => copyToClipboard(clinicData.referral_code)} className="p-2 hover:bg-white/10 rounded-lg transition text-gray-400 hover:text-white absolute right-4">
+                                    <Copy size={20} />
+                                </button>
+                            </div>
+                        </div>
+                        <p className="text-sm text-gray-500 mt-3">Compartilhe este código com seus colegas. Eles devem inseri-lo no momento do cadastro.</p>
+                    </div>
+
+                    <div>
+                        <h3 className="text-sm font-bold text-gray-400 uppercase mb-4 flex items-center gap-2">
+                            <Users size={16}/> Clínicas Indicadas
+                        </h3>
+                        <div className="overflow-x-auto bg-gray-800/30 rounded-lg border border-white/5">
+                            <table className="min-w-full divide-y divide-white/5">
+                                <thead className="bg-gray-800/50">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Nome da Clínica</th>
+                                        <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Data Cadastro</th>
+                                        <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Pacientes</th>
+                                        <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Plano</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {loadingReferrals ? (
+                                        <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500"><Loader2 className="animate-spin inline mr-2"/> Carregando...</td></tr>
+                                    ) : referredClinics.length === 0 ? (
+                                        <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">Nenhuma indicação realizada ainda.</td></tr>
+                                    ) : (
+                                        referredClinics.map((clinic) => (
+                                            <tr key={clinic.id} className="hover:bg-white/5">
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-white">{clinic.name}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 text-center">{format(parseISO(clinic.created_at), 'dd/MM/yyyy')}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                                                    <span className="bg-gray-800 px-2 py-1 rounded text-white font-mono">{clinic.patient_count || 0}</span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                    <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${clinic.subscription_tier === 'pro' ? 'bg-yellow-900/30 text-yellow-400 border border-yellow-500/20' : clinic.subscription_tier === 'starter' ? 'bg-blue-900/30 text-blue-400 border border-blue-500/20' : 'bg-gray-700 text-gray-300'}`}>
+                                                        {clinic.subscription_tier}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+            
             {activeTab === 'profile' && (
                 <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow-sm p-6 animate-fade-in border border-white/5">
                     <h2 className="text-xl font-bold text-white mb-6 pb-2 border-b border-white/10">Dados da Clínica</h2>
@@ -290,108 +430,132 @@ const SettingsPage: React.FC = () => {
                 </div>
             )}
             
-            {activeTab === 'referrals' && (
+            {/* ... other tabs ... */}
+            
+            {activeTab === 'billing' && (
                 <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow-sm p-6 animate-fade-in border border-white/5">
-                    <h2 className="text-xl font-bold text-white mb-6 pb-2 border-b border-white/10 flex items-center gap-2">
-                        <Gift className="text-primary"/> Programa de Indicações
-                    </h2>
+                    <div className="flex justify-between items-start mb-6">
+                        <div><h2 className="text-xl font-bold text-white">Planos e Assinatura</h2><p className="text-gray-400 text-sm">Gerencie seu plano atual.</p></div>
+                        <div className="text-right">
+                            {currentTier !== 'free' ? (
+                                <div className="flex flex-col items-end gap-2">
+                                    <div className="text-sm text-gray-300"><span className="font-bold capitalize">{currentTier}</span>{subscription?.status && <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] uppercase font-bold ${subscription.status === 'active' ? 'bg-green-900/30 text-green-400' : 'bg-yellow-900/30 text-yellow-400'}`}>{subscription.status}</span>}</div>
+                                    {subscription?.id && <button onClick={() => setShowSubscriptionDetails(true)} disabled={processing} className="flex items-center text-sm bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition shadow-sm disabled:opacity-50"><Settings className="mr-2" size={14}/>Gerenciar</button>}
+                                </div>
+                            ) : <span className="inline-block px-3 py-1 bg-gray-800 text-gray-400 rounded text-xs font-bold uppercase mb-1">Plano Atual: FREE</span>}
+                        </div>
+                    </div>
                     
-                    <div className="bg-gradient-to-br from-blue-900/30 to-purple-900/30 border border-blue-500/30 rounded-xl p-6 mb-8 text-center relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-10"><Award size={100} className="text-white"/></div>
-                        <h3 className="text-2xl font-black text-white mb-2">Indique e Ganhe!</h3>
-                        <p className="text-gray-300 max-w-2xl mx-auto mb-6">
-                            Ajude outros colegas a modernizar suas clínicas e ganhe benefícios exclusivos no DentiHub.
-                        </p>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        {/* Free */}
+                        <div className="border border-white/10 rounded-xl p-6 bg-gray-800/50 flex flex-col relative overflow-hidden">
+                            <h4 className="font-bold text-white text-lg">Gratuito</h4>
+                            <div className="my-4"><span className="text-3xl font-black text-white">R$ 0</span><span className="text-sm text-gray-500">/mês</span></div>
+                            <ul className="space-y-3 mb-6 flex-1">
+                                <li className="flex items-center text-sm text-gray-400"><CheckCircle size={16} className="mr-2 text-gray-600"/> 1 Dentista</li>
+                                <li className="flex items-center text-sm text-gray-400"><CheckCircle size={16} className="mr-2 text-gray-600"/> Até 30 Pacientes</li>
+                                <li className="flex items-center text-sm text-gray-400"><CheckCircle size={16} className="mr-2 text-gray-600"/> IA (3 usos totais)</li>
+                            </ul>
+                            <button disabled className="w-full py-2 bg-gray-700 text-gray-400 rounded font-bold">Plano Atual</button>
+                        </div>
                         
-                        <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto text-left">
-                            <div className="bg-gray-800/60 p-4 rounded-lg border border-white/10 flex items-start gap-3">
-                                <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400"><Users size={24}/></div>
+                        {/* Starter */}
+                        <div className="border border-blue-500/30 rounded-xl p-6 bg-gray-800/50 flex flex-col relative overflow-hidden">
+                            <div className="absolute top-0 right-0 bg-blue-500/20 text-blue-400 text-[10px] font-bold px-2 py-1 rounded-bl-lg border-l border-b border-blue-500/30">POPULAR</div>
+                            <h4 className="font-bold text-blue-400 text-lg">Starter</h4>
+                            <div className="my-4"><span className="text-3xl font-black text-white">R$ 100</span><span className="text-sm text-gray-500">/mês</span></div>
+                            <ul className="space-y-3 mb-6 flex-1">
+                                <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-blue-500"/> Até 3 Dentistas</li>
+                                <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-blue-500"/> Até 100 Pacientes</li>
+                                <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-blue-500"/> IA (5 usos/dia/dentista)</li>
+                            </ul>
+                            {currentTier === 'starter' ? <button disabled className="w-full py-2 bg-blue-900/30 text-blue-400 rounded font-bold">Plano Atual</button> : <button onClick={() => openPaymentModal('Starter', 'R$ 100,00', 'price_1SlMYr2Obfcu36b5HzK9JQPO')} className="w-full py-2 bg-primary text-white rounded font-bold hover:bg-sky-600 shadow-lg shadow-blue-900/20">Assinar Starter</button>}
+                        </div>
+                        
+                        {/* Pro */}
+                        <div className="border border-yellow-500/30 rounded-xl p-6 bg-gray-800/50 flex flex-col relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-4 opacity-10"><Zap size={100} className="text-yellow-500"/></div>
+                            <h4 className="font-bold text-yellow-400 text-lg flex items-center gap-2"><Zap size={18} fill="currentColor"/> Pro</h4>
+                            <div className="my-4"><span className="text-3xl font-black text-white">R$ 300</span><span className="text-sm text-gray-500">/mês</span></div>
+                            <ul className="space-y-3 mb-6 flex-1 relative z-10">
+                                <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-yellow-500"/> Até 5 Dentistas</li>
+                                <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-yellow-500"/> Pacientes Ilimitados</li>
+                                <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-yellow-500"/> IA (10 usos/dia/dentista)</li>
+                            </ul>
+                            {currentTier === 'pro' ? <button disabled className="w-full py-2 bg-yellow-900/30 text-yellow-400 rounded font-bold">Plano Atual</button> : <button onClick={() => openPaymentModal('Pro', 'R$ 300,00', 'price_1SlEBs2Obfcu36b5HrWAo2Fh')} className="w-full py-2 bg-white text-gray-900 rounded font-bold hover:bg-gray-200 shadow-lg">Assinar Pro</button>}
+                        </div>
+
+                        {/* Enterprise - Custom */}
+                        <div className="border border-purple-500/30 bg-gradient-to-b from-purple-900/20 to-gray-900 rounded-xl p-6 flex flex-col relative overflow-hidden ring-1 ring-purple-500/50">
+                            <div className="absolute top-0 right-0 p-2"><Crown size={20} className="text-purple-400"/></div>
+                            <h4 className="font-bold text-purple-400 text-lg flex items-center gap-2">Enterprise</h4>
+                            <p className="text-xs text-gray-400 mb-4 mt-1">Acima de 5 dentistas</p>
+                            
+                            <div className="space-y-4 mb-4 flex-1">
                                 <div>
-                                    <h4 className="font-bold text-white">Ganhe 1 Mês de Starter</h4>
-                                    <p className="text-sm text-gray-400">Para cada indicação que atingir 10 pacientes cadastrados.</p>
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Dentistas ({entDentists})</label>
+                                    <input 
+                                        type="range" min="6" max="50" step="1" 
+                                        value={entDentists} 
+                                        onChange={(e) => setEntDentists(parseInt(e.target.value))}
+                                        className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                                    />
+                                    <div className="text-right text-xs text-purple-300 font-bold">R$ {entDentists * 60},00</div>
+                                </div>
+                                
+                                <div>
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Usos IA/dia/dentista ({entAiUsage})</label>
+                                    <select 
+                                        value={entAiUsage} 
+                                        onChange={(e) => setEntAiUsage(parseInt(e.target.value))}
+                                        className="w-full bg-gray-800 border border-gray-600 rounded text-xs text-white p-1"
+                                    >
+                                        {[5, 10, 15, 20, 25, 30, 50].map(v => <option key={v} value={v}>{v} usos</option>)}
+                                    </select>
+                                    <div className="text-right text-xs text-purple-300 font-bold mt-1">
+                                        + R$ {Math.ceil(entAiUsage / 5) * 15 * entDentists},00
+                                    </div>
+                                </div>
+
+                                <div className="bg-purple-900/30 p-3 rounded border border-purple-500/30 mt-2">
+                                    <div className="flex justify-between items-center text-sm font-bold text-white">
+                                        <span>Total:</span>
+                                        <span>R$ {(entDentists * 60) + (Math.ceil(entAiUsage / 5) * 15 * entDentists)},00</span>
+                                    </div>
+                                    <span className="text-[10px] text-purple-300 block text-right">/mês</span>
                                 </div>
                             </div>
-                            <div className="bg-gray-800/60 p-4 rounded-lg border border-white/10 flex items-start gap-3">
-                                <div className="p-2 bg-yellow-500/20 rounded-lg text-yellow-400"><Zap size={24}/></div>
-                                <div>
-                                    <h4 className="font-bold text-white">Ganhe 1 Mês de Pro</h4>
-                                    <p className="text-sm text-gray-400">Para cada indicação que assinar um plano pago.</p>
-                                </div>
-                            </div>
+                            
+                            <button onClick={handleEnterpriseCheckout} className="w-full py-2 bg-purple-600 text-white rounded font-bold hover:bg-purple-500 transition shadow-lg shadow-purple-900/20 text-sm">Contratar Enterprise</button>
                         </div>
-                    </div>
-
-                    <div className="max-w-xl mx-auto mb-8">
-                        <label className="block text-sm font-bold text-gray-400 mb-2 text-center uppercase tracking-wide">Seu Código de Indicação</label>
-                        <div className="flex gap-2 relative">
-                            <input 
-                                type="text" 
-                                readOnly 
-                                value={clinicData.referral_code || '---'} 
-                                className="w-full bg-gray-800 border-2 border-primary border-dashed rounded-lg p-4 text-center text-2xl font-mono font-black text-white tracking-widest focus:outline-none"
-                            />
-                            <button 
-                                onClick={() => copyToClipboard(clinicData.referral_code)} 
-                                className="absolute right-2 top-2 bottom-2 bg-gray-700 hover:bg-gray-600 text-white px-4 rounded font-bold transition flex items-center"
-                                title="Copiar Código"
-                            >
-                                <Copy size={18}/>
-                            </button>
-                        </div>
-                        <p className="text-center text-xs text-gray-500 mt-3">
-                            Compartilhe este código com seus colegas. Eles devem inseri-lo no momento do cadastro.
-                        </p>
-                    </div>
-
-                    <div className="border-t border-white/10 pt-6">
-                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Users size={18} className="text-gray-400"/> Clínicas Indicadas</h3>
-                        {loadingReferrals ? (
-                            <div className="flex justify-center py-8"><Loader2 className="animate-spin text-primary" size={24}/></div>
-                        ) : referredClinics.length === 0 ? (
-                            <div className="text-center py-8 text-gray-500 bg-gray-800/30 rounded-lg border border-dashed border-white/10">
-                                <p>Nenhuma indicação encontrada ainda.</p>
-                            </div>
-                        ) : (
-                            <div className="overflow-x-auto border border-white/10 rounded-lg">
-                                <table className="min-w-full divide-y divide-white/10">
-                                    <thead className="bg-gray-800">
-                                        <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Nome da Clínica</th>
-                                            <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Data Cadastro</th>
-                                            <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Pacientes</th>
-                                            <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Plano</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-gray-900/40 divide-y divide-white/5">
-                                        {referredClinics.map((refClinic, index) => (
-                                            <tr key={index}>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-200">{refClinic.name}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 text-center">
-                                                    {format(parseISO(refClinic.created_at), 'dd/MM/yyyy')}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                    <span className="text-sm font-bold text-white bg-gray-800 px-2 py-1 rounded border border-white/10">
-                                                        {refClinic.patient_count || 0}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                    <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
-                                                        refClinic.subscription_tier === 'pro' ? 'bg-yellow-900/30 text-yellow-400 border border-yellow-500/20' :
-                                                        refClinic.subscription_tier === 'starter' ? 'bg-blue-900/30 text-blue-400 border border-blue-500/20' :
-                                                        'bg-gray-800 text-gray-400 border border-gray-700'
-                                                    }`}>
-                                                        {refClinic.subscription_tier}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
                     </div>
                 </div>
             )}
+
+            {/* Other tabs omitted for brevity */}
+            {/* Same modals as before... */}
+            {/* Role Edit Modal */}
+            {roleToEdit && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+                    <div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-6 w-full max-w-sm">
+                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Settings size={20} className="text-primary"/> Gerenciar Perfil</h3>
+                        <div className="space-y-4">
+                            <div><label className="block text-xs font-bold text-gray-400 uppercase mb-1">Nome</label><input className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white" value={editRoleLabel} onChange={e => setEditRoleLabel(e.target.value)} /></div>
+                            <div className="flex flex-col gap-2 pt-2">
+                                <button onClick={handleUpdateRole} disabled={saving} className="w-full bg-primary text-white py-2 rounded font-bold hover:bg-sky-600">{saving ? <Loader2 className="animate-spin mr-2" size={16}/> : 'Salvar'}</button>
+                                <button onClick={handleDeleteRole} disabled={saving} className="w-full border border-red-500/30 text-red-400 bg-red-900/20 py-2 rounded font-bold hover:bg-red-900/40 flex items-center justify-center"><Trash2 size={16} className="mr-2"/> Excluir</button>
+                                <button onClick={() => setRoleToEdit(null)} className="w-full text-gray-400 py-2 rounded font-bold hover:bg-gray-800">Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showPaymentModal && selectedPlan && clientSecret && <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'night' } }}><SubscriptionPaymentModal planName={selectedPlan.name} price={selectedPlan.price} onClose={() => setShowPaymentModal(false)} /></Elements>}
+            {showSubscriptionDetails && subscription && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"><div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl w-full max-w-md p-6 relative"><button onClick={() => setShowSubscriptionDetails(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white"><X size={24} /></button><h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><CreditCard className="text-primary" /> Detalhes</h3><div className="p-4 bg-gray-800 rounded-lg border border-white/5 mb-4"><p className="text-sm text-gray-400 mb-1">Plano Atual</p><p className="font-bold text-lg text-white">{subscription.product_name}</p></div>{!subscription.cancel_at_period_end && <button onClick={() => {setShowSubscriptionDetails(false);setShowCancelConfirmation(true);}} className="w-full py-2.5 border border-red-500/30 text-red-400 rounded-lg font-bold hover:bg-red-900/20 flex justify-center items-center gap-2"><X size={16} /> Cancelar Assinatura</button>}</div></div>}
+            {showCancelConfirmation && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"><div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-6 w-full max-w-sm text-center"><h3 className="text-xl font-bold text-white mb-2">Cancelar Assinatura?</h3><p className="text-gray-400 mb-6 text-sm">Você tem certeza?</p><div className="flex flex-col gap-3"><button onClick={processCancellation} disabled={processing} className="w-full bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition shadow-md">{processing ? <Loader2 className="animate-spin mr-2" size={18}/> : 'Sim, Cancelar'}</button><button onClick={() => setShowCancelConfirmation(false)} disabled={processing} className="w-full bg-gray-800 text-gray-300 py-3 rounded-lg font-bold hover:bg-gray-700 transition">Manter</button></div></div></div>}
+            {memberToDelete && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"><div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-6 w-full max-w-sm text-center"><h3 className="text-xl font-bold text-white mb-2">Remover Membro?</h3><div className="flex flex-col gap-3"><button onClick={confirmDeleteMember} disabled={!!deletingMemberId} className="w-full bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition shadow-md">{deletingMemberId ? <Loader2 className="animate-spin mr-2" size={18}/> : 'Sim, Remover'}</button><button onClick={() => setMemberToDelete(null)} disabled={!!deletingMemberId} className="w-full bg-gray-800 text-gray-300 py-3 rounded-lg font-bold hover:bg-gray-700 transition">Cancelar</button></div></div></div>}
+            {showDeleteAccountModal && <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"><div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-6 w-full max-w-md"><h3 className="text-xl font-bold text-red-500 mb-4">Excluir Conta?</h3><label className="flex items-start cursor-pointer"><input type="checkbox" className="mt-1 mr-3 h-5 w-5 bg-gray-800 border-gray-600 text-red-600" checked={deleteConfirmed} onChange={(e) => setDeleteConfirmed(e.target.checked)} /><span className="text-sm text-gray-300">Estou ciente de que esta ação é <strong>irreversível</strong>.</span></label><div className="flex gap-3 justify-end mt-6"><button onClick={() => setShowDeleteAccountModal(false)} disabled={isDeletingAccount} className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg font-bold hover:bg-gray-700">Cancelar</button><button onClick={handleDeleteAccount} disabled={!deleteConfirmed || isDeletingAccount} className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 flex items-center">{isDeletingAccount ? <Loader2 className="animate-spin mr-2" size={18}/> : <Trash2 className="mr-2" size={18}/>}Confirmar</button></div></div></div>}
             
             {activeTab === 'team' && (
                 <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow-sm p-6 animate-fade-in border border-white/5">
@@ -498,83 +662,6 @@ const SettingsPage: React.FC = () => {
                     </div>
                 </div>
             )}
-
-            {activeTab === 'billing' && (
-                <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow-sm p-6 animate-fade-in border border-white/5">
-                    <div className="flex justify-between items-start mb-6">
-                        <div><h2 className="text-xl font-bold text-white">Planos e Assinatura</h2><p className="text-gray-400 text-sm">Gerencie seu plano atual.</p></div>
-                        <div className="text-right">
-                            {currentTier !== 'free' ? (
-                                <div className="flex flex-col items-end gap-2">
-                                    <div className="text-sm text-gray-300"><span className="font-bold capitalize">{currentTier}</span>{subscription?.status && <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] uppercase font-bold ${subscription.status === 'active' ? 'bg-green-900/30 text-green-400' : 'bg-yellow-900/30 text-yellow-400'}`}>{subscription.status}</span>}</div>
-                                    {subscription?.id && <button onClick={() => setShowSubscriptionDetails(true)} disabled={processing} className="flex items-center text-sm bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition shadow-sm disabled:opacity-50"><Settings className="mr-2" size={14}/>Gerenciar</button>}
-                                </div>
-                            ) : <span className="inline-block px-3 py-1 bg-gray-800 text-gray-400 rounded text-xs font-bold uppercase mb-1">Plano Atual: FREE</span>}
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="border border-white/10 rounded-xl p-6 bg-gray-800/50 flex flex-col relative overflow-hidden">
-                            <h4 className="font-bold text-white text-lg">Gratuito</h4>
-                            <div className="my-4"><span className="text-3xl font-black text-white">R$ 0</span><span className="text-sm text-gray-500">/mês</span></div>
-                            <ul className="space-y-3 mb-6 flex-1">
-                                <li className="flex items-center text-sm text-gray-400"><CheckCircle size={16} className="mr-2 text-gray-600"/> 1 Dentista</li>
-                                <li className="flex items-center text-sm text-gray-400"><CheckCircle size={16} className="mr-2 text-gray-600"/> Até 30 Pacientes</li>
-                                <li className="flex items-center text-sm text-gray-400"><CheckCircle size={16} className="mr-2 text-gray-600"/> Prontuário IA (3 usos totais)</li>
-                                <li className="flex items-center text-sm text-gray-400"><CheckCircle size={16} className="mr-2 text-gray-600"/> Agenda & Financeiro</li>
-                            </ul>
-                            <button disabled className="w-full py-2 bg-gray-700 text-gray-400 rounded font-bold">Plano Atual</button>
-                        </div>
-                        <div className="border border-blue-500/30 rounded-xl p-6 bg-gray-800/50 flex flex-col relative overflow-hidden">
-                            <div className="absolute top-0 right-0 bg-blue-500/20 text-blue-400 text-[10px] font-bold px-2 py-1 rounded-bl-lg border-l border-b border-blue-500/30">POPULAR</div>
-                            <h4 className="font-bold text-blue-400 text-lg">Starter</h4>
-                            <div className="my-4"><span className="text-3xl font-black text-white">R$ 1</span><span className="text-sm text-gray-500">/mês</span></div>
-                            <ul className="space-y-3 mb-6 flex-1">
-                                <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-blue-500"/> Até 3 Dentistas</li>
-                                <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-blue-500"/> Até 100 Pacientes</li>
-                                <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-blue-500"/> Prontuário IA (5 usos/dia/dentista)</li>
-                                <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-blue-500"/> Lembretes de Urgência</li>
-                            </ul>
-                            {currentTier === 'starter' ? <button disabled className="w-full py-2 bg-blue-900/30 text-blue-400 rounded font-bold">Plano Atual</button> : <button onClick={() => openPaymentModal('Starter', 'R$ 1,00', 'price_1SrN3I2Obfcu36b5MmVEv6qq')} className="w-full py-2 bg-primary text-white rounded font-bold hover:bg-sky-600 shadow-lg shadow-blue-900/20">Assinar Starter</button>}
-                        </div>
-                        <div className="border border-yellow-500/30 rounded-xl p-6 bg-gray-800/50 flex flex-col relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-4 opacity-10"><Zap size={100} className="text-yellow-500"/></div>
-                            <h4 className="font-bold text-yellow-400 text-lg flex items-center gap-2"><Zap size={18} fill="currentColor"/> Pro</h4>
-                            <div className="my-4"><span className="text-3xl font-black text-white">R$ 300</span><span className="text-sm text-gray-500">/mês</span></div>
-                            <ul className="space-y-3 mb-6 flex-1 relative z-10">
-                                <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-yellow-500"/> Até 5 Dentistas</li>
-                                <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-yellow-500"/> Pacientes Ilimitados</li>
-                                <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-yellow-500"/> Prontuário IA (10 usos/dia/dentista)</li>
-                                <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-yellow-500"/> Arquivos (100MB/paciente)</li>
-                            </ul>
-                            {currentTier === 'pro' ? <button disabled className="w-full py-2 bg-yellow-900/30 text-yellow-400 rounded font-bold">Plano Atual</button> : <button onClick={() => openPaymentModal('Pro', 'R$ 300,00', 'price_1SlEBs2Obfcu36b5HrWAo2Fh')} className="w-full py-2 bg-white text-gray-900 rounded font-bold hover:bg-gray-200 shadow-lg">Assinar Pro</button>}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Role Edit Modal */}
-            {roleToEdit && (
-                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-                    <div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-6 w-full max-w-sm">
-                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Settings size={20} className="text-primary"/> Gerenciar Perfil</h3>
-                        <div className="space-y-4">
-                            <div><label className="block text-xs font-bold text-gray-400 uppercase mb-1">Nome</label><input className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white" value={editRoleLabel} onChange={e => setEditRoleLabel(e.target.value)} /></div>
-                            <div className="flex flex-col gap-2 pt-2">
-                                <button onClick={handleUpdateRole} disabled={saving} className="w-full bg-primary text-white py-2 rounded font-bold hover:bg-sky-600">{saving ? <Loader2 className="animate-spin mr-2" size={16}/> : 'Salvar'}</button>
-                                <button onClick={handleDeleteRole} disabled={saving} className="w-full border border-red-500/30 text-red-400 bg-red-900/20 py-2 rounded font-bold hover:bg-red-900/40 flex items-center justify-center"><Trash2 size={16} className="mr-2"/> Excluir</button>
-                                <button onClick={() => setRoleToEdit(null)} className="w-full text-gray-400 py-2 rounded font-bold hover:bg-gray-800">Cancelar</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Other Modals (Payment, Cancel, Delete Member/Account) */}
-            {showPaymentModal && selectedPlan && clientSecret && <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'night' } }}><SubscriptionPaymentModal planName={selectedPlan.name} price={selectedPlan.price} onClose={() => setShowPaymentModal(false)} /></Elements>}
-            {showSubscriptionDetails && subscription && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"><div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl w-full max-w-md p-6 relative"><button onClick={() => setShowSubscriptionDetails(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white"><X size={24} /></button><h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><CreditCard className="text-primary" /> Detalhes</h3><div className="p-4 bg-gray-800 rounded-lg border border-white/5 mb-4"><p className="text-sm text-gray-400 mb-1">Plano Atual</p><p className="font-bold text-lg text-white">{subscription.product_name}</p></div>{!subscription.cancel_at_period_end && <button onClick={() => {setShowSubscriptionDetails(false);setShowCancelConfirmation(true);}} className="w-full py-2.5 border border-red-500/30 text-red-400 rounded-lg font-bold hover:bg-red-900/20 flex justify-center items-center gap-2"><X size={16} /> Cancelar Assinatura</button>}</div></div>}
-            {showCancelConfirmation && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"><div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-6 w-full max-w-sm text-center"><h3 className="text-xl font-bold text-white mb-2">Cancelar Assinatura?</h3><p className="text-gray-400 mb-6 text-sm">Você tem certeza?</p><div className="flex flex-col gap-3"><button onClick={processCancellation} disabled={processing} className="w-full bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition shadow-md">{processing ? <Loader2 className="animate-spin mr-2" size={18}/> : 'Sim, Cancelar'}</button><button onClick={() => setShowCancelConfirmation(false)} disabled={processing} className="w-full bg-gray-800 text-gray-300 py-3 rounded-lg font-bold hover:bg-gray-700 transition">Manter</button></div></div></div>}
-            {memberToDelete && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"><div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-6 w-full max-w-sm text-center"><h3 className="text-xl font-bold text-white mb-2">Remover Membro?</h3><div className="flex flex-col gap-3"><button onClick={confirmDeleteMember} disabled={!!deletingMemberId} className="w-full bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition shadow-md">{deletingMemberId ? <Loader2 className="animate-spin mr-2" size={18}/> : 'Sim, Remover'}</button><button onClick={() => setMemberToDelete(null)} disabled={!!deletingMemberId} className="w-full bg-gray-800 text-gray-300 py-3 rounded-lg font-bold hover:bg-gray-700 transition">Cancelar</button></div></div></div>}
-            {showDeleteAccountModal && <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"><div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-6 w-full max-w-md"><h3 className="text-xl font-bold text-red-500 mb-4">Excluir Conta?</h3><label className="flex items-start cursor-pointer"><input type="checkbox" className="mt-1 mr-3 h-5 w-5 bg-gray-800 border-gray-600 text-red-600" checked={deleteConfirmed} onChange={(e) => setDeleteConfirmed(e.target.checked)} /><span className="text-sm text-gray-300">Estou ciente de que esta ação é <strong>irreversível</strong>.</span></label><div className="flex gap-3 justify-end mt-6"><button onClick={() => setShowDeleteAccountModal(false)} disabled={isDeletingAccount} className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg font-bold hover:bg-gray-700">Cancelar</button><button onClick={handleDeleteAccount} disabled={!deleteConfirmed || isDeletingAccount} className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 flex items-center">{isDeletingAccount ? <Loader2 className="animate-spin mr-2" size={18}/> : <Trash2 className="mr-2" size={18}/>}Confirmar</button></div></div></div>}
         </div>
       </div>
     </div>

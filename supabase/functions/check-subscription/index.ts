@@ -14,7 +14,10 @@ const TIER_MAPPING = {
   'price_1SlEBs2Obfcu36b5HrWAo2Fh': 'pro',
   'prod_TifWKWr1WU3XbW': 'starter',
   'prod_TifWS13bkpeoaA': 'pro',
-  'price_1SrN3I2Obfcu36b5MmVEv6qq': 'starter'
+  'price_1SrN3I2Obfcu36b5MmVEv6qq': 'starter',
+  // Enterprise IDs
+  'price_1SykFl2Obfcu36b5rdtYse4m': 'enterprise', 
+  'price_1SykGo2Obfcu36b5TmDgIM4d': 'enterprise'
 };
 
 Deno.serve(async (req) => {
@@ -57,7 +60,7 @@ Deno.serve(async (req) => {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Obter dados da clínica, incluindo a nova flag 'is_manual_override'
+    // Obter dados da clínica
     const { data: clinicData } = await supabaseAdmin
         .from('clinics')
         .select('subscription_tier, bonus_expires_at, is_manual_override')
@@ -65,7 +68,6 @@ Deno.serve(async (req) => {
         .single();
 
     // 0. VERIFICAÇÃO DE OVERRIDE MANUAL (PRIORIDADE MÁXIMA)
-    // Se um Super Admin definiu o plano manualmente, ignoramos o Stripe.
     if (clinicData?.is_manual_override) {
         return new Response(JSON.stringify({ 
             subscribed: true, 
@@ -77,7 +79,7 @@ Deno.serve(async (req) => {
         });
     }
 
-    // 1. Verificar Bônus de Indicação (Prioridade Alta)
+    // 1. Verificar Bônus de Indicação
     if (clinicData?.bonus_expires_at) {
         const bonusDate = new Date(clinicData.bonus_expires_at);
         if (bonusDate > new Date()) {
@@ -100,7 +102,6 @@ Deno.serve(async (req) => {
     // Se não tem customer no Stripe, é Free
     if (customers.data.length === 0) {
       if (clinicData?.subscription_tier !== 'free') {
-          // Reverter para free se não tiver bônus ativo nem override
           await supabaseAdmin.from('clinics').update({ subscription_tier: 'free' }).eq('id', user.id);
       }
       return new Response(JSON.stringify({ subscribed: false, tier: 'free' }), {

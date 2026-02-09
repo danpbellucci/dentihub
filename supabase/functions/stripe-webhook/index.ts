@@ -15,6 +15,9 @@ const PRICE_ID_TO_TIER: Record<string, string> = {
   // IDs Reais (Produção)
   'price_1SlMYr2Obfcu36b5HzK9JQPO': 'starter', 
   'price_1SlEBs2Obfcu36b5HrWAo2Fh': 'pro',
+  // Enterprise
+  'price_1SykFl2Obfcu36b5rdtYse4m': 'enterprise', 
+  'price_1SykGo2Obfcu36b5TmDgIM4d': 'enterprise',
   // Legacy / Teste
   'price_1SrN3I2Obfcu36b5MmVEv6qq': 'starter' 
 };
@@ -62,7 +65,7 @@ Deno.serve(async (req) => {
 
   try {
     // FUNÇÃO AUXILIAR PARA ATUALIZAR USUÁRIO
-    const updateUserTier = async (userId: string | undefined, customerId: string, subscriptionId: string, priceId: string, customerEmail?: string) => {
+    const updateUserTier = async (userId: string | undefined, customerId: string, subscriptionId: string, priceId: string, customerEmail?: string, customLimits?: any) => {
         const tier = PRICE_ID_TO_TIER[priceId] || 'free';
         console.log(`Processando atualização: Customer ${customerId} -> Plano ${tier}`);
 
@@ -90,11 +93,23 @@ Deno.serve(async (req) => {
         }
 
         if (userId) {
-            const { error } = await supabase.from('clinics').update({
+            const updatePayload: any = {
                 subscription_tier: tier,
                 stripe_customer_id: customerId,
                 stripe_subscription_id: subscriptionId
-            }).eq('id', userId);
+            };
+
+            // Atualiza limites customizados se for Enterprise e vier nos metadados
+            if (tier === 'enterprise' && customLimits) {
+                if (customLimits.customDentistLimit) updatePayload.custom_dentist_limit = Number(customLimits.customDentistLimit);
+                if (customLimits.customAiDailyLimit) updatePayload.custom_ai_daily_limit = Number(customLimits.customAiDailyLimit);
+            } else if (tier !== 'enterprise') {
+                // Limpa custom limits se mudar de plano
+                updatePayload.custom_dentist_limit = null;
+                updatePayload.custom_ai_daily_limit = null;
+            }
+
+            const { error } = await supabase.from('clinics').update(updatePayload).eq('id', userId);
 
             if (error) {
                 console.error(`❌ Erro ao atualizar banco: ${error.message}`);
@@ -115,12 +130,16 @@ Deno.serve(async (req) => {
             const customerId = invoice.customer as string;
             const customerEmail = invoice.customer_email || undefined;
             
-            // Busca detalhes extras da assinatura para garantir o priceId correto
+            // Busca detalhes extras da assinatura para garantir o priceId correto e metadados
             const subscription = await stripe.subscriptions.retrieve(subscriptionId);
             const userId = subscription.metadata?.supabaseUUID;
+            const customLimits = {
+                customDentistLimit: subscription.metadata?.customDentistLimit,
+                customAiDailyLimit: subscription.metadata?.customAiDailyLimit
+            };
             const priceId = subscription.items.data[0].price.id;
 
-            await updateUserTier(userId, customerId, subscriptionId, priceId, customerEmail);
+            await updateUserTier(userId, customerId, subscriptionId, priceId, customerEmail, customLimits);
         }
     }
 
@@ -133,9 +152,13 @@ Deno.serve(async (req) => {
       const customerEmail = session.customer_details?.email || undefined;
       
       const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      const customLimits = {
+          customDentistLimit: subscription.metadata?.customDentistLimit,
+          customAiDailyLimit: subscription.metadata?.customAiDailyLimit
+      };
       const priceId = subscription.items.data[0].price.id;
 
-      await updateUserTier(userId, customerId, subscriptionId, priceId, customerEmail);
+      await updateUserTier(userId, customerId, subscriptionId, priceId, customerEmail, customLimits);
     }
 
     // CENÁRIO C: Assinatura Cancelada
@@ -149,7 +172,11 @@ Deno.serve(async (req) => {
       
       if (user) {
           await supabase.from('clinics')
-            .update({ subscription_tier: 'free' })
+            .update({ 
+                subscription_tier: 'free',
+                custom_dentist_limit: null,
+                custom_ai_daily_limit: null
+            })
             .eq('id', user.id);
           console.log(`✅ Usuário ${user.id} revertido para FREE.`);
       } else {
@@ -166,6 +193,10 @@ Deno.serve(async (req) => {
             const priceId = subscription.items.data[0].price.id;
             const customerId = subscription.customer as string;
             const userId = subscription.metadata?.supabaseUUID;
+            const customLimits = {
+                customDentistLimit: subscription.metadata?.customDentistLimit,
+                customAiDailyLimit: subscription.metadata?.customAiDailyLimit
+            };
             
             // Tenta buscar email do customer se não vier no objeto subscription
             let customerEmail;
@@ -176,7 +207,7 @@ Deno.serve(async (req) => {
                 }
             } catch (e) {}
 
-            await updateUserTier(userId, customerId, subscription.id, priceId, customerEmail);
+            await updateUserTier(userId, customerId, subscription.id, priceId, customerEmail, customLimits);
         }
     }
 
@@ -187,9 +218,6 @@ Deno.serve(async (req) => {
 
   } catch (err: any) {
     console.error(`❌ Erro de Lógica no Webhook: ${err.message}`);
-    // Retornamos 200 mesmo em caso de erro lógico interno para evitar que o Stripe continue tentando
-    // reenviar infinitamente se o erro for de código (bug), a menos que seja timeout.
-    // Se for erro de conexão, o throw acima já pode ter causado 500.
     return new Response(JSON.stringify({ error: err.message }), { 
         status: 500, // Stripe tentará novamente
         headers: { 'Content-Type': 'application/json' } 
