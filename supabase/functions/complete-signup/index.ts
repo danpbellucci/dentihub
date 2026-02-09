@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
 
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-    // 1. Verificar Código de Verificação
+    // 1. Verificar Código de Verificação (OTP)
     const { data: verification } = await supabaseAdmin
         .from('verification_codes')
         .select('*')
@@ -62,9 +62,33 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
     if (!verification) {
-        return new Response(JSON.stringify({ error: "Código inválido ou expirado." }), {
+        return new Response(JSON.stringify({ error: "Código de verificação inválido ou expirado." }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200
         });
+    }
+
+    // 1.5 Validar Código de Indicação (Antes de criar usuário para evitar contas 'zumbis' se o código estiver errado)
+    let referredByClinicId = null;
+    
+    if (referralCode && referralCode.trim() !== '') {
+        const cleanReferralCode = referralCode.toUpperCase().trim();
+        
+        const { data: referrer } = await supabaseAdmin
+            .from('clinics')
+            .select('id')
+            .eq('referral_code', cleanReferralCode)
+            .maybeSingle();
+        
+        if (!referrer) {
+            // Retorna erro específico pedindo ação do usuário
+            return new Response(JSON.stringify({ 
+                error: "O código de indicação informado não existe. Por favor, revise o código ou apague-o para continuar." 
+            }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200
+            });
+        }
+        
+        referredByClinicId = referrer.id;
     }
 
     // 2. Criar Usuário no Supabase Auth
@@ -105,20 +129,6 @@ Deno.serve(async (req) => {
         const { data: existingSlug } = await supabaseAdmin.from('clinics').select('id').eq('slug', slug).maybeSingle();
         if (existingSlug) slug = `${slug}-${Math.floor(Math.random()*1000)}`;
 
-        // -- Lógica de Indicação --
-        let referredByClinicId = null;
-        if (referralCode) {
-            const { data: referrer } = await supabaseAdmin
-                .from('clinics')
-                .select('id')
-                .eq('referral_code', referralCode.toUpperCase().trim())
-                .maybeSingle();
-            
-            if (referrer) {
-                referredByClinicId = referrer.id;
-            }
-        }
-
         // Gera código único para a nova clínica (com retry simples)
         let newReferralCode = generateReferralCode();
         // (Em produção ideal, faria um loop check, mas probabilidade de colisão com 6 chars é baixa para MVP)
@@ -131,7 +141,7 @@ Deno.serve(async (req) => {
                 slug: slug, 
                 subscription_tier: 'free',
                 referral_code: newReferralCode,
-                referred_by: referredByClinicId
+                referred_by: referredByClinicId // Usa o ID validado anteriormente
             });
 
         if (clinicError) {

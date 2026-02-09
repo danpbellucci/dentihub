@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  LayoutDashboard, Calendar, Users, UserCheck, Mic, MessageSquare, DollarSign, BellRing, Settings, ChevronDown, ChevronUp, BookOpen, X, Send, Loader2, MessageCircle
+  LayoutDashboard, Calendar, Users, UserCheck, Mic, MessageSquare, DollarSign, BellRing, Settings, ChevronDown, ChevronUp, BookOpen, X, Send, Loader2, MessageCircle, Box
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { useDashboard } from './DashboardLayout'; // Alterado de useOutletContext para useDashboard
@@ -85,15 +85,115 @@ const GuidePage: React.FC = () => {
   };
 
   const guides = [
-    { title: 'Visão Geral', icon: LayoutDashboard, description: 'Acompanhe os indicadores chave e a agenda do dia.', steps: ['Ao entrar no sistema, você verá os cards com o total de pacientes, agendamentos do dia e receita mensal.', 'Use a lista "Agenda de Hoje" para ver rapidamente os próximos atendimentos.', 'Acompanhe o "Financeiro do Dia" para ver as movimentações recentes.'] },
-    { title: 'Agenda', icon: Calendar, description: 'Gerencie compromissos, status e pagamentos.', steps: ['Clique em "Novo Agendamento" para marcar uma consulta.', 'Use os filtros no topo para alternar entre Grade e Lista.', 'Para editar, basta clicar sobre o agendamento.', 'Na lista, altere rapidamente Status e Pagamento.', 'Marcar como "Pago" lança valor no Financeiro.'] },
-    { title: 'Pacientes', icon: Users, description: 'Cadastro completo e histórico.', steps: ['Clique em "Novo" para cadastrar um paciente.', 'Clique no nome para ver perfil e histórico.', 'Use botões de ação para Receitas ou Prontuário.', 'Busque por nome ou CPF.'] },
-    { title: 'Dentistas', icon: UserCheck, description: 'Gestão da equipe.', steps: ['Cadastre profissionais, especialidades e CRO.', 'Adicione procedimentos e preços.', 'Configure horários de trabalho e pausas.', 'Use "Datas Bloqueadas" para folgas.'] },
-    { title: 'Prontuário IA', icon: Mic, description: 'Transcreva consultas com IA.', steps: ['Selecione Paciente e Dentista.', 'Clique no Microfone e dite.', 'Clique "Parar & Processar" para gerar SOAP.', 'Revise e Salve.'] },
-    { title: 'Mensageria', icon: MessageSquare, description: 'Automação de e-mails.', steps: ['Veja envios automáticos em "Histórico".', 'Envie e-mails de "Boas-vindas".', 'Crie campanhas de retorno em "Campanha Manual".'] },
-    { title: 'Financeiro', icon: DollarSign, description: 'Fluxo de caixa.', steps: ['Visualize saldo do período.', 'Lance despesas ou receitas avulsas.', 'Filtre por data.'] },
-    { title: 'Solicitações', icon: BellRing, description: 'Aprovação de agendamentos online.', steps: ['Pedidos do Link Público aparecem aqui.', 'Verifique dados e horário.', 'Aceite ou Recuse.'] },
-    { title: 'Configurações', icon: Settings, description: 'Dados da clínica e equipe.', steps: ['Atualize perfil da clínica.', 'Altere senha.', 'Convide membros.', 'Gerencie planos.'] }
+    { 
+        title: 'Visão Geral', 
+        icon: LayoutDashboard, 
+        description: 'Acompanhe os indicadores chave e a agenda do dia.', 
+        steps: [
+            'Visualize o total de pacientes, agendamentos e previsão financeira.',
+            'Acompanhe a lista de "Próximos Agendamentos" em tempo real para se preparar.',
+            'Monitore o fluxo de caixa da semana nos gráficos de Entradas e Saídas.'
+        ] 
+    },
+    { 
+        title: 'Agenda', 
+        icon: Calendar, 
+        description: 'Gerencie compromissos, status e pagamentos.', 
+        steps: [
+            'Clique em "Novo Agendamento" ou em um horário vazio na grade.',
+            'Use os filtros no topo para alternar entre Grade Mensal e Lista.', 
+            'Na visualização de Lista, altere rapidamente Status e Pagamento.', 
+            'Marcar como "Pago" lança automaticamente o valor no Financeiro.',
+            'Ao concluir um atendimento, o sistema sugere agendar o retorno.'
+        ] 
+    },
+    { 
+        title: 'Pacientes', 
+        icon: Users, 
+        description: 'Cadastro completo e histórico clínico.', 
+        steps: [
+            'Cadastre pacientes com validação automática de CPF.', 
+            'Clique no nome para ver perfil e histórico.', 
+            'Use botões de ação rápida para verificar agendamentos passados.', 
+            'Utilize a busca inteligente por Nome ou CPF.'
+        ] 
+    },
+    { 
+        title: 'Dentistas', 
+        icon: UserCheck, 
+        description: 'Gestão da equipe e profissionais.', 
+        steps: [
+            'Cadastre profissionais com cor personalizada para a agenda.', 
+            'Configure horários de atendimento, pausas e dias de folga (Datas Bloqueadas).', 
+            'Defina os procedimentos realizados e valores.', 
+            'O sistema envia um convite por e-mail para o dentista criar sua senha e acessar.'
+        ] 
+    },
+    { 
+        title: 'Prontuário IA', 
+        icon: Mic, 
+        description: 'Transcreva consultas automaticamente com IA.', 
+        steps: [
+            'Selecione o Paciente e o Dentista responsável.', 
+            'Clique no microfone e dite a evolução clínica (o que foi feito).', 
+            'Clique em "Parar & Processar" para gerar o resumo SOAP.', 
+            'Revise o texto gerado e salve no histórico do paciente.'
+        ] 
+    },
+    { 
+        title: 'Mensageria', 
+        icon: MessageSquare, 
+        description: 'Automação de e-mails e Campanhas.', 
+        steps: [
+            'Acompanhe o histórico de envios automáticos (Lembretes, Aniversários).', 
+            'Use a aba "Campanha Manual" para filtrar pacientes ausentes (Recall).', 
+            'Envie e-mails de retorno em massa para reativar pacientes.',
+            'O sistema notifica os administradores se o estoque estiver baixo.'
+        ] 
+    },
+    { 
+        title: 'Financeiro', 
+        icon: DollarSign, 
+        description: 'Fluxo de caixa e controle de contas.', 
+        steps: [
+            'Visualize o saldo do período e filtre por data.', 
+            'Lance despesas ou receitas avulsas manualmente.', 
+            'Vincule lançamentos a um Dentista específico para facilitar o repasse.',
+            'Altere o status para "Pago/Recebido" com um clique na tabela.'
+        ] 
+    },
+    { 
+        title: 'Estoque', 
+        icon: Box, 
+        description: 'Gestão de materiais e alertas de reposição.', 
+        steps: [
+            'Cadastre itens definindo a quantidade mínima para alerta.', 
+            'Defina se o item é "Compartilhado" ou de um Dentista específico.', 
+            'Use os botões + e - para ajustes rápidos de quantidade no dia a dia.',
+            'Receba alertas automáticos por e-mail quando o estoque atingir o mínimo.'
+        ] 
+    },
+    { 
+        title: 'Solicitações', 
+        icon: BellRing, 
+        description: 'Central de notificações e pedidos online.', 
+        steps: [
+            'Gerencie pedidos de agendamento vindos do Link Público.', 
+            'Visualize respostas de pacientes aos lembretes (Confirmou / Cancelou).', 
+            'Aceite ou Recuse solicitações com um clique, verificando conflitos de horário.'
+        ] 
+    },
+    { 
+        title: 'Configurações', 
+        icon: Settings, 
+        description: 'Dados da clínica, equipe e assinatura.', 
+        steps: [
+            'Personalize os dados e a logo da clínica.', 
+            'Gerencie a equipe, convide membros e defina perfis de acesso.', 
+            'Configure quais notificações cada perfil deve receber.', 
+            'Gerencie seu Plano, Assinatura e acompanhe o programa de Indicações.'
+        ] 
+    }
   ];
 
   return (

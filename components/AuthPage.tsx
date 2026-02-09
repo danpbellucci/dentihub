@@ -148,7 +148,13 @@ const AuthPage: React.FC = () => {
   const startSignup = async () => {
       if (!name.trim()) throw new Error("Por favor, informe seu nome ou da clínica.");
       if (!isValidEmail(email)) throw new Error("Por favor, insira um e-mail válido.");
-      if (password.length < 6) throw new Error("A senha deve ter pelo menos 6 caracteres.");
+      
+      // Validação de Senha Segura
+      if (password.length < 8) throw new Error("A senha deve ter pelo menos 8 caracteres.");
+      if (!/[A-Z]/.test(password)) throw new Error("A senha deve conter pelo menos uma letra maiúscula.");
+      if (!/[0-9]/.test(password)) throw new Error("A senha deve conter pelo menos um número.");
+      if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) throw new Error("A senha deve conter pelo menos um caractere especial (ex: !@#$).");
+
       if (password !== confirmPassword) throw new Error("As senhas não conferem.");
       if (!termsAccepted) throw new Error("Você deve ler e aceitar os Termos de Uso.");
 
@@ -342,11 +348,11 @@ const AuthPage: React.FC = () => {
                             type="password"
                             required
                             disabled={isMisconfigured}
-                            minLength={6}
+                            minLength={view === 'signup' ? 8 : 6}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             className="block w-full pl-10 bg-gray-800 border border-gray-700 text-white rounded-lg py-2.5 placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition disabled:opacity-50"
-                            placeholder={view === 'signup' ? 'Mínimo 6 caracteres' : '••••••••'}
+                            placeholder={view === 'signup' ? '8+ chars, Maiúscula, Núm, Especial' : '••••••••'}
                         />
                         </div>
                         {view === 'login' && (
@@ -375,7 +381,7 @@ const AuthPage: React.FC = () => {
                             <input
                                 type="password"
                                 required
-                                minLength={6}
+                                minLength={8}
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                 className="block w-full pl-10 bg-gray-800 border border-gray-700 text-white rounded-lg py-2.5 placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition"
