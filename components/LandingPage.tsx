@@ -507,7 +507,7 @@ const LandingPage: React.FC = () => {
                              {activeMockup === 'Pacientes' && (
                                 <div className="space-y-4 animate-fade-in h-full flex flex-col">
                                     <div className="flex justify-between items-center mb-2">
-                                        <h2 className="text-lg font-bold text-white flex items-center gap-2">Pacientes <span className="text-xs bg-gray-800 px-2 py-0.5 rounded border border-white/10 text-gray-400">148 / Ilimitado</span></h2>
+                                        <h2 className="text-lg font-bold text-white flex items-center gap-2">Pacientes <span className="text-xs bg-gray-800 px-2 py-0.5 rounded border border-white/10 text-gray-400">6 / 30</span></h2>
                                         <div className="flex gap-2">
                                             <button className="bg-gray-800 text-gray-300 border border-white/10 px-3 py-1.5 rounded text-xs font-bold flex items-center"><Folder size={12} className="mr-1"/> Modelo</button>
                                             <button className="bg-gray-800 text-gray-300 border border-white/10 px-3 py-1.5 rounded text-xs font-bold flex items-center"><Upload size={12} className="mr-1"/> Importar Excel</button>
@@ -553,7 +553,7 @@ const LandingPage: React.FC = () => {
                             {activeMockup === 'Dentistas' && (
                                 <div className="space-y-4 animate-fade-in h-full flex flex-col">
                                     <div className="flex justify-between items-center mb-2">
-                                        <h2 className="text-lg font-bold text-white flex items-center gap-2">Dentistas <span className="text-xs bg-gray-800 px-2 py-0.5 rounded border border-white/10 text-gray-400">2 / 3</span></h2>
+                                        <h2 className="text-lg font-bold text-white flex items-center gap-2">Dentistas <span className="text-xs bg-gray-800 px-2 py-0.5 rounded border border-white/10 text-gray-400">1 / 1</span></h2>
                                         <div className="flex gap-2">
                                             <button className="bg-gray-800 text-gray-300 border border-white/10 px-3 py-1.5 rounded text-xs font-bold flex items-center"><Folder size={12} className="mr-1"/> Modelo</button>
                                             <button className="bg-primary text-white text-xs px-3 py-1.5 rounded font-bold flex items-center"><Plus size={14} className="mr-1"/> Novo</button>
