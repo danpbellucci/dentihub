@@ -66,19 +66,48 @@ Deno.serve(async (req) => {
             'Authorization': `Bearer ${resendApiKey}`
         },
         body: JSON.stringify({
-            from: "DentiHub Segurança <naoresponda@dentihub.com.br>",
+            from: "DentiHub <naoresponda@dentihub.com.br>",
             to: [email],
             subject: `${code} é seu código de verificação`,
             html: `
-                <div style="font-family: Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
-                    <h2 style="color: #0ea5e9; text-align: center;">Validação de Conta</h2>
-                    <p>Olá, <strong>${name || 'Doutor(a)'}</strong>!</p>
-                    <p>Use o código abaixo para concluir seu cadastro no DentiHub:</p>
-                    <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
-                        <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #1e293b;">${code}</span>
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <title>Seu código de verificação</title>
+                </head>
+                <body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 40px 0;">
+                    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                        
+                        <!-- Header -->
+                        <div style="background-color: #0ea5e9; padding: 30px; text-align: center;">
+                            <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">DentiHub</h1>
+                        </div>
+
+                        <!-- Body -->
+                        <div style="padding: 40px 30px; color: #334155; text-align: center;">
+                            <h2 style="color: #0f172a; margin-top: 0; font-size: 20px; font-weight: 700;">Validação de Conta</h2>
+                            <p style="margin: 15px 0 25px 0; font-size: 16px; line-height: 1.5;">Olá, <strong>${name || 'Doutor(a)'}</strong>!<br>Utilize o código abaixo para finalizar seu cadastro.</p>
+                            
+                            <!-- Code Box Highlight -->
+                            <div style="background-color: #f0f9ff; border: 2px dashed #0ea5e9; border-radius: 12px; padding: 25px; margin: 30px 0;">
+                                <p style="margin: 0 0 10px 0; color: #0369a1; font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 1px;">CÓDIGO DE SEGURANÇA</p>
+                                <div style="font-family: 'Courier New', monospace; font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #0284c7; background-color: #ffffff; padding: 10px 20px; border-radius: 8px; display: inline-block;">
+                                    ${code}
+                                </div>
+                                <p style="margin: 10px 0 0 0; color: #64748b; font-size: 12px;">(Selecione e copie o número acima)</p>
+                            </div>
+
+                            <p style="color: #64748b; font-size: 13px; margin: 0;">Este código expira em 15 minutos.</p>
+                        </div>
+
+                        <!-- Footer -->
+                        <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
+                            <p style="font-size: 11px; color: #94a3b8; margin: 0;">Se você não solicitou este código, ignore este e-mail.</p>
+                        </div>
                     </div>
-                    <p style="text-align: center; color: #64748b; font-size: 12px;">Este código expira em 15 minutos.</p>
-                </div>
+                </body>
+                </html>
             `
         })
     });
