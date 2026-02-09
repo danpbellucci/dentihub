@@ -4,12 +4,13 @@ import { supabase } from '../services/supabase';
 import { 
   Users, Calendar, DollarSign, Activity, Filter, 
   Clock, ArrowUpCircle, ArrowDownCircle, TrendingUp, TrendingDown,
-  ArrowRight
+  ArrowRight, Building, UserPlus, CheckCircle
 } from 'lucide-react';
 import { useDashboard } from './DashboardLayout';
 import { Dentist, Appointment } from '../types';
 import { startOfMonth, endOfMonth, startOfDay, endOfDay, startOfWeek, endOfWeek, parseISO, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { ClinicOnboardingForm, DentistOnboardingForm } from './OnboardingForms';
 
 interface DashboardMetrics {
   patientsCount: number;
@@ -22,7 +23,7 @@ interface DashboardMetrics {
 }
 
 const DashboardHome: React.FC = () => {
-  const { userProfile } = useDashboard() || {};
+  const { userProfile, refreshProfile } = useDashboard() || {};
   const [metrics, setMetrics] = useState<DashboardMetrics>({ 
     patientsCount: 0, 
     appointmentsToday: 0, 
@@ -37,11 +38,53 @@ const DashboardHome: React.FC = () => {
   const [filterDentistId, setFilterDentistId] = useState('');
   const [loading, setLoading] = useState(true);
 
+  // Onboarding States
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState<1 | 2>(1);
+
   useEffect(() => {
     if (userProfile?.clinic_id) {
       fetchData(userProfile.clinic_id);
+      
+      // Onboarding Check for Administrators
+      if (userProfile.role === 'administrator') {
+          checkOnboardingStatus(userProfile.clinic_id);
+      }
     }
   }, [userProfile?.clinic_id, filterDentistId]);
+
+  const checkOnboardingStatus = async (clinicId: string) => {
+      try {
+          // 1. Verifica se a clínica tem cadastro completo (Endereço é um bom indicador)
+          const { data: clinic } = await supabase.from('clinics').select('address').eq('id', clinicId).single();
+          
+          if (!clinic?.address) {
+              setOnboardingStep(1);
+              setShowOnboarding(true);
+              return;
+          }
+
+          // 2. Verifica se há pelo menos um dentista cadastrado
+          const { count } = await supabase.from('dentists').select('*', { count: 'exact', head: true }).eq('clinic_id', clinicId);
+          
+          if ((count || 0) === 0) {
+              setOnboardingStep(2);
+              setShowOnboarding(true);
+          }
+      } catch (e) {
+          console.error("Erro ao verificar onboarding:", e);
+      }
+  };
+
+  const handleOnboardingSuccess = async () => {
+      if (onboardingStep === 1) {
+          setOnboardingStep(2);
+      } else {
+          setShowOnboarding(false);
+          if (refreshProfile) await refreshProfile();
+          if (userProfile?.clinic_id) fetchData(userProfile.clinic_id);
+      }
+  };
 
   const fetchData = async (clinicId: string) => {
     setLoading(true);
@@ -173,7 +216,47 @@ const DashboardHome: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in relative">
+      {/* Onboarding Modal Overlay */}
+      {showOnboarding && userProfile?.clinic_id && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm animate-fade-in">
+              <div className="bg-gray-900 border border-white/10 p-8 rounded-2xl shadow-2xl w-full max-w-xl relative flex flex-col max-h-[90vh]">
+                  <div className="mb-6 text-center">
+                      <div className="flex justify-center mb-4">
+                          <div className={`h-3 w-3 rounded-full mx-1 ${onboardingStep >= 1 ? 'bg-primary' : 'bg-gray-700'}`}></div>
+                          <div className={`h-3 w-3 rounded-full mx-1 ${onboardingStep >= 2 ? 'bg-primary' : 'bg-gray-700'}`}></div>
+                      </div>
+                      <h2 className="text-2xl font-black text-white mb-2">
+                          {onboardingStep === 1 ? 'Bem-vindo ao DentiHub! 🎉' : 'Cadastre o Dentista 🦷'}
+                      </h2>
+                      <p className="text-gray-400">
+                          {onboardingStep === 1 
+                              ? 'Vamos configurar os dados da sua clínica para começar.' 
+                              : 'Agora, cadastre o perfil do profissional principal (você).'}
+                      </p>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto custom-scrollbar">
+                      {onboardingStep === 1 && (
+                          <ClinicOnboardingForm 
+                              clinicId={userProfile.clinic_id} 
+                              onSuccess={handleOnboardingSuccess}
+                              onCancel={() => setShowOnboarding(false)} // Permite pular se necessário, mas idealmente não deveria
+                          />
+                      )}
+                      
+                      {onboardingStep === 2 && (
+                          <DentistOnboardingForm 
+                              clinicId={userProfile.clinic_id} 
+                              onSuccess={handleOnboardingSuccess}
+                              onCancel={() => setShowOnboarding(false)}
+                          />
+                      )}
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
         <div>
