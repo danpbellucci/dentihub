@@ -6,7 +6,7 @@ import {
   Users, Building2, Calendar, Mic, Mail, Activity, 
   FileText, CalendarRange, Filter, RefreshCw,
   BarChart3, ArrowLeft, Server, Megaphone, PenTool, Instagram, Linkedin, MessageCircle, Copy, Check, Loader2, Sparkles, Image as ImageIcon, Zap, CreditCard,
-  Target, Monitor, MousePointer, Download, LayoutTemplate, Palette, Globe, ChevronRight, AlertTriangle
+  Target, Monitor, MousePointer, Download, LayoutTemplate, Palette, Globe, ChevronRight, AlertTriangle, Menu, X
 } from 'lucide-react';
 import { format, subDays, startOfDay, endOfDay, parseISO } from 'date-fns';
 import Toast, { ToastType } from './Toast';
@@ -43,6 +43,7 @@ const SuperAdminPage: React.FC = () => {
   
   // Navigation State
   const [activeSection, setActiveSection] = useState<'dashboard' | 'marketing'>('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   // Data Loading State
   const [loading, setLoading] = useState(true);
@@ -331,28 +332,46 @@ const SuperAdminPage: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-gray-50 overflow-hidden relative">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* --- LEFT SIDEBAR --- */}
-      <aside className="w-64 bg-gray-900 flex-shrink-0 flex flex-col border-r border-gray-800">
-          <div className="p-6 border-b border-gray-800">
-              <h1 className="text-xl font-black text-white flex items-center gap-2">
-                  <Activity className="text-red-600" /> GOD MODE
-              </h1>
-              <p className="text-xs text-gray-500 mt-1">Super Admin Dashboard</p>
+      {/* --- OVERLAY PARA MOBILE --- */}
+      {sidebarOpen && (
+        <div 
+            className="fixed inset-0 bg-black/50 z-40 md:hidden animate-fade-in"
+            onClick={() => setSidebarOpen(false)}
+        ></div>
+      )}
+
+      {/* --- LEFT SIDEBAR (RESPONSIVA) --- */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-64 bg-gray-900 flex-shrink-0 flex flex-col border-r border-gray-800
+        transform transition-transform duration-300 ease-in-out
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        md:relative md:translate-x-0
+      `}>
+          <div className="p-6 border-b border-gray-800 flex justify-between items-center">
+              <div>
+                <h1 className="text-xl font-black text-white flex items-center gap-2">
+                    <Activity className="text-red-600" /> GOD MODE
+                </h1>
+                <p className="text-xs text-gray-500 mt-1">Super Admin Dashboard</p>
+              </div>
+              <button onClick={() => setSidebarOpen(false)} className="text-gray-400 hover:text-white md:hidden">
+                  <X size={24} />
+              </button>
           </div>
           
-          <nav className="flex-1 p-4 space-y-2">
+          <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
               <button 
-                  onClick={() => setActiveSection('dashboard')}
+                  onClick={() => { setActiveSection('dashboard'); setSidebarOpen(false); }}
                   className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeSection === 'dashboard' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
               >
                   <BarChart3 size={18} className="mr-3"/> Visão Geral
               </button>
               
               <button 
-                  onClick={() => setActiveSection('marketing')}
+                  onClick={() => { setActiveSection('marketing'); setSidebarOpen(false); }}
                   className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeSection === 'marketing' ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/20' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
               >
                   <Sparkles size={18} className="mr-3"/> Agente de Marketing
@@ -360,13 +379,13 @@ const SuperAdminPage: React.FC = () => {
 
               <div className="pt-4 mt-4 border-t border-gray-800">
                   <button 
-                      onClick={() => navigate('/super-admin/leads')}
+                      onClick={() => { navigate('/super-admin/leads'); setSidebarOpen(false); }}
                       className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/5 hover:text-white transition-all"
                   >
                       <Users size={18} className="mr-3"/> Gestão de Leads
                   </button>
                   <button 
-                      onClick={() => navigate('/super-admin/subscriptions')}
+                      onClick={() => { navigate('/super-admin/subscriptions'); setSidebarOpen(false); }}
                       className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/5 hover:text-white transition-all"
                   >
                       <CreditCard size={18} className="mr-3"/> Assinaturas
@@ -382,18 +401,28 @@ const SuperAdminPage: React.FC = () => {
       </aside>
 
       {/* --- MAIN CONTENT --- */}
-      <main className="flex-1 overflow-y-auto bg-gray-50">
+      <main className="flex-1 overflow-y-auto bg-gray-50 flex flex-col w-full relative">
         
+        {/* Mobile Header Toggle */}
+        <div className="md:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-30">
+            <h2 className="text-lg font-black text-gray-800 flex items-center gap-2">
+                <Activity className="text-red-600" size={20} /> God Mode
+            </h2>
+            <button onClick={() => setSidebarOpen(true)} className="text-gray-600 hover:text-gray-900 p-1">
+                <Menu size={24} />
+            </button>
+        </div>
+
         {/* --- VIEW: DASHBOARD --- */}
         {activeSection === 'dashboard' && (
-            <div className="p-8 space-y-8 animate-fade-in">
-                <div className="flex justify-between items-center">
+            <div className="p-4 sm:p-8 space-y-8 animate-fade-in w-full">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <h2 className="text-2xl font-bold text-gray-800">Visão Geral do Sistema</h2>
-                    <div className="flex items-center gap-2 bg-white p-1.5 rounded-lg shadow-sm border border-gray-200">
-                        <CalendarRange size={16} className="text-gray-400 ml-2" />
-                        <input type="date" value={dateRange.start} onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))} className="border-none text-sm text-gray-600 outline-none"/>
+                    <div className="flex items-center gap-2 bg-white p-1.5 rounded-lg shadow-sm border border-gray-200 w-full sm:w-auto overflow-x-auto">
+                        <CalendarRange size={16} className="text-gray-400 ml-2 flex-shrink-0" />
+                        <input type="date" value={dateRange.start} onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))} className="border-none text-sm text-gray-600 outline-none bg-transparent"/>
                         <span className="text-gray-300">-</span>
-                        <input type="date" value={dateRange.end} onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))} className="border-none text-sm text-gray-600 outline-none"/>
+                        <input type="date" value={dateRange.end} onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))} className="border-none text-sm text-gray-600 outline-none bg-transparent"/>
                         <button onClick={fetchMetrics} className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-500 transition"><RefreshCw size={14}/></button>
                     </div>
                 </div>
@@ -438,8 +467,8 @@ const SuperAdminPage: React.FC = () => {
                             <h3 className="font-bold text-gray-800 flex items-center gap-2"><Building2 size={18} className="text-gray-500"/> Performance por Clínica</h3>
                             <span className="text-xs text-gray-500">Total: {clinicsStats.length}</span>
                         </div>
-                        <div className="overflow-y-auto flex-1">
-                            <table className="w-full text-left border-collapse">
+                        <div className="overflow-x-auto flex-1">
+                            <table className="w-full text-left border-collapse min-w-[600px]">
                                 <thead className="bg-gray-50 sticky top-0 z-10">
                                     <tr>
                                         <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Clínica</th>
@@ -478,10 +507,10 @@ const SuperAdminPage: React.FC = () => {
                         <h3 className="font-bold flex items-center gap-2"><BarChart3 size={18} className="text-gray-400"/> Uso de Edge Functions</h3>
                     </div>
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                        <table className="w-full text-left border-collapse min-w-[800px]">
                             <thead className="bg-gray-50 sticky top-0 z-10">
                                 <tr>
-                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase border-r border-gray-200 w-32 bg-gray-50">Data</th>
+                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase border-r border-gray-200 w-32 bg-gray-50 sticky left-0 z-20">Data</th>
                                     {functionStats.functions.map(fn => (
                                         <th key={fn} className="px-6 py-3 text-xs font-bold text-gray-500 uppercase text-center min-w-[120px]">
                                             {fn.replace(/-/g, ' ')}
@@ -495,7 +524,7 @@ const SuperAdminPage: React.FC = () => {
                                 ) : (
                                     functionStats.days.map((day) => (
                                         <tr key={day} className="hover:bg-gray-50">
-                                            <td className="px-6 py-3 font-medium text-gray-700 border-r border-gray-100 whitespace-nowrap bg-gray-50/50">
+                                            <td className="px-6 py-3 font-medium text-gray-700 border-r border-gray-100 whitespace-nowrap bg-gray-50/50 sticky left-0 z-20">
                                                 {format(parseISO(day), "dd/MM/yyyy")}
                                             </td>
                                             {functionStats.functions.map(fn => {
@@ -526,7 +555,7 @@ const SuperAdminPage: React.FC = () => {
 
         {/* --- VIEW: MARKETING AGENT --- */}
         {activeSection === 'marketing' && (
-            <div className="p-8 h-full flex flex-col animate-fade-in">
+            <div className="p-4 sm:p-8 h-full flex flex-col animate-fade-in w-full">
                 <div className="flex justify-between items-center mb-6 shrink-0">
                     <h2 className="text-2xl font-bold text-gray-800">Agente de Marketing</h2>
                 </div>

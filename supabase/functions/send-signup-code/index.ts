@@ -36,12 +36,34 @@ Deno.serve(async (req) => {
         throw new Error("Corpo da requisição inválido.");
     }
 
-    const { email: rawEmail, name } = body;
+    const { email: rawEmail, name, referralCode } = body;
 
     if (!rawEmail) throw new Error("E-mail é obrigatório.");
     const email = rawEmail.toLowerCase().trim();
 
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+
+    // --- VALIDAÇÃO PRÉVIA DO CÓDIGO DE INDICAÇÃO ---
+    if (referralCode && referralCode.trim() !== '') {
+        const cleanCode = referralCode.trim().toUpperCase();
+        
+        // Verifica se existe alguma clínica com este código
+        const { data: clinic, error } = await supabaseAdmin
+            .from('clinics')
+            .select('id')
+            .eq('referral_code', cleanCode)
+            .maybeSingle();
+
+        if (!clinic) {
+            return new Response(JSON.stringify({ 
+                error: "O código de indicação informado não existe. Por favor, revise o código ou apague-o para continuar." 
+            }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 200, // Retorna 200 com erro no body para o front tratar
+            });
+        }
+    }
+    // ------------------------------------------------
 
     // 1. Gerar Código de 6 dígitos
     const code = Math.floor(100000 + Math.random() * 900000).toString();

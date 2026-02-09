@@ -159,7 +159,11 @@ const AuthPage: React.FC = () => {
       if (!termsAccepted) throw new Error("Você deve ler e aceitar os Termos de Uso.");
 
       const { data, error } = await supabase.functions.invoke('send-signup-code', {
-          body: { email, name }
+          body: { 
+              email, 
+              name,
+              referralCode: referralCode.trim() // Agora validado no passo de envio do código
+          }
       });
 
       if (error) throw new Error(error.message || "Erro ao conectar com servidor.");
@@ -178,7 +182,7 @@ const AuthPage: React.FC = () => {
               password, 
               code: verificationCode, 
               name,
-              referralCode: referralCode.trim() // Passa o código de indicação
+              referralCode: referralCode.trim() 
           }
       });
 
