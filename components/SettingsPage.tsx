@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import { UserProfile, ClinicRole } from '../types';
@@ -84,7 +83,14 @@ const SettingsPage: React.FC = () => {
       if (location.state && (location.state as any).openBilling) {
           setActiveTab('billing');
       }
-  }, [contextProfile?.clinic_id, location.state]);
+      
+      const params = new URLSearchParams(location.search);
+      if (params.get('success') === 'true') {
+          setActiveTab('billing');
+          setToast({ message: "Pagamento confirmado! Sua assinatura está ativa.", type: 'success' });
+          navigate(location.pathname, { replace: true });
+      }
+  }, [contextProfile?.clinic_id, location.state, location.search]);
 
   useEffect(() => {
       if (activeTab === 'referrals' && clinicData?.id) {
@@ -466,7 +472,12 @@ const SettingsPage: React.FC = () => {
                     <div className="flex justify-between items-start mb-6">
                         <div><h2 className="text-xl font-bold text-white">Planos e Assinatura</h2><p className="text-gray-400 text-sm">Gerencie seu plano atual.</p></div>
                         <div className="text-right">
-                            {currentTier !== 'free' ? (
+                            {subscription?.cancel_at_period_end ? (
+                                <div className="text-right bg-yellow-900/20 px-3 py-2 rounded-lg border border-yellow-500/20">
+                                    <span className="text-xs text-yellow-500 font-bold uppercase block mb-1">Cancelado</span>
+                                    <span className="text-sm text-gray-300">Vigente até <strong className="text-white">{format(parseISO(subscription.current_period_end), "dd 'de' MMM, yyyy", { locale: ptBR })}</strong></span>
+                                </div>
+                            ) : currentTier !== 'free' ? (
                                 <div className="flex flex-col items-end gap-2">
                                     <div className="text-sm text-gray-300"><span className="font-bold capitalize">{currentTier}</span>{subscription?.status && <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] uppercase font-bold ${subscription.status === 'active' ? 'bg-green-900/30 text-green-400' : 'bg-yellow-900/30 text-yellow-400'}`}>{subscription.status}</span>}</div>
                                     {subscription?.id && <button onClick={() => setShowSubscriptionDetails(true)} disabled={processing} className="flex items-center text-sm bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition shadow-sm disabled:opacity-50"><Settings className="mr-2" size={14}/>Gerenciar</button>}
@@ -496,26 +507,26 @@ const SettingsPage: React.FC = () => {
                         <div className="border border-blue-500/30 rounded-xl p-6 bg-gray-800/50 flex flex-col relative overflow-hidden">
                             <div className="absolute top-0 right-0 bg-blue-500/20 text-blue-400 text-[10px] font-bold px-2 py-1 rounded-bl-lg border-l border-b border-blue-500/30">POPULAR</div>
                             <h4 className="font-bold text-blue-400 text-lg">Starter</h4>
-                            <div className="my-4"><span className="text-3xl font-black text-white">R$ 1</span><span className="text-sm text-gray-500">/mês</span></div>
+                            <div className="my-4"><span className="text-3xl font-black text-white">R$ 100</span><span className="text-sm text-gray-500">/mês</span></div>
                             <ul className="space-y-3 mb-6 flex-1">
                                 <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-blue-500"/> Até 3 Dentistas</li>
                                 <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-blue-500"/> Até 100 Pacientes</li>
                                 <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-blue-500"/> IA (5 usos/dia/dentista)</li>
                             </ul>
-                            {currentTier === 'starter' ? <button disabled className="w-full py-2 bg-blue-900/30 text-blue-400 rounded font-bold">Plano Atual</button> : <button onClick={() => openPaymentModal('Starter', 'R$ 1,00', 'price_1SrN3I2Obfcu36b5MmVEv6qq')} className="w-full py-2 bg-primary text-white rounded font-bold hover:bg-sky-600 shadow-lg shadow-blue-900/20">Assinar Starter</button>}
+                            {currentTier === 'starter' ? <button disabled className="w-full py-2 bg-blue-900/30 text-blue-400 rounded font-bold">Plano Atual</button> : <button onClick={() => openPaymentModal('Starter', 'R$ 100,00', 'price_1SrN3I2Obfcu36b5MmVEv6qq')} className="w-full py-2 bg-primary text-white rounded font-bold hover:bg-sky-600 shadow-lg shadow-blue-900/20">Assinar Starter</button>}
                         </div>
                         
                         {/* Pro */}
                         <div className="border border-yellow-500/30 rounded-xl p-6 bg-gray-800/50 flex flex-col relative overflow-hidden">
                             <div className="absolute top-0 right-0 p-4 opacity-10"><Zap size={100} className="text-yellow-500"/></div>
                             <h4 className="font-bold text-yellow-400 text-lg flex items-center gap-2"><Zap size={18} fill="currentColor"/> Pro</h4>
-                            <div className="my-4"><span className="text-3xl font-black text-white">R$ 2</span><span className="text-sm text-gray-500">/mês</span></div>
+                            <div className="my-4"><span className="text-3xl font-black text-white">R$ 300</span><span className="text-sm text-gray-500">/mês</span></div>
                             <ul className="space-y-3 mb-6 flex-1 relative z-10">
                                 <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-yellow-500"/> Até 5 Dentistas</li>
                                 <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-yellow-500"/> Pacientes Ilimitados</li>
                                 <li className="flex items-center text-sm text-gray-300"><CheckCircle size={16} className="mr-2 text-yellow-500"/> IA (10 usos/dia/dentista)</li>
                             </ul>
-                            {currentTier === 'pro' ? <button disabled className="w-full py-2 bg-yellow-900/30 text-yellow-400 rounded font-bold">Plano Atual</button> : <button onClick={() => openPaymentModal('Pro', 'R$ 2,00', 'price_1Sz4tG2Obfcu36b5sVI27lo8')} className="w-full py-2 bg-white text-gray-900 rounded font-bold hover:bg-gray-200 shadow-lg">Assinar Pro</button>}
+                            {currentTier === 'pro' ? <button disabled className="w-full py-2 bg-yellow-900/30 text-yellow-400 rounded font-bold">Plano Atual</button> : <button onClick={() => openPaymentModal('Pro', 'R$ 300,00', 'price_1Sz4tG2Obfcu36b5sVI27lo8')} className="w-full py-2 bg-white text-gray-900 rounded font-bold hover:bg-gray-200 shadow-lg">Assinar Pro</button>}
                         </div>
 
                         {/* Enterprise - Custom */}
@@ -565,31 +576,6 @@ const SettingsPage: React.FC = () => {
                 </div>
             )}
 
-            {/* Other tabs omitted for brevity */}
-            {/* Same modals as before... */}
-            {/* Role Edit Modal */}
-            {roleToEdit && (
-                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-                    <div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-6 w-full max-w-sm">
-                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Settings size={20} className="text-primary"/> Gerenciar Perfil</h3>
-                        <div className="space-y-4">
-                            <div><label className="block text-xs font-bold text-gray-400 uppercase mb-1">Nome</label><input className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white" value={editRoleLabel} onChange={e => setEditRoleLabel(e.target.value)} /></div>
-                            <div className="flex flex-col gap-2 pt-2">
-                                <button onClick={handleUpdateRole} disabled={saving} className="w-full bg-primary text-white py-2 rounded font-bold hover:bg-sky-600">{saving ? <Loader2 className="animate-spin mr-2" size={16}/> : 'Salvar'}</button>
-                                <button onClick={handleDeleteRole} disabled={saving} className="w-full border border-red-500/30 text-red-400 bg-red-900/20 py-2 rounded font-bold hover:bg-red-900/40 flex items-center justify-center"><Trash2 size={16} className="mr-2"/> Excluir</button>
-                                <button onClick={() => setRoleToEdit(null)} className="w-full text-gray-400 py-2 rounded font-bold hover:bg-gray-800">Cancelar</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {showPaymentModal && selectedPlan && clientSecret && <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'night' } }}><SubscriptionPaymentModal planName={selectedPlan.name} price={selectedPlan.price} onClose={() => setShowPaymentModal(false)} /></Elements>}
-            {showSubscriptionDetails && subscription && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"><div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl w-full max-w-md p-6 relative"><button onClick={() => setShowSubscriptionDetails(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white"><X size={24} /></button><h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><CreditCard className="text-primary" /> Detalhes</h3><div className="p-4 bg-gray-800 rounded-lg border border-white/5 mb-4"><p className="text-sm text-gray-400 mb-1">Plano Atual</p><p className="font-bold text-lg text-white">{subscription.product_name}</p></div>{!subscription.cancel_at_period_end && <button onClick={() => {setShowSubscriptionDetails(false);setShowCancelConfirmation(true);}} className="w-full py-2.5 border border-red-500/30 text-red-400 rounded-lg font-bold hover:bg-red-900/20 flex justify-center items-center gap-2"><X size={16} /> Cancelar Assinatura</button>}</div></div>}
-            {showCancelConfirmation && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"><div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-6 w-full max-w-sm text-center"><h3 className="text-xl font-bold text-white mb-2">Cancelar Assinatura?</h3><p className="text-gray-400 mb-6 text-sm">Você tem certeza?</p><div className="flex flex-col gap-3"><button onClick={processCancellation} disabled={processing} className="w-full bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition shadow-md">{processing ? <Loader2 className="animate-spin mr-2" size={18}/> : 'Sim, Cancelar'}</button><button onClick={() => setShowCancelConfirmation(false)} disabled={processing} className="w-full bg-gray-800 text-gray-300 py-3 rounded-lg font-bold hover:bg-gray-700 transition">Manter</button></div></div></div>}
-            {memberToDelete && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"><div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-6 w-full max-w-sm text-center"><h3 className="text-xl font-bold text-white mb-2">Remover Membro?</h3><div className="flex flex-col gap-3"><button onClick={confirmDeleteMember} disabled={!!deletingMemberId} className="w-full bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition shadow-md">{deletingMemberId ? <Loader2 className="animate-spin mr-2" size={18}/> : 'Sim, Remover'}</button><button onClick={() => setMemberToDelete(null)} disabled={!!deletingMemberId} className="w-full bg-gray-800 text-gray-300 py-3 rounded-lg font-bold hover:bg-gray-700 transition">Cancelar</button></div></div></div>}
-            {showDeleteAccountModal && <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"><div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-6 w-full max-w-md"><h3 className="text-xl font-bold text-red-500 mb-4">Excluir Conta?</h3><label className="flex items-start cursor-pointer"><input type="checkbox" className="mt-1 mr-3 h-5 w-5 bg-gray-800 border-gray-600 text-red-600" checked={deleteConfirmed} onChange={(e) => setDeleteConfirmed(e.target.checked)} /><span className="text-sm text-gray-300">Estou ciente de que esta ação é <strong>irreversível</strong>.</span></label><div className="flex gap-3 justify-end mt-6"><button onClick={() => setShowDeleteAccountModal(false)} disabled={isDeletingAccount} className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg font-bold hover:bg-gray-700">Cancelar</button><button onClick={handleDeleteAccount} disabled={!deleteConfirmed || isDeletingAccount} className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 flex items-center">{isDeletingAccount ? <Loader2 className="animate-spin mr-2" size={18}/> : <Trash2 className="mr-2" size={18}/>}Confirmar</button></div></div></div>}
-            
             {activeTab === 'team' && (
                 <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow-sm p-6 animate-fade-in border border-white/5">
                     <h2 className="text-xl font-bold text-white mb-6 pb-2 border-b border-white/10">Gestão de Acessos</h2>
@@ -695,6 +681,29 @@ const SettingsPage: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            {/* Role Edit Modal */}
+            {roleToEdit && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+                    <div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-6 w-full max-w-sm">
+                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Settings size={20} className="text-primary"/> Gerenciar Perfil</h3>
+                        <div className="space-y-4">
+                            <div><label className="block text-xs font-bold text-gray-400 uppercase mb-1">Nome</label><input className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm text-white" value={editRoleLabel} onChange={e => setEditRoleLabel(e.target.value)} /></div>
+                            <div className="flex flex-col gap-2 pt-2">
+                                <button onClick={handleUpdateRole} disabled={saving} className="w-full bg-primary text-white py-2 rounded font-bold hover:bg-sky-600">{saving ? <Loader2 className="animate-spin mr-2" size={16}/> : 'Salvar'}</button>
+                                <button onClick={handleDeleteRole} disabled={saving} className="w-full border border-red-500/30 text-red-400 bg-red-900/20 py-2 rounded font-bold hover:bg-red-900/40 flex items-center justify-center"><Trash2 size={16} className="mr-2"/> Excluir</button>
+                                <button onClick={() => setRoleToEdit(null)} className="w-full text-gray-400 py-2 rounded font-bold hover:bg-gray-800">Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showPaymentModal && selectedPlan && clientSecret && <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'night' } }}><SubscriptionPaymentModal planName={selectedPlan.name} price={selectedPlan.price} onClose={() => setShowPaymentModal(false)} /></Elements>}
+            {showSubscriptionDetails && subscription && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"><div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl w-full max-w-md p-6 relative"><button onClick={() => setShowSubscriptionDetails(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white"><X size={24} /></button><h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><CreditCard className="text-primary" /> Detalhes</h3><div className="p-4 bg-gray-800 rounded-lg border border-white/5 mb-4"><p className="text-sm text-gray-400 mb-1">Plano Atual</p><p className="font-bold text-lg text-white">{subscription.product_name}</p></div>{!subscription.cancel_at_period_end && <button onClick={() => {setShowSubscriptionDetails(false);setShowCancelConfirmation(true);}} className="w-full py-2.5 border border-red-500/30 text-red-400 rounded-lg font-bold hover:bg-red-900/20 flex justify-center items-center gap-2"><X size={16} /> Cancelar Assinatura</button>}</div></div>}
+            {showCancelConfirmation && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"><div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-6 w-full max-w-sm text-center"><h3 className="text-xl font-bold text-white mb-2">Cancelar Assinatura?</h3><p className="text-gray-400 mb-6 text-sm">Você tem certeza?</p><div className="flex flex-col gap-3"><button onClick={processCancellation} disabled={processing} className="w-full bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition shadow-md">{processing ? <Loader2 className="animate-spin mr-2" size={18}/> : 'Sim, Cancelar'}</button><button onClick={() => setShowCancelConfirmation(false)} disabled={processing} className="w-full bg-gray-800 text-gray-300 py-3 rounded-lg font-bold hover:bg-gray-700 transition">Manter</button></div></div></div>}
+            {memberToDelete && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"><div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-6 w-full max-w-sm text-center"><h3 className="text-xl font-bold text-white mb-2">Remover Membro?</h3><div className="flex flex-col gap-3"><button onClick={confirmDeleteMember} disabled={!!deletingMemberId} className="w-full bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition shadow-md">{deletingMemberId ? <Loader2 className="animate-spin mr-2" size={18}/> : 'Sim, Remover'}</button><button onClick={() => setMemberToDelete(null)} disabled={!!deletingMemberId} className="w-full bg-gray-800 text-gray-300 py-3 rounded-lg font-bold hover:bg-gray-700 transition">Cancelar</button></div></div></div>}
+            {showDeleteAccountModal && <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"><div className="bg-gray-900 border border-white/10 rounded-xl shadow-2xl p-6 w-full max-w-md"><h3 className="text-xl font-bold text-red-500 mb-4">Excluir Conta?</h3><label className="flex items-start cursor-pointer"><input type="checkbox" className="mt-1 mr-3 h-5 w-5 bg-gray-800 border-gray-600 text-red-600" checked={deleteConfirmed} onChange={(e) => setDeleteConfirmed(e.target.checked)} /><span className="text-sm text-gray-300">Estou ciente de que esta ação é <strong>irreversível</strong>.</span></label><div className="flex gap-3 justify-end mt-6"><button onClick={() => setShowDeleteAccountModal(false)} disabled={isDeletingAccount} className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg font-bold hover:bg-gray-700">Cancelar</button><button onClick={handleDeleteAccount} disabled={!deleteConfirmed || isDeletingAccount} className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 flex items-center">{isDeletingAccount ? <Loader2 className="animate-spin mr-2" size={18}/> : <Trash2 className="mr-2" size={18}/>}Confirmar</button></div></div></div>}
         </div>
       </div>
     </div>

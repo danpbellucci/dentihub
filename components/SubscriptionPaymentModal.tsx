@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { X, Lock, Loader2, CheckCircle, ShieldCheck } from 'lucide-react';
@@ -33,7 +32,8 @@ const SubscriptionPaymentModal: React.FC<SubscriptionPaymentModalProps> = ({ pla
       elements,
       confirmParams: {
         // Redireciona de volta para a página de configurações com um parâmetro de sucesso
-        return_url: `${window.location.origin}/#/settings?success=true`,
+        // FIX: Aponta para a rota correta do dashboard
+        return_url: `${window.location.origin}/#/dashboard/settings?success=true`,
       },
       redirect: 'if_required',
     });
@@ -46,7 +46,7 @@ const SubscriptionPaymentModal: React.FC<SubscriptionPaymentModalProps> = ({ pla
       // Manuseamos o sucesso manualmente:
       
       // 1. Atualiza a URL para que o SettingsPage detecte o sucesso ao recarregar
-      window.location.hash = '/settings?success=true';
+      window.location.hash = '/dashboard/settings?success=true';
       
       // 2. Recarrega a página para processar a lógica de pós-pagamento
       window.location.reload();

@@ -6,341 +6,313 @@ import {
   Users, Building2, Calendar, Mic, Activity, 
   FileText, CalendarRange, RefreshCw,
   BarChart3, ArrowLeft, Sparkles, CreditCard,
-  Monitor, Menu, X
+  Monitor, Menu, X, HeartPulse, AlertTriangle, CheckCircle, TrendingUp,
+  Megaphone, Trash2, Send, AlertOctagon, UserX, Clock
 } from 'lucide-react';
-import { format, subDays, startOfDay, endOfDay, parseISO } from 'date-fns';
+import { format, subDays, startOfDay, endOfDay, parseISO, differenceInHours } from 'date-fns';
 import Toast, { ToastType } from './Toast';
 
-interface MetricCardProps {
-  title: string;
-  value: string | number;
-  icon: React.ElementType;
-  color: string;
-  subtext?: string;
-}
-
-const MetricCard: React.FC<MetricCardProps> = ({ title, value, icon: Icon, color, subtext }) => (
-  <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center">
-    <div className={`p-4 rounded-full mr-4 ${color.replace('text-', 'bg-').replace('600', '50').replace('700', '50')}`}>
+// ... (MetricCard e HealthIndicator mantidos iguais) ...
+const MetricCard: React.FC<{title: string, value: string, icon: any, color: string, trend?: string}> = ({ title, value, icon: Icon, color, trend }) => (
+  <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
+    <div className={`p-4 rounded-full mr-4 ${color.replace('text-', 'bg-').replace('600', '50').replace('500', '50')}`}>
       <Icon size={24} className={color} />
     </div>
     <div>
       <p className="text-sm text-gray-500 font-medium uppercase">{title}</p>
       <p className="text-2xl font-black text-gray-800">{value}</p>
-      {subtext && <p className="text-xs text-gray-400 mt-1">{subtext}</p>}
+      {trend && <p className="text-xs text-green-500 font-bold mt-1 flex items-center"><TrendingUp size={10} className="mr-1"/> {trend}</p>}
     </div>
   </div>
 );
 
-// Tipo para armazenar dados agregados da célula
-interface FunctionMetric {
-    calls: number;
-    emails: number;
-}
+const HealthIndicator: React.FC<{ label: string; date: string | null }> = ({ label, date }) => {
+    if (!date) return <div className="flex justify-between items-center p-3 bg-gray-50 rounded border border-gray-200 text-gray-400 text-sm"><span>{label}</span> <span>Nunca</span></div>;
+    const diff = differenceInHours(new Date(), parseISO(date));
+    const isCritical = diff > 24;
+    const isWarning = diff > 4 && diff <= 24;
+    return (
+        <div className={`flex justify-between items-center p-3 rounded border text-sm font-medium ${isCritical ? 'bg-red-50 border-red-200 text-red-700' : isWarning ? 'bg-yellow-50 border-yellow-200 text-yellow-700' : 'bg-green-50 border-green-200 text-green-700'}`}>
+            <span className="flex items-center gap-2">{isCritical ? <AlertTriangle size={14}/> : <CheckCircle size={14}/>}{label}</span>
+            <span>Há {diff}h</span>
+        </div>
+    );
+};
 
 const SuperAdminPage: React.FC = () => {
   const navigate = useNavigate();
-  
-  // Navigation State
-  const [activeSection, setActiveSection] = useState<'dashboard' | 'marketing'>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  
-  // Data Loading State
   const [loading, setLoading] = useState(true);
+  const [systemHealth, setSystemHealth] = useState<any>(null);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  
+  // New States
+  const [activeTab, setActiveTab] = useState<'overview' | 'churn' | 'broadcast'>('overview');
+  const [atRiskClinics, setAtRiskClinics] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  
+  // State atualizado para incluir datas
+  const [newAnnouncement, setNewAnnouncement] = useState({ 
+      title: '', 
+      message: '', 
+      type: 'info',
+      start_at: '',
+      expires_at: ''
+  });
 
   // --- DASHBOARD STATES ---
   const [dateRange, setDateRange] = useState({
     start: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
     end: format(new Date(), 'yyyy-MM-dd')
   });
-
-  const [metrics, setMetrics] = useState({
-    clinics: 0,
-    patients: 0,
-    dentists: 0,
-    appointments: 0,
-    aiRecords: 0,
-    emails: 0,
-    transactionsCount: 0,
-    requests: 0
-  });
-
-  const [clinicsStats, setClinicsStats] = useState<any[]>([]);
-  const [functionStats, setFunctionStats] = useState<{
-      days: string[];
-      functions: string[];
-      matrix: Record<string, Record<string, FunctionMetric>>;
-      totals: Record<string, FunctionMetric>;
-  }>({ days: [], functions: [], matrix: {}, totals: {} });
+  const [metrics, setMetrics] = useState({ clinics: 0, transactionsCount: 0, appointments: 0, aiRecords: 0 });
 
   useEffect(() => {
-    if (activeSection === 'dashboard') {
-        fetchMetrics();
-    }
-  }, [dateRange, activeSection]);
+    if (activeTab === 'overview') fetchData();
+    if (activeTab === 'churn') fetchChurnData();
+    if (activeTab === 'broadcast') fetchAnnouncements();
+  }, [dateRange, activeTab]);
 
-  const fetchMetrics = async () => {
+  const fetchData = async () => {
     setLoading(true);
-    
-    const parseLocalDate = (dateStr: string) => {
-        const [year, month, day] = dateStr.split('-').map(Number);
-        return new Date(year, month - 1, day);
-    };
-
-    const start = startOfDay(parseLocalDate(dateRange.start)).toISOString();
-    const end = endOfDay(parseLocalDate(dateRange.end)).toISOString();
-
     try {
-        // 1. Métricas de Negócio (Banco de Dados)
-        const { count: clinicsCount } = await supabase.from('clinics').select('*', { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end);
-        const { count: patientsCount } = await supabase.from('clients').select('*', { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end);
-        const { count: dentistsCount } = await supabase.from('user_profiles').select('*', { count: 'exact', head: true }).eq('role', 'dentist').gte('created_at', start).lte('created_at', end);
-        const { count: appointmentsCount } = await supabase.from('appointments').select('*', { count: 'exact', head: true }).gte('start_time', start).lte('start_time', end);
-        const { count: transactionsCount } = await supabase.from('transactions').select('*', { count: 'exact', head: true }).gte('date', start).lte('date', end);
+        const { data: healthData, error: healthError } = await supabase.rpc('get_system_health');
+        if (healthError) throw healthError;
+        if (healthData && healthData.length > 0) setSystemHealth(healthData[0]);
 
-        // 2. Métricas de Uso de Recursos (Logs das Edge Functions - Fonte da Verdade de Consumo)
-        const { data: logs } = await supabase
-            .from('edge_function_logs')
-            .select('created_at, function_name, metadata')
-            .gte('created_at', start)
-            .lte('created_at', end);
+        const start = startOfDay(parseISO(dateRange.start)).toISOString();
+        const end = endOfDay(parseISO(dateRange.end)).toISOString();
+        const { count: appts } = await supabase.from('appointments').select('*', { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end);
+        const { count: trans } = await supabase.from('transactions').select('*', { count: 'exact', head: true }).gte('date', start).lte('date', end);
+        const { count: recs } = await supabase.from('clinical_records').select('*', { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end);
 
-        let aiUsageCount = 0;
-        let requestsUsageCount = 0;
-        let emailsUsageCount = 0;
-        
-        const matrix: Record<string, Record<string, FunctionMetric>> = {};
-        const funcsSet = new Set<string>();
-        const totals: Record<string, FunctionMetric> = {};
+        setMetrics({ clinics: 0, transactionsCount: trans || 0, appointments: appts || 0, aiRecords: recs || 0 });
+    } catch (err: any) { console.error(err); setToast({ message: "Erro ao carregar dados.", type: 'error' }); } finally { setLoading(false); }
+  };
 
-        if (logs) {
-            logs.forEach(log => {
-                const meta = log.metadata as any || {};
-                const fn = log.function_name || 'unknown';
-                const day = format(parseISO(log.created_at), 'yyyy-MM-dd');
+  const fetchChurnData = async () => {
+      setLoading(true);
+      try {
+          const { data, error } = await supabase.rpc('get_at_risk_clinics');
+          if (error) throw error;
+          setAtRiskClinics(data || []);
+      } catch (err: any) { setToast({ message: "Erro churn: " + err.message, type: 'error' }); } finally { setLoading(false); }
+  };
 
-                // -- Contabilização para os Cards (Totais) --
-                
-                // IA (Calls)
-                if (fn === 'process-audio' || fn === 'generate-soap') {
-                    aiUsageCount++;
-                }
-                
-                // Requisições Públicas
-                if (fn === 'create-appointment-request') {
-                    requestsUsageCount++;
-                }
+  const fetchAnnouncements = async () => {
+      const { data } = await supabase.from('system_announcements').select('*').order('created_at', { ascending: false });
+      setAnnouncements(data || []);
+  };
 
-                // E-mails (Volume Real baseado nos metadados)
-                let emailsInThisCall = 0;
-                
-                if (['send-signup-code', 'send-password-reset', 'invite-employee', 'send-diagnostic'].includes(fn)) {
-                    emailsInThisCall = 1;
-                }
-                else if (fn === 'send-reminders') {
-                    emailsInThisCall = (meta.sent || 0);
-                }
-                else if (['send-daily-agenda', 'send-daily-finance', 'send-birthday-emails'].includes(fn)) {
-                    emailsInThisCall = (meta.sent_count || meta.sent || 0);
-                }
-                else if (fn === 'send-emails') {
-                    if (meta.results?.count) emailsInThisCall = meta.results.count;
-                    else if (meta.count) emailsInThisCall = meta.count;
-                    else emailsInThisCall = 1; // Fallback para unitário
-                }
-                else if (fn === 'send-system-campaigns' && meta.results) {
-                     Object.values(meta.results).forEach((val: any) => {
-                         if (typeof val === 'number') emailsInThisCall += val;
-                     });
-                } else if (fn === 'send-super-admin-daily-report') {
-                    emailsInThisCall = 1;
-                }
+  const handlePostAnnouncement = async () => {
+      if(!newAnnouncement.title || !newAnnouncement.message) {
+          setToast({ message: "Preencha título e mensagem.", type: 'warning' });
+          return;
+      }
+      
+      try {
+          const payload = {
+              title: newAnnouncement.title,
+              message: newAnnouncement.message,
+              type: newAnnouncement.type,
+              start_at: newAnnouncement.start_at ? new Date(newAnnouncement.start_at).toISOString() : new Date().toISOString(),
+              expires_at: newAnnouncement.expires_at ? new Date(newAnnouncement.expires_at).toISOString() : null
+          };
 
-                emailsUsageCount += emailsInThisCall;
+          const { error } = await supabase.from('system_announcements').insert(payload);
+          if (error) throw error;
+          
+          setToast({ message: "Aviso publicado!", type: 'success' });
+          setNewAnnouncement({ title: '', message: '', type: 'info', start_at: '', expires_at: '' });
+          fetchAnnouncements();
+      } catch (err: any) { setToast({ message: "Erro: " + err.message, type: 'error' }); }
+  };
 
-                // -- Contabilização para a Tabela de Estatísticas --
-                funcsSet.add(fn);
-                if (!matrix[day]) matrix[day] = {};
-                if (!matrix[day][fn]) matrix[day][fn] = { calls: 0, emails: 0 };
-                
-                matrix[day][fn].calls++;
-                matrix[day][fn].emails += emailsInThisCall;
-
-                if (!totals[fn]) totals[fn] = { calls: 0, emails: 0 };
-                totals[fn].calls++;
-                totals[fn].emails += emailsInThisCall;
-            });
-        }
-
-        setMetrics({
-            clinics: clinicsCount || 0,
-            patients: patientsCount || 0,
-            dentists: dentistsCount || 0,
-            appointments: appointmentsCount || 0,
-            transactionsCount: transactionsCount || 0,
-            // Métricas baseadas em Logs
-            aiRecords: aiUsageCount,
-            emails: emailsUsageCount,
-            requests: requestsUsageCount
-        });
-
-        // 3. Stats de Clínicas
-        const { data: clinicsData } = await supabase
-            .from('clinics')
-            .select('id, name, created_at, dentists(count), clients(count)')
-            .order('created_at', { ascending: false }); 
-
-        if (clinicsData) {
-            const formattedClinics = clinicsData.map((c: any) => ({
-                id: c.id,
-                name: c.name || 'Sem nome',
-                createdAt: c.created_at,
-                dentists: c.dentists?.[0]?.count || 0,
-                clients: c.clients?.[0]?.count || 0
-            }));
-            setClinicsStats(formattedClinics);
-        }
-
-        // 4. Finalizar Tabela de Funções
-        const sortedDays = Object.keys(matrix).sort((a, b) => b.localeCompare(a));
-        const sortedFuncs = Array.from(funcsSet).sort();
-
-        setFunctionStats({ days: sortedDays, functions: sortedFuncs, matrix, totals });
-
-    } catch (err) {
-        console.error("Erro dashboard super admin:", err);
-    } finally {
-        setLoading(false);
-    }
+  const handleDeleteAnnouncement = async (id: string) => {
+      await supabase.from('system_announcements').delete().eq('id', id);
+      fetchAnnouncements();
   };
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden relative">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* --- OVERLAY PARA MOBILE --- */}
-      {sidebarOpen && (
-        <div 
-            className="fixed inset-0 bg-black/50 z-40 md:hidden animate-fade-in"
-            onClick={() => setSidebarOpen(false)}
-        ></div>
-      )}
-
-      {/* --- LEFT SIDEBAR (RESPONSIVA) --- */}
-      <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-gray-900 flex-shrink-0 flex flex-col border-r border-gray-800
-        transform transition-transform duration-300 ease-in-out
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        md:relative md:translate-x-0
-      `}>
+      {/* --- SIDEBAR --- */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-900 flex-shrink-0 flex flex-col border-r border-gray-800 transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0`}>
           <div className="p-6 border-b border-gray-800 flex justify-between items-center">
-              <div>
-                <h1 className="text-xl font-black text-white flex items-center gap-2">
-                    <Activity className="text-red-600" /> GOD MODE
-                </h1>
-                <p className="text-xs text-gray-500 mt-1">Super Admin Dashboard</p>
-              </div>
-              <button onClick={() => setSidebarOpen(false)} className="text-gray-400 hover:text-white md:hidden">
-                  <X size={24} />
-              </button>
+              <div><h1 className="text-xl font-black text-white flex items-center gap-2"><Activity className="text-red-600" /> GOD MODE</h1><p className="text-xs text-gray-500 mt-1">Centro de Comando</p></div>
+              <button onClick={() => setSidebarOpen(false)} className="text-gray-400 hover:text-white md:hidden"><X size={24} /></button>
           </div>
-          
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-              <button 
-                  onClick={() => { setActiveSection('dashboard'); setSidebarOpen(false); }}
-                  className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeSection === 'dashboard' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
-              >
-                  <BarChart3 size={18} className="mr-3"/> Visão Geral
-              </button>
+              <button onClick={() => { setActiveTab('overview'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'overview' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><BarChart3 size={18} className="mr-3"/> Visão Geral</button>
+              <button onClick={() => { setActiveTab('churn'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'churn' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><UserX size={18} className="mr-3"/> Radar de Churn</button>
+              <button onClick={() => { setActiveTab('broadcast'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'broadcast' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><Megaphone size={18} className="mr-3"/> Comunicados</button>
               
-              <button 
-                  onClick={() => { setActiveSection('marketing'); setSidebarOpen(false); }}
-                  className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeSection === 'marketing' ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/20' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
-              >
-                  <Sparkles size={18} className="mr-3"/> Agente de Marketing
-              </button>
-
-              {/* NOVO BOTÃO ADS */}
-              <button 
-                  onClick={() => { navigate('/super-admin/ads'); setSidebarOpen(false); }}
-                  className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/5 hover:text-white transition-all"
-              >
-                  <Monitor size={18} className="mr-3"/> Campanhas Ads
-              </button>
-
               <div className="pt-4 mt-4 border-t border-gray-800">
-                  <button 
-                      onClick={() => { navigate('/super-admin/leads'); setSidebarOpen(false); }}
-                      className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/5 hover:text-white transition-all"
-                  >
-                      <Users size={18} className="mr-3"/> Gestão de Leads
-                  </button>
-                  <button 
-                      onClick={() => { navigate('/super-admin/subscriptions'); setSidebarOpen(false); }}
-                      className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/5 hover:text-white transition-all"
-                  >
-                      <CreditCard size={18} className="mr-3"/> Assinaturas
-                  </button>
+                  <button onClick={() => { navigate('/super-admin/campaigns'); }} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/5 hover:text-white"><Sparkles size={18} className="mr-3"/> Marketing Studio</button>
+                  <button onClick={() => { navigate('/super-admin/ads'); }} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/5 hover:text-white"><Monitor size={18} className="mr-3"/> Google Ads</button>
+                  <button onClick={() => { navigate('/super-admin/leads'); }} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/5 hover:text-white"><Users size={18} className="mr-3"/> Gestão de Leads</button>
+                  <button onClick={() => { navigate('/super-admin/subscriptions'); }} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/5 hover:text-white"><CreditCard size={18} className="mr-3"/> Assinaturas</button>
               </div>
           </nav>
-
-          <div className="p-4 border-t border-gray-800">
-              <button onClick={() => navigate('/dashboard')} className="w-full flex items-center justify-center px-4 py-2 border border-gray-700 text-gray-400 rounded-lg hover:text-white hover:border-gray-500 transition text-xs font-bold">
-                  <ArrowLeft size={14} className="mr-2"/> Voltar à Clínica
-              </button>
-          </div>
+          <div className="p-4 border-t border-gray-800"><button onClick={() => navigate('/dashboard')} className="w-full flex items-center justify-center px-4 py-2 border border-gray-700 text-gray-400 rounded-lg hover:text-white hover:border-gray-500 transition text-xs font-bold"><ArrowLeft size={14} className="mr-2"/> Voltar à Clínica</button></div>
       </aside>
 
-      {/* ... (RESTANTE DO CONTEÚDO MANTIDO IGUAL) ... */}
+      {/* --- MAIN CONTENT --- */}
       <main className="flex-1 overflow-y-auto bg-gray-50 flex flex-col w-full relative">
-        
-        {/* Mobile Header Toggle */}
         <div className="md:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-30">
-            <h2 className="text-lg font-black text-gray-800 flex items-center gap-2">
-                <Activity className="text-red-600" size={20} /> God Mode
-            </h2>
-            <button onClick={() => setSidebarOpen(true)} className="text-gray-600 hover:text-gray-900 p-1">
-                <Menu size={24} />
-            </button>
+            <h2 className="text-lg font-black text-gray-800 flex items-center gap-2"><Activity className="text-red-600" size={20} /> God Mode</h2>
+            <button onClick={() => setSidebarOpen(true)} className="text-gray-600 hover:text-gray-900 p-1"><Menu size={24} /></button>
         </div>
 
-        {/* ... (VIEW: DASHBOARD) ... */}
-        {activeSection === 'dashboard' && (
-            <div className="p-4 sm:p-8 space-y-8 animate-fade-in w-full">
-                {/* ... (Conteúdo do dashboard) ... */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <h2 className="text-2xl font-bold text-gray-800">Visão Geral do Sistema</h2>
-                    <div className="flex items-center gap-2 bg-white p-1.5 rounded-lg shadow-sm border border-gray-200 w-full sm:w-auto overflow-x-auto">
-                        <CalendarRange size={16} className="text-gray-400 ml-2 flex-shrink-0" />
-                        <input type="date" value={dateRange.start} onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))} className="border-none text-sm text-gray-600 outline-none bg-transparent"/>
-                        <span className="text-gray-300">-</span>
-                        <input type="date" value={dateRange.end} onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))} className="border-none text-sm text-gray-600 outline-none bg-transparent"/>
-                        <button onClick={fetchMetrics} className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-500 transition"><RefreshCw size={14}/></button>
+        <div className="p-4 sm:p-8 space-y-8 animate-fade-in w-full">
+            
+            {activeTab === 'overview' && (
+                <>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <h2 className="text-2xl font-bold text-gray-800">Saúde do Sistema</h2>
+                        <div className="flex items-center gap-2 bg-white p-1.5 rounded-lg shadow-sm border border-gray-200 w-full sm:w-auto overflow-x-auto">
+                            <CalendarRange size={16} className="text-gray-400 ml-2 flex-shrink-0" />
+                            <input type="date" value={dateRange.start} onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))} className="border-none text-sm text-gray-600 outline-none bg-transparent"/>
+                            <span className="text-gray-300">-</span>
+                            <input type="date" value={dateRange.end} onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))} className="border-none text-sm text-gray-600 outline-none bg-transparent"/>
+                            <button onClick={fetchData} className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-500 transition"><RefreshCw size={14}/></button>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <MetricCard title="MRR Estimado" value={systemHealth?.mrr_estimate ? `R$ ${systemHealth.mrr_estimate.toLocaleString('pt-BR')}` : 'R$ 0'} icon={CreditCard} color="text-green-600" subtext="Baseado em assinaturas ativas"/>
+                        <MetricCard title="Clínicas Ativas" value={systemHealth?.active_clinics || 0} icon={Building2} color="text-indigo-600" trend={`+${systemHealth?.new_clinics_month || 0} este mês`}/>
+                        <MetricCard title="Volume (Filtro)" value={metrics.transactionsCount} icon={FileText} color="text-blue-600" subtext="Lançamentos Financeiros" />
+                        <MetricCard title="Uso de IA" value={metrics.aiRecords} icon={Mic} color="text-purple-600" subtext="Prontuários Gerados"/>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><HeartPulse className="text-red-500"/> Sinais Vitais (Última Atividade)</h3>
+                            <div className="space-y-3">
+                                <HealthIndicator label="Novo Agendamento" date={systemHealth?.last_appointment_at} />
+                                <HealthIndicator label="Novo Paciente" date={systemHealth?.last_patient_at} />
+                                <HealthIndicator label="Uso de IA (Prontuário)" date={systemHealth?.last_record_at} />
+                                <HealthIndicator label="Login de Usuário" date={systemHealth?.last_login_at} />
+                            </div>
+                        </div>
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><Activity className="text-orange-500"/> Monitoramento de Erros</h3>
+                            <div className="flex items-center justify-center h-40">
+                                {systemHealth?.errors_today > 0 ? (
+                                    <div className="text-center"><span className="text-4xl font-black text-red-500">{systemHealth.errors_today}</span><p className="text-gray-500 font-medium">Erros críticos hoje</p><p className="text-xs text-red-400 mt-2">Verifique os logs das Edge Functions.</p></div>
+                                ) : (
+                                    <div className="text-center"><CheckCircle size={48} className="text-green-500 mx-auto mb-2"/><p className="text-gray-800 font-bold">Sistema Estável</p><p className="text-sm text-gray-500">Nenhum erro registrado hoje.</p></div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {activeTab === 'churn' && (
+                <div className="space-y-6">
+                    <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><AlertOctagon className="text-red-500"/> Radar de Risco (Churn)</h2>
+                    <p className="text-gray-600">Clínicas sem atividade há mais de 7 dias ou sem uso de agendamento recente.</p>
+                    
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <table className="w-full text-left border-collapse">
+                            <thead className="bg-gray-100 text-gray-600 text-xs uppercase font-bold">
+                                <tr>
+                                    <th className="px-6 py-4">Clínica</th>
+                                    <th className="px-6 py-4">Dias Inativo</th>
+                                    <th className="px-6 py-4">Contato</th>
+                                    <th className="px-6 py-4">Plano</th>
+                                    <th className="px-6 py-4">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 text-sm">
+                                {atRiskClinics.length === 0 ? <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">Nenhuma clínica em risco no momento. 👏</td></tr> : 
+                                atRiskClinics.map((clinic, idx) => (
+                                    <tr key={clinic.clinic_id || idx} className="hover:bg-red-50 transition">
+                                        <td className="px-6 py-4 font-bold text-gray-800">{clinic.clinic_name}</td>
+                                        <td className="px-6 py-4"><span className="px-2 py-1 bg-red-100 text-red-700 rounded font-bold text-xs">{clinic.days_inactive} dias</span></td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-xs text-gray-600">{clinic.owner_email}</div>
+                                            <div className="text-xs text-gray-500">{clinic.owner_phone}</div>
+                                        </td>
+                                        <td className="px-6 py-4 uppercase text-xs font-bold text-gray-500">{clinic.subscription_tier}</td>
+                                        <td className="px-6 py-4">
+                                            <a href={`https://wa.me/55${clinic.owner_phone?.replace(/\D/g, '')}?text=Olá, vi que faz um tempinho que não acessa o DentiHub. Precisa de ajuda?`} target="_blank" className="text-green-600 font-bold text-xs hover:underline bg-green-50 px-2 py-1 rounded">WhatsApp</a>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
+            )}
 
-                {/* KPI CARDS */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <MetricCard title="Novas Clínicas" value={metrics.clinics} icon={Building2} color="text-indigo-600" />
-                    <MetricCard title="Transações (Volume)" value={metrics.transactionsCount} icon={FileText} color="text-green-600" subtext="Registros financeiros" />
-                    <MetricCard title="Agendamentos" value={metrics.appointments} icon={Calendar} color="text-blue-600" />
-                    <MetricCard title="Pacientes Ativos" value={metrics.patients} icon={Users} color="text-cyan-600" />
+            {activeTab === 'broadcast' && (
+                <div className="space-y-6">
+                    <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><Megaphone className="text-blue-500"/> Comunicados Globais</h2>
+                    
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <h3 className="text-sm font-bold text-gray-700 mb-4">Novo Aviso</h3>
+                        <div className="grid gap-4">
+                            <input className="w-full border rounded p-2 text-sm" placeholder="Título" value={newAnnouncement.title} onChange={e => setNewAnnouncement({...newAnnouncement, title: e.target.value})} />
+                            <textarea className="w-full border rounded p-2 text-sm h-24" placeholder="Mensagem" value={newAnnouncement.message} onChange={e => setNewAnnouncement({...newAnnouncement, message: e.target.value})} />
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 block mb-1">Início da Exibição</label>
+                                    <input type="datetime-local" className="w-full border rounded p-2 text-sm" value={newAnnouncement.start_at} onChange={e => setNewAnnouncement({...newAnnouncement, start_at: e.target.value})} />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 block mb-1">Fim da Exibição (Expira em)</label>
+                                    <input type="datetime-local" className="w-full border rounded p-2 text-sm" value={newAnnouncement.expires_at} onChange={e => setNewAnnouncement({...newAnnouncement, expires_at: e.target.value})} />
+                                </div>
+                            </div>
+
+                            <div className="flex justify-between items-center mt-2">
+                                <select className="border rounded p-2 text-sm w-48" value={newAnnouncement.type} onChange={e => setNewAnnouncement({...newAnnouncement, type: e.target.value})}>
+                                    <option value="info">Informação (Azul)</option>
+                                    <option value="warning">Alerta (Amarelo)</option>
+                                    <option value="success">Sucesso (Verde)</option>
+                                    <option value="error">Erro (Vermelho)</option>
+                                </select>
+                                <button onClick={handlePostAnnouncement} className="bg-primary text-white px-4 py-2 rounded text-sm font-bold hover:bg-blue-600 transition flex items-center"><Send size={16} className="mr-2"/> Publicar</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        {announcements.map(ann => {
+                            const now = new Date();
+                            const start = ann.start_at ? parseISO(ann.start_at) : null;
+                            const end = ann.expires_at ? parseISO(ann.expires_at) : null;
+                            const isActive = (!start || start <= now) && (!end || end > now);
+
+                            return (
+                                <div key={ann.id} className={`bg-white p-4 rounded-xl shadow-sm border ${isActive ? 'border-green-300' : 'border-gray-200 opacity-60'} flex justify-between items-center relative overflow-hidden`}>
+                                    {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-green-500"></div>}
+                                    <div className="pl-2">
+                                        <h4 className="font-bold text-gray-800 flex items-center">
+                                            {ann.title} 
+                                            <span className={`text-[10px] uppercase px-2 py-0.5 rounded ml-2 ${ann.type === 'warning' ? 'bg-yellow-100 text-yellow-700' : ann.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>{ann.type}</span>
+                                            {isActive ? <span className="text-[10px] text-green-600 font-bold ml-2 flex items-center"><Clock size={10} className="mr-1"/> No Ar</span> : <span className="text-[10px] text-gray-400 font-bold ml-2">Inativo / Agendado</span>}
+                                        </h4>
+                                        <p className="text-sm text-gray-600 mt-1">{ann.message}</p>
+                                        <div className="flex gap-4 mt-2 text-xs text-gray-400">
+                                            <span>Início: {ann.start_at ? format(parseISO(ann.start_at), "dd/MM/yyyy HH:mm") : 'Imediato'}</span>
+                                            <span>Fim: {ann.expires_at ? format(parseISO(ann.expires_at), "dd/MM/yyyy HH:mm") : 'Nunca'}</span>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => handleDeleteAnnouncement(ann.id)} className="text-red-400 hover:text-red-600 p-2"><Trash2 size={18}/></button>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
-            </div>
-        )}
+            )}
 
-        {/* ... (VIEW: MARKETING AGENT) ... */}
-        {activeSection === 'marketing' && (
-            <div className="p-4 sm:p-8 h-full flex flex-col animate-fade-in w-full">
-                {/* ... (Conteúdo do Agente de Marketing Original mantido) ... */}
-                <div className="flex justify-between items-center mb-6 shrink-0">
-                    <h2 className="text-2xl font-bold text-gray-800">Agente de Marketing</h2>
-                </div>
-                {/* ... Resto da UI do Agente ... */}
-            </div>
-        )}
-
+        </div>
       </main>
     </div>
   );

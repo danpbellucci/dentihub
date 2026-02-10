@@ -94,6 +94,23 @@ Deno.serve(async (req) => {
         cancel_at_period_end: true
     });
 
+    // Enviar E-mail de Feedback
+    try {
+        await fetch(`${supabaseUrl}/functions/v1/send-emails`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseServiceKey}`
+            },
+            body: JSON.stringify({
+                type: 'feedback_request',
+                recipients: [{ email: user.email }]
+            })
+        });
+    } catch (emailErr) {
+        console.error("Falha ao enviar email de feedback:", emailErr);
+    }
+
     // LOG DE USO
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     await supabaseAdmin.from('edge_function_logs').insert({

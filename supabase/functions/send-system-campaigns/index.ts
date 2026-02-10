@@ -76,6 +76,47 @@ const CAMPAIGNS = {
         `,
         ctaLink: 'https://dentihub.com.br/#/dashboard/settings',
         ctaText: 'Liberar IA Diária'
+    },
+    // NOVOS E-MAILS
+    'onboarding_3d': {
+        subject: 'O que você está achando do DentiHub? 💭',
+        getContent: (name: string) => `
+            <p>Olá, <strong>${name}</strong>!</p>
+            <p>Gostaríamos muito de saber sua opinião sobre a plataforma nestes seus primeiros dias.</p>
+            <p>Estamos aqui para ajudar você a ter a melhor experiência possível na gestão da sua clínica.</p>
+            <p>Se tiver qualquer dúvida sobre o uso, sugestão de melhoria ou se encontrou alguma dificuldade, nosso suporte está à disposição.</p>
+            <p>Você pode responder a este e-mail ou escrever diretamente para <strong>contato@dentihub.com.br</strong>.</p>
+        `,
+        ctaLink: 'mailto:contato@dentihub.com.br',
+        ctaText: 'Falar com Suporte'
+    },
+    'onboarding_7d': {
+        subject: 'Uma semana juntos! 🚀',
+        getContent: (name: string) => `
+            <p>Olá, <strong>${name}</strong>!</p>
+            <p>Já se passou uma semana desde que você criou sua conta no DentiHub. Esperamos que sua rotina esteja ficando mais organizada.</p>
+            <p>Você tem alguma dúvida sobre como usar alguma ferramenta específica?</p>
+            <ul>
+                <li>A Agenda está funcionando bem para você?</li>
+                <li>Conseguiu testar o Prontuário com IA?</li>
+                <li>Cadastrou seus pacientes?</li>
+            </ul>
+            <p>Estamos à disposição para ajudar você a extrair o máximo da plataforma.</p>
+        `,
+        ctaLink: 'https://dentihub.com.br/#/dashboard/guide',
+        ctaText: 'Ver Guia Prático'
+    },
+    'onboarding_30d': {
+        subject: '1 mês de DentiHub: Quanto tempo você economizou? ⏳',
+        getContent: (name: string) => `
+            <p>Parabéns, <strong>${name}</strong>!</p>
+            <p>Estamos juntos há 1 mês! 🎉</p>
+            <p>Sabia que, utilizando o DentiHub, dentistas chegam a economizar mais de <strong>20 horas por mês</strong> que antes eram gastas na digitação manual de prontuários e organização de papelada?</p>
+            <p>Esperamos que você esteja sentindo essa liberdade para focar no que realmente importa: seus pacientes e sua qualidade de vida.</p>
+            <p>Continue contando conosco para o sucesso da sua clínica!</p>
+        `,
+        ctaLink: 'https://dentihub.com.br/#/dashboard',
+        ctaText: 'Acessar Meu Painel'
     }
 };
 

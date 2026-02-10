@@ -4,7 +4,7 @@
 -- AGORA FILTRA PELA CONFIGURAÇÃO DE NOTIFICAÇÃO 'system_campaigns'
 
 CREATE OR REPLACE FUNCTION public.get_campaign_targets(
-    p_campaign_key TEXT -- ex: 'activation_ai', 'monetization_limit'
+    p_campaign_key TEXT -- ex: 'activation_ai', 'monetization_limit', 'onboarding_3d'
 )
 RETURNS TABLE (
     user_id UUID,
@@ -121,6 +121,60 @@ BEGIN
             )
         GROUP BY p.id, p.email, c.name, rn.id
         HAVING count(cr.id) >= 3;
+
+    -- 6. ONBOARDING: 3 DIAS (Feedback)
+    ELSIF p_campaign_key = 'onboarding_3d' THEN
+        RETURN QUERY
+        SELECT 
+            p.id, p.email, c.name, c.name, 0
+        FROM public.user_profiles p
+        JOIN public.clinics c ON p.clinic_id = c.id
+        JOIN public.role_notifications rn ON rn.clinic_id = c.id AND rn.role = p.role
+        WHERE 
+            p.created_at < NOW() - INTERVAL '3 days'
+            AND p.created_at > NOW() - INTERVAL '4 days' -- Janela de 24h
+            AND rn.notification_type = 'system_campaigns' AND rn.is_enabled = true
+            AND NOT EXISTS (
+                SELECT 1 FROM public.communications cm 
+                WHERE cm.recipient_email = p.email 
+                AND cm.subject LIKE '%opinião%'
+            );
+
+    -- 7. ONBOARDING: 7 DIAS (Check-in Semanal)
+    ELSIF p_campaign_key = 'onboarding_7d' THEN
+        RETURN QUERY
+        SELECT 
+            p.id, p.email, c.name, c.name, 0
+        FROM public.user_profiles p
+        JOIN public.clinics c ON p.clinic_id = c.id
+        JOIN public.role_notifications rn ON rn.clinic_id = c.id AND rn.role = p.role
+        WHERE 
+            p.created_at < NOW() - INTERVAL '7 days'
+            AND p.created_at > NOW() - INTERVAL '8 days'
+            AND rn.notification_type = 'system_campaigns' AND rn.is_enabled = true
+            AND NOT EXISTS (
+                SELECT 1 FROM public.communications cm 
+                WHERE cm.recipient_email = p.email 
+                AND cm.subject LIKE '%Uma semana juntos%'
+            );
+
+    -- 8. ONBOARDING: 30 DIAS (Milestone Mensal)
+    ELSIF p_campaign_key = 'onboarding_30d' THEN
+        RETURN QUERY
+        SELECT 
+            p.id, p.email, c.name, c.name, 0
+        FROM public.user_profiles p
+        JOIN public.clinics c ON p.clinic_id = c.id
+        JOIN public.role_notifications rn ON rn.clinic_id = c.id AND rn.role = p.role
+        WHERE 
+            p.created_at < NOW() - INTERVAL '30 days'
+            AND p.created_at > NOW() - INTERVAL '31 days'
+            AND rn.notification_type = 'system_campaigns' AND rn.is_enabled = true
+            AND NOT EXISTS (
+                SELECT 1 FROM public.communications cm 
+                WHERE cm.recipient_email = p.email 
+                AND cm.subject LIKE '%1 mês de DentiHub%'
+            );
 
     END IF;
 END;

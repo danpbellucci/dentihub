@@ -245,7 +245,12 @@ export const DentistOnboardingForm: React.FC<{ clinicId: string; onSuccess: () =
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!validateCPF(formData.cpf)) { setToast({ message: "CPF Inválido", type: 'error' }); return; }
-        if (!formData.name || !formData.email) { setToast({ message: "Nome e E-mail são obrigatórios.", type: 'warning' }); return; }
+        
+        // VALIDAÇÃO: Campos Obrigatórios
+        if (!formData.name || !formData.email || !formData.cro || !formData.specialties) { 
+            setToast({ message: "Nome, E-mail, CRO e Especialidades são obrigatórios.", type: 'warning' }); 
+            return; 
+        }
 
         setSaving(true);
         try {
@@ -302,8 +307,8 @@ export const DentistOnboardingForm: React.FC<{ clinicId: string; onSuccess: () =
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className={labelClass}>CRO</label>
-                            <input className={inputClass} value={formData.cro} onChange={e => setFormData({...formData, cro: e.target.value})} />
+                            <label className={labelClass}>CRO *</label>
+                            <input required className={inputClass} value={formData.cro} onChange={e => setFormData({...formData, cro: e.target.value})} />
                         </div>
                         <div>
                             <label className={labelClass}>CPF *</label>
@@ -317,8 +322,8 @@ export const DentistOnboardingForm: React.FC<{ clinicId: string; onSuccess: () =
                     </div>
                     <div className="flex gap-4">
                         <div className="flex-1">
-                            <label className={labelClass}>Especialidades</label>
-                            <input className={inputClass} placeholder="Separe por vírgula" value={formData.specialties} onChange={e => setFormData({...formData, specialties: e.target.value})} />
+                            <label className={labelClass}>Especialidades *</label>
+                            <input required className={inputClass} placeholder="Separe por vírgula" value={formData.specialties} onChange={e => setFormData({...formData, specialties: e.target.value})} />
                         </div>
                         <div>
                             <label className={labelClass}>Cor na Agenda</label>

@@ -82,6 +82,25 @@ Deno.serve(async (req) => {
     const clinicId = userProfile.clinic_id;
     console.log(`[DELETE ACCOUNT] Deleting Clinic: ${clinicId}`);
 
+    // Enviar E-mail de Feedback (Antes de deletar)
+    if (user.email) {
+        try {
+            await fetch(`${supabaseUrl}/functions/v1/send-emails`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${serviceRoleKey}`
+                },
+                body: JSON.stringify({
+                    type: 'feedback_request',
+                    recipients: [{ email: user.email }]
+                })
+            });
+        } catch (emailErr) {
+            console.error("Falha ao enviar email de feedback (deleção):", emailErr);
+        }
+    }
+
     // LOG DE USO (Antes de deletar)
     await supabaseAdmin.from('edge_function_logs').insert({
         function_name: 'delete-account',

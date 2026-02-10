@@ -39,10 +39,10 @@ Deno.serve(async (req) => {
     httpClient: Stripe.createFetchHttpClient(),
   });
 
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-  );
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  
+  const supabase = createClient(supabaseUrl, serviceRoleKey);
 
   let event;
 
@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
   console.log(`🔔 Evento Recebido: ${event.type} | ID: ${event.id}`);
 
   try {
-    // FUNÇÃO AUXILIAR PARA ATUALIZAR USUÁRIO
+    // FUNÇÃO AUXILIAR PARA ATUALIZAR USUÁRIO E ENVIAR EMAIL
     const updateUserTier = async (userId: string | undefined, customerId: string, subscriptionId: string, priceId: string, customerEmail?: string, customLimits?: any) => {
         const tier = PRICE_ID_TO_TIER[priceId] || 'free';
         console.log(`Processando atualização: Customer ${customerId} -> Plano ${tier}`);
@@ -91,6 +91,11 @@ Deno.serve(async (req) => {
         }
 
         if (userId) {
+            // Verificar o plano atual antes de atualizar para saber se é um upgrade/compra nova
+            const { data: currentClinic } = await supabase.from('clinics').select('subscription_tier, email').eq('id', userId).single();
+            const oldTier = currentClinic?.subscription_tier;
+            const targetEmail = customerEmail || currentClinic?.email;
+
             const updatePayload: any = {
                 subscription_tier: tier,
                 stripe_customer_id: customerId,
@@ -114,6 +119,32 @@ Deno.serve(async (req) => {
                 throw error;
             }
             console.log(`✅ Sucesso! Usuário ${userId} atualizado para ${tier}.`);
+
+            // ENVIO DE E-MAIL DE CONGRATULAÇÕES (Se for Starter ou Pro e o plano mudou ou foi renovado explicitamente)
+            if ((tier === 'starter' || tier === 'pro') && targetEmail) {
+                // Dispara a Edge Function de envio de e-mail
+                // Nota: Usamos fetch direto para a função send-emails, passando a chave de serviço
+                const planDisplay = tier === 'starter' ? 'Starter' : 'Pro';
+                
+                try {
+                    await fetch(`${supabaseUrl}/functions/v1/send-emails`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${serviceRoleKey}`
+                        },
+                        body: JSON.stringify({
+                            type: 'subscription_success',
+                            recipients: [{ email: targetEmail }],
+                            planName: planDisplay
+                        })
+                    });
+                    console.log(`📧 E-mail de boas-vindas ao plano ${planDisplay} enviado para ${targetEmail}`);
+                } catch (emailErr) {
+                    console.error("Falha ao enviar e-mail de plano:", emailErr);
+                }
+            }
+
         } else {
             console.warn(`⚠️ ALERTA: Usuário não identificado para o Customer ${customerId} / Email ${customerEmail}`);
         }

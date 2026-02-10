@@ -22,7 +22,10 @@ import {
   Activity,
   Box,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Info,
+  CheckCircle,
+  Megaphone
 } from 'lucide-react';
 import { UserProfile } from '../types';
 
@@ -46,6 +49,7 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
   const [allowedModules, setAllowedModules] = useState<Set<string>>(new Set());
   const [loadingPermissions, setLoadingPermissions] = useState(true);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [announcement, setAnnouncement] = useState<any>(null);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -54,7 +58,6 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
   const pollIntervalRef = useRef<any>(null);
 
   // Computed state for desktop sidebar width/mode
-  // O menu fica "estreito" apenas se estiver colapsado E o mouse NÃO estiver em cima.
   const isNarrow = isCollapsed && !isHovered;
 
   const fetchCount = async (clinicId: string) => {
@@ -72,6 +75,18 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
       .eq('clinic_id', clinicId);
 
     setPendingRequests((requestsCount || 0) + (updatesCount || 0));
+  };
+
+  const fetchAnnouncement = async () => {
+      const { data } = await supabase
+        .from('system_announcements')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (data) setAnnouncement(data);
   };
 
   const sendBrowserNotification = (title: string, body: string) => {
@@ -127,6 +142,7 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
 
         if (mounted && profileData) {
             setUserProfile(profileData);
+            fetchAnnouncement();
             
             if (profileData.role === 'administrator') {
                 setAllowedModules(new Set(['calendar', 'clients', 'dentists', 'smart-record', 'messaging', 'finance', 'inventory', 'requests', 'guide', 'settings']));
@@ -235,6 +251,24 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
           </div>
       );
   }
+
+  const getAnnouncementStyle = (type: string) => {
+      switch(type) {
+          case 'warning': return 'bg-yellow-900/30 text-yellow-300 border-yellow-500/30';
+          case 'error': return 'bg-red-900/30 text-red-300 border-red-500/30';
+          case 'success': return 'bg-green-900/30 text-green-300 border-green-500/30';
+          default: return 'bg-blue-900/30 text-blue-300 border-blue-500/30';
+      }
+  };
+
+  const getAnnouncementIcon = (type: string) => {
+      switch(type) {
+          case 'warning': return <AlertTriangle size={18} className="shrink-0"/>;
+          case 'error': return <ShieldAlert size={18} className="shrink-0"/>;
+          case 'success': return <CheckCircle size={18} className="shrink-0"/>;
+          default: return <Info size={18} className="shrink-0"/>;
+      }
+  };
 
   return (
     <DashboardContext.Provider value={{ userProfile, refreshProfile, refreshNotifications }}>
@@ -362,6 +396,18 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
         </div>
 
         <div className="flex-1 flex flex-col overflow-hidden relative z-10">
+            {/* ANNOUNCEMENT BANNER */}
+            {announcement && (
+                <div className={`w-full px-4 py-2 flex items-center justify-center gap-2 text-sm font-bold border-b backdrop-blur-md z-50 ${getAnnouncementStyle(announcement.type)}`}>
+                    {getAnnouncementIcon(announcement.type)}
+                    <span className="truncate max-w-xl text-center">
+                        <strong className="uppercase mr-2">{announcement.title}:</strong>
+                        {announcement.message}
+                    </span>
+                    <button onClick={() => setAnnouncement(null)} className="ml-4 opacity-70 hover:opacity-100"><X size={16}/></button>
+                </div>
+            )}
+
             <div className="md:hidden bg-gray-900 border-b border-white/5 p-4 flex items-center justify-between">
                 <div className="flex items-center text-white font-bold gap-2">
                     <Logo className="w-6 h-6" /> 

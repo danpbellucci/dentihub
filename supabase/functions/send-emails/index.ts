@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     const body = await req.json();
-    const { type, recipients, appointment, client, userName, contactEmail, message, subject: reqSubject, htmlContent: reqHtmlContent, attachments, item, requestDetails, clinicName: bodyClinicName, clinicEmail: bodyClinicEmail } = body;
+    const { type, recipients, appointment, client, userName, contactEmail, message, subject: reqSubject, htmlContent: reqHtmlContent, attachments, item, requestDetails, clinicName: bodyClinicName, clinicEmail: bodyClinicEmail, planName } = body;
     
     // Captura o subtipo (created, updated, deleted)
     const subtype = body.subtype; 
@@ -419,6 +419,70 @@ Deno.serve(async (req) => {
             }
          }
          success = true;
+    }
+    // 10. ASSINATURA CONCLUÍDA (Novo)
+    else if (type === 'subscription_success' && planName) {
+        const subject = `Bem-vindo ao DentiHub ${planName}! 🚀`;
+        const benefits = planName.includes('Pro') 
+            ? ['Pacientes Ilimitados', 'Até 5 Dentistas', 'IA Avançada'] 
+            : ['Até 100 Pacientes', 'Até 3 Dentistas', 'Prontuário com IA'];
+            
+        const htmlContent = `
+            <div style="font-family: Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0;">
+                <div style="background-color: #10b981; padding: 30px; text-align: center;">
+                    <h1 style="color: white; margin: 0;">Parabéns! 🎉</h1>
+                    <p style="color: #ecfdf5; margin-top: 5px;">Você agora é <strong>${planName}</strong></p>
+                </div>
+                <div style="padding: 30px;">
+                    <p style="font-size: 16px;">Olá, <strong>Doutor(a)</strong>!</p>
+                    <p>Ficamos muito felizes em ter você conosco. Seu plano foi atualizado com sucesso e novos recursos já estão liberados.</p>
+                    
+                    <div style="background-color: #f0fdf4; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                        <h3 style="margin-top: 0; color: #166534;">O que você desbloqueou:</h3>
+                        <ul style="padding-left: 20px; margin-bottom: 0;">
+                            ${benefits.map(b => `<li style="margin-bottom: 5px; color: #15803d;">✅ ${b}</li>`).join('')}
+                        </ul>
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 30px;">
+                        <a href="https://dentihub.com.br/#/dashboard" style="background-color: #10b981; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold;">
+                            Acessar Meu Painel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        for (const r of recipients) {
+            if (r.email) {
+                await sendEmailViaResend(resendApiKey, [r.email], subject, htmlContent, "DentiHub", "contato@dentihub.com.br");
+                results.count++;
+            }
+        }
+        success = true;
+    }
+    // 11. PEDIDO DE FEEDBACK (Cancelamento/Exclusão) (Novo)
+    else if (type === 'feedback_request') {
+        const subject = "Sentiremos sua falta... 💭";
+        const htmlContent = `
+            <div style="font-family: Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                <h2 style="color: #334155; margin-top: 0;">Uma pergunta rápida...</h2>
+                <p>Olá,</p>
+                <p>Notamos que você cancelou sua assinatura ou excluiu sua conta no DentiHub.</p>
+                <p>Estamos sempre buscando melhorar e sua opinião é extremamente valiosa para nós. <strong>Poderia nos contar o motivo da sua saída?</strong></p>
+                <p>Basta responder a este e-mail. Prometemos que lemos todas as respostas!</p>
+                <br>
+                <p style="font-size: 14px; color: #64748b;">Atenciosamente,<br>Equipe DentiHub</p>
+            </div>
+        `;
+        
+        for (const r of recipients) {
+            if (r.email) {
+                await sendEmailViaResend(resendApiKey, [r.email], subject, htmlContent, "Danilo do DentiHub", "contato@dentihub.com.br");
+                results.count++;
+            }
+        }
+        success = true;
     }
 
     if (success) {
