@@ -251,6 +251,7 @@ const LandingPage: React.FC = () => {
               <button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm font-medium text-gray-300 hover:text-white transition">Recursos</button>
               <button onClick={scrollToPlans} className="text-sm font-medium text-gray-300 hover:text-white transition">Preços</button>
               <button onClick={() => navigate('/entenda')} className="text-sm font-medium text-gray-300 hover:text-white transition">Como Funciona</button>
+              <button onClick={() => navigate('/indique-e-ganhe')} className="text-sm font-medium text-yellow-400 hover:text-yellow-300 transition flex items-center gap-1"><Gift size={14}/> Indique e Ganhe</button>
               
               <div className="flex items-center gap-4 pl-4 border-l border-white/10">
                 <button onClick={() => navigate('/encontrar-clinica')} className="text-sm font-medium text-gray-300 hover:text-white transition flex items-center gap-2">
@@ -278,6 +279,7 @@ const LandingPage: React.FC = () => {
                     <button onClick={() => { document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); setMobileMenuOpen(false); }} className="text-left text-base font-medium text-gray-300 hover:text-white py-2 border-b border-white/5">Recursos</button>
                     <button onClick={scrollToPlans} className="text-left text-base font-medium text-gray-300 hover:text-white py-2 border-b border-white/5">Preços</button>
                     <button onClick={() => { setMobileMenuOpen(false); navigate('/entenda'); }} className="text-left text-base font-medium text-gray-300 hover:text-white py-2 border-b border-white/5">Como Funciona</button>
+                    <button onClick={() => { setMobileMenuOpen(false); navigate('/indique-e-ganhe'); }} className="text-left text-base font-medium text-yellow-400 hover:text-yellow-300 py-2 border-b border-white/5 flex items-center gap-2"><Gift size={16}/> Indique e Ganhe</button>
                     <button onClick={() => { navigate('/encontrar-clinica'); setMobileMenuOpen(false); }} className="text-left text-base font-medium text-gray-300 hover:text-white py-2 border-b border-white/5 flex items-center gap-2"><Search size={16}/> Buscar Clínica</button>
                     <button onClick={() => { goToAuth('signup'); setMobileMenuOpen(false); }} className="bg-white text-gray-900 py-3 rounded-lg font-bold text-center mt-2 shadow-lg">Começar Grátis</button>
                 </div>
@@ -367,7 +369,7 @@ const LandingPage: React.FC = () => {
                     </div>
 
                     {/* Mockup Content Area */}
-                    <div className="flex-1 bg-gray-950 overflow-y-auto custom-scrollbar relative flex flex-col">
+                    <div className="flex-1 bg-gray-900 overflow-y-auto custom-scrollbar relative flex flex-col">
                         
                         {/* Header Mobile dentro do Mockup */}
                         {device === 'mobile' && (
@@ -384,135 +386,267 @@ const LandingPage: React.FC = () => {
 
                         <div className="p-6">
                             
-                            {/* ... (Conteúdo do Mockup permanece o mesmo) ... */}
+                            {/* ... (Conteúdo do Mockup) ... */}
                             {activeMockup === 'Visão Geral' && (
                                 <div className="space-y-6 animate-fade-in">
                                     <h2 className="text-xl font-bold text-white mb-4">Visão Geral</h2>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div className="bg-gray-900/60 p-4 rounded-xl border border-white/5 relative overflow-hidden">
-                                            <div className="flex justify-between items-start mb-2"><div className="p-2 bg-blue-500/10 rounded-lg"><Users size={20} className="text-blue-500"/></div></div>
-                                            <p className="text-xs text-gray-400 uppercase font-bold">Pacientes</p>
-                                            <p className="text-2xl font-black text-white">148</p>
-                                        </div>
-                                        <div className="bg-gray-900/60 p-4 rounded-xl border border-white/5 relative overflow-hidden">
-                                            <div className="flex justify-between items-start mb-2"><div className="p-2 bg-green-500/10 rounded-lg"><Calendar size={20} className="text-green-500"/></div></div>
-                                            <p className="text-xs text-gray-400 uppercase font-bold">Agendados Hoje</p>
-                                            <p className="text-2xl font-black text-white">12</p>
-                                        </div>
-                                        <div className="bg-gray-900/60 p-4 rounded-xl border border-white/5 relative overflow-hidden">
-                                            <div className="flex justify-between items-start mb-2"><div className="p-2 bg-yellow-500/10 rounded-lg"><DollarSign size={20} className="text-yellow-500"/></div></div>
-                                            <p className="text-xs text-gray-400 uppercase font-bold">Receita (Mês)</p>
-                                            <p className="text-2xl font-black text-white">R$ 18.590,00</p>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[400px]">
-                                        <div className="bg-gray-900/60 p-4 rounded-xl border border-white/5 flex flex-col h-full overflow-hidden">
-                                            <h3 className="font-bold text-white flex items-center gap-2 text-sm mb-4"><Clock size={16} className="text-gray-400"/> Próximos Agendamentos</h3>
-                                            <div className="space-y-3">
-                                                <div className="flex items-center justify-between p-3 bg-gray-800/40 rounded-lg border border-white/5">
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="text-xs font-bold text-gray-400 bg-gray-800 px-2 py-1 rounded">14:00</span>
-                                                        <div>
-                                                            <p className="text-sm font-bold text-white">Mariana Costa</p>
-                                                            <p className="text-xs text-gray-500">Avaliação Inicial</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                                                </div>
-                                                <div className="flex items-center justify-between p-3 bg-gray-800/40 rounded-lg border border-white/5">
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="text-xs font-bold text-gray-400 bg-gray-800 px-2 py-1 rounded">15:00</span>
-                                                        <div>
-                                                            <p className="text-sm font-bold text-white">Pedro Alves</p>
-                                                            <p className="text-xs text-gray-500">Manutenção Ortodôntica</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                                                </div>
-                                                <div className="flex items-center justify-center pt-2">
-                                                    <span className="text-xs text-primary cursor-pointer hover:underline">Ver todos</span>
-                                                </div>
-                                            </div>
-                                        </div>
+                                    {device === 'mobile' ? (
                                         <div className="flex flex-col gap-4">
-                                            <div className="flex-1 bg-gray-900/60 p-4 rounded-xl border border-white/5 relative overflow-hidden">
-                                                <div className="absolute right-0 top-0 p-4 opacity-5"><TrendingUp size={60} className="text-green-500"/></div>
-                                                <h3 className="font-bold text-white flex items-center gap-2 text-sm mb-4"><span className="p-1 bg-green-500/20 rounded text-green-400"><ArrowRight size={14} className="-rotate-45"/></span> Entradas (Semana)</h3>
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <div className="p-3 bg-green-900/10 rounded-lg border border-green-500/20"><p className="text-[10px] text-green-400 font-bold uppercase">Realizado</p><p className="text-lg font-black text-white">R$ 4.200,00</p></div>
-                                                    <div className="p-3 bg-gray-800/30 rounded-lg border border-white/5"><p className="text-[10px] text-gray-400 font-bold uppercase">A Receber</p><p className="text-lg font-black text-gray-300">R$ 1.850,00</p></div>
+                                            {/* Cards Mobile */}
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="bg-gray-900/60 p-4 rounded-xl border border-white/5 relative overflow-hidden flex flex-col items-start">
+                                                    <div className="p-2 bg-blue-500/10 rounded-lg mb-2"><Users size={20} className="text-blue-500"/></div>
+                                                    <p className="text-xs text-gray-400 uppercase font-bold">Pacientes</p>
+                                                    <p className="text-2xl font-black text-white">148</p>
+                                                </div>
+                                                <div className="bg-gray-900/60 p-4 rounded-xl border border-white/5 relative overflow-hidden flex flex-col items-start">
+                                                    <div className="p-2 bg-green-500/10 rounded-lg mb-2"><Calendar size={20} className="text-green-500"/></div>
+                                                    <p className="text-xs text-gray-400 uppercase font-bold">Hoje</p>
+                                                    <p className="text-2xl font-black text-white">12</p>
+                                                </div>
+                                                <div className="bg-gray-900/60 p-4 rounded-xl border border-white/5 relative overflow-hidden flex flex-col items-start col-span-2">
+                                                    <div className="flex items-center justify-between w-full mb-2">
+                                                        <div className="p-2 bg-yellow-500/10 rounded-lg"><DollarSign size={20} className="text-yellow-500"/></div>
+                                                        <span className="text-xs text-gray-500">Mês Atual</span>
+                                                    </div>
+                                                    <p className="text-xs text-gray-400 uppercase font-bold">Receita Estimada</p>
+                                                    <p className="text-2xl font-black text-white">R$ 18.590,00</p>
                                                 </div>
                                             </div>
-                                            <div className="flex-1 bg-gray-900/60 p-4 rounded-xl border border-white/5 relative overflow-hidden">
-                                                <div className="absolute right-0 top-0 p-4 opacity-5"><TrendingDown size={60} className="text-red-500"/></div>
-                                                <h3 className="font-bold text-white flex items-center gap-2 text-sm mb-4"><span className="p-1 bg-red-500/20 rounded text-red-400"><ArrowRight size={14} className="rotate-45"/></span> Saídas (Semana)</h3>
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <div className="p-3 bg-red-900/10 rounded-lg border border-red-500/20"><p className="text-[10px] text-red-400 font-bold uppercase">Pago</p><p className="text-lg font-black text-white">R$ 1.250,00</p></div>
-                                                    <div className="p-3 bg-gray-800/30 rounded-lg border border-white/5"><p className="text-[10px] text-gray-400 font-bold uppercase">A Pagar</p><p className="text-lg font-black text-gray-300">R$ 580,00</p></div>
+
+                                            {/* Agenda List Mobile */}
+                                            <div className="bg-gray-900/60 p-4 rounded-xl border border-white/5">
+                                                <h3 className="font-bold text-white flex items-center gap-2 text-sm mb-4"><Clock size={16} className="text-gray-400"/> Próximos</h3>
+                                                <div className="space-y-3">
+                                                    {[
+                                                        { time: '14:00', name: 'Mariana Costa', service: 'Avaliação Inicial', color: 'bg-blue-500' },
+                                                        { time: '15:00', name: 'Pedro Alves', service: 'Manutenção Ortodôntica', color: 'bg-purple-500' }
+                                                    ].map((apt, i) => (
+                                                        <div key={i} className="flex items-center gap-3 p-3 bg-gray-800/40 rounded-lg border border-white/5">
+                                                            <div className="bg-gray-800 px-2 py-1 rounded text-xs font-bold text-gray-400 border border-white/10">{apt.time}</div>
+                                                            <div className="flex-1">
+                                                                <p className="text-sm font-bold text-white">{apt.name}</p>
+                                                                <p className="text-[10px] text-gray-500">{apt.service}</p>
+                                                            </div>
+                                                            <div className={`w-2 h-2 rounded-full ${apt.color}`}></div>
+                                                        </div>
+                                                    ))}
+                                                    <span className="block text-center text-xs text-primary mt-2">Ver todos</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Financial Mobile */}
+                                            <div className="grid grid-cols-1 gap-3">
+                                                <div className="bg-gray-900/60 p-4 rounded-xl border border-white/5 relative overflow-hidden">
+                                                    <div className="absolute right-0 top-0 p-3 opacity-10"><TrendingUp size={40} className="text-green-500"/></div>
+                                                    <h3 className="font-bold text-white flex items-center gap-2 text-xs mb-2"><span className="p-1 bg-green-500/20 rounded text-green-400"><ArrowRight size={12} className="-rotate-45"/></span> Entradas (Semana)</h3>
+                                                    <div className="flex justify-between items-end">
+                                                        <div>
+                                                            <p className="text-[10px] text-green-400 font-bold uppercase">Realizado</p>
+                                                            <p className="text-lg font-black text-white">R$ 4.200,00</p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                             <p className="text-[10px] text-gray-500 uppercase">A Receber</p>
+                                                             <p className="text-sm font-bold text-gray-400">R$ 1.850</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-gray-900/60 p-4 rounded-xl border border-white/5 relative overflow-hidden">
+                                                    <div className="absolute right-0 top-0 p-3 opacity-10"><TrendingDown size={40} className="text-red-500"/></div>
+                                                    <h3 className="font-bold text-white flex items-center gap-2 text-xs mb-2"><span className="p-1 bg-red-500/20 rounded text-red-400"><ArrowRight size={12} className="rotate-45"/></span> Saídas (Semana)</h3>
+                                                    <div className="flex justify-between items-end">
+                                                        <div>
+                                                            <p className="text-[10px] text-red-400 font-bold uppercase">Pago</p>
+                                                            <p className="text-lg font-black text-white">R$ 1.250,00</p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                             <p className="text-[10px] text-gray-500 uppercase">A Pagar</p>
+                                                             <p className="text-sm font-bold text-gray-400">R$ 580</p>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    ) : (
+                                        // Desktop Layout (Original)
+                                        <>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div className="bg-gray-900/60 p-4 rounded-xl border border-white/5 relative overflow-hidden">
+                                                    <div className="flex justify-between items-start mb-2"><div className="p-2 bg-blue-500/10 rounded-lg"><Users size={20} className="text-blue-500"/></div></div>
+                                                    <p className="text-xs text-gray-400 uppercase font-bold">Pacientes</p>
+                                                    <p className="text-2xl font-black text-white">148</p>
+                                                </div>
+                                                <div className="bg-gray-900/60 p-4 rounded-xl border border-white/5 relative overflow-hidden">
+                                                    <div className="flex justify-between items-start mb-2"><div className="p-2 bg-green-500/10 rounded-lg"><Calendar size={20} className="text-green-500"/></div></div>
+                                                    <p className="text-xs text-gray-400 uppercase font-bold">Agendados Hoje</p>
+                                                    <p className="text-2xl font-black text-white">12</p>
+                                                </div>
+                                                <div className="bg-gray-900/60 p-4 rounded-xl border border-white/5 relative overflow-hidden">
+                                                    <div className="flex justify-between items-start mb-2"><div className="p-2 bg-yellow-500/10 rounded-lg"><DollarSign size={20} className="text-yellow-500"/></div></div>
+                                                    <p className="text-xs text-gray-400 uppercase font-bold">Receita (Mês)</p>
+                                                    <p className="text-2xl font-black text-white">R$ 18.590,00</p>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[400px]">
+                                                <div className="bg-gray-900/60 p-4 rounded-xl border border-white/5 flex flex-col h-full overflow-hidden">
+                                                    <h3 className="font-bold text-white flex items-center gap-2 text-sm mb-4"><Clock size={16} className="text-gray-400"/> Próximos Agendamentos</h3>
+                                                    <div className="space-y-3">
+                                                        <div className="flex items-center justify-between p-3 bg-gray-800/40 rounded-lg border border-white/5">
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="text-xs font-bold text-gray-400 bg-gray-800 px-2 py-1 rounded">14:00</span>
+                                                                <div>
+                                                                    <p className="text-sm font-bold text-white">Mariana Costa</p>
+                                                                    <p className="text-xs text-gray-500">Avaliação Inicial</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                                        </div>
+                                                        <div className="flex items-center justify-between p-3 bg-gray-800/40 rounded-lg border border-white/5">
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="text-xs font-bold text-gray-400 bg-gray-800 px-2 py-1 rounded">15:00</span>
+                                                                <div>
+                                                                    <p className="text-sm font-bold text-white">Pedro Alves</p>
+                                                                    <p className="text-xs text-gray-500">Manutenção Ortodôntica</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                                                        </div>
+                                                        <div className="flex items-center justify-center pt-2">
+                                                            <span className="text-xs text-primary cursor-pointer hover:underline">Ver todos</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-col gap-4">
+                                                    <div className="flex-1 bg-gray-900/60 p-4 rounded-xl border border-white/5 relative overflow-hidden">
+                                                        <div className="absolute right-0 top-0 p-4 opacity-5"><TrendingUp size={60} className="text-green-500"/></div>
+                                                        <h3 className="font-bold text-white flex items-center gap-2 text-sm mb-4"><span className="p-1 bg-green-500/20 rounded text-green-400"><ArrowRight size={14} className="-rotate-45"/></span> Entradas (Semana)</h3>
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <div className="p-3 bg-green-900/10 rounded-lg border border-green-500/20"><p className="text-[10px] text-green-400 font-bold uppercase">Realizado</p><p className="text-lg font-black text-white">R$ 4.200,00</p></div>
+                                                            <div className="p-3 bg-gray-800/30 rounded-lg border border-white/5"><p className="text-[10px] text-gray-400 font-bold uppercase">A Receber</p><p className="text-lg font-black text-gray-300">R$ 1.850,00</p></div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex-1 bg-gray-900/60 p-4 rounded-xl border border-white/5 relative overflow-hidden">
+                                                        <div className="absolute right-0 top-0 p-4 opacity-5"><TrendingDown size={60} className="text-red-500"/></div>
+                                                        <h3 className="font-bold text-white flex items-center gap-2 text-sm mb-4"><span className="p-1 bg-red-500/20 rounded text-red-400"><ArrowRight size={14} className="rotate-45"/></span> Saídas (Semana)</h3>
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <div className="p-3 bg-red-900/10 rounded-lg border border-red-500/20"><p className="text-[10px] text-red-400 font-bold uppercase">Pago</p><p className="text-lg font-black text-white">R$ 1.250,00</p></div>
+                                                            <div className="p-3 bg-gray-800/30 rounded-lg border border-white/5"><p className="text-[10px] text-gray-400 font-bold uppercase">A Pagar</p><p className="text-lg font-black text-gray-300">R$ 580,00</p></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             )}
-                            {/* ... outros mockups mantidos ... */}
+
                             {activeMockup === 'Agenda' && (
                                 <div className="space-y-4 animate-fade-in h-full flex flex-col">
+                                    {/* Header Agenda */}
                                     <div className="flex justify-between items-center mb-2">
                                         <div className="flex items-center gap-2 bg-gray-900 border border-white/10 p-1 rounded-lg">
                                             <button className="p-1 text-gray-400 hover:text-white"><ChevronLeft size={16}/></button>
-                                            <span className="text-sm font-bold text-white px-2">Fevereiro 2026</span>
+                                            <div className="text-center">
+                                                <span className="text-sm font-bold text-white block leading-tight">Fevereiro</span>
+                                                <span className="text-[10px] text-gray-500 block leading-tight">2026</span>
+                                            </div>
                                             <button className="p-1 text-gray-400 hover:text-white"><ChevronRight size={16}/></button>
                                             <span className="text-[10px] font-bold text-gray-400 border-l border-white/10 pl-2 ml-1 cursor-pointer">Hoje</span>
                                         </div>
-                                        <button className="bg-primary text-white text-xs px-3 py-1.5 rounded-lg font-bold flex items-center shadow-lg shadow-blue-900/20"><Plus size={14} className="mr-1"/> Novo Agendamento</button>
+                                        <button className="bg-primary text-white text-xs px-3 py-1.5 rounded-lg font-bold flex items-center shadow-lg shadow-blue-900/20">
+                                            <Plus size={14} className="mr-1"/> 
+                                            {device === 'mobile' ? 'Novo' : 'Novo Agendamento'}
+                                        </button>
                                     </div>
                                     
+                                    {/* Filters */}
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
                                         {['Todos Pacientes', 'Todos Dentistas', 'Financeiro (Todos)', 'Status (Todos)'].map((f, i) => (
                                             <div key={i} className="bg-gray-800 border border-white/10 rounded px-2 py-1.5 text-[10px] text-gray-300 flex justify-between items-center cursor-pointer hover:bg-gray-700">
-                                                {f} <ChevronDown size={10} />
+                                                <span className="truncate">{f}</span> <ChevronDown size={10} className="shrink-0 ml-1"/>
                                             </div>
                                         ))}
                                     </div>
 
+                                    {/* Content */}
                                     <div className="flex-1 bg-gray-900/50 border border-white/5 rounded-lg overflow-hidden flex flex-col">
-                                        <div className="grid grid-cols-7 bg-gray-800/50 p-2 text-[9px] font-bold text-gray-500 uppercase tracking-wide">
-                                            <div>Data</div><div>Horário</div><div className="col-span-1">Paciente</div><div className="col-span-1">Dentista</div><div className="text-center">Status</div><div className="text-center">Pagamento</div><div className="text-right">Ações</div>
-                                        </div>
-                                        <div className="flex-1 overflow-y-auto custom-scrollbar">
-                                            {[
-                                                { date: '06/02', time: '08:00 - 09:00', name: 'João Miguel', dentist: 'Dr. André', status: 'CONFIRMADO', pay: 'PAGO', val: '0', color: 'bg-blue-500', statusColor: 'text-green-400 bg-green-900/20 border-green-500/30', payColor: 'text-green-400 bg-green-900/20 border-green-500/30' },
-                                                { date: '06/02', time: '09:00 - 10:00', name: 'Ana Clara', dentist: 'Dra. Juliana', status: 'AGENDADO', pay: 'PENDENTE', val: '0', color: 'bg-purple-500', statusColor: 'text-blue-400 bg-blue-900/20 border-blue-500/30', payColor: 'text-yellow-400 bg-yellow-900/20 border-yellow-500/30' },
-                                                { date: '06/02', time: '10:00 - 11:30', name: 'Lucas Ferrari', sub: 'Canal', dentist: 'Dr. André', status: 'AGENDADO', pay: 'PENDENTE', val: '0', color: 'bg-blue-500', statusColor: 'text-blue-400 bg-blue-900/20 border-blue-500/30', payColor: 'text-yellow-400 bg-yellow-900/20 border-yellow-500/30' }
-                                            ].map((item, i) => (
-                                                <div key={i} className="grid grid-cols-7 items-center p-3 border-b border-white/5 hover:bg-gray-800/30 text-xs">
-                                                    <div className="text-gray-300 font-bold">{item.date}</div>
-                                                    <div className="text-gray-400">{item.time}</div>
-                                                    <div>
-                                                        <div className="font-bold text-white">{item.name}</div>
-                                                        {item.sub && <div className="text-[10px] text-gray-500">{item.sub}</div>}
-                                                    </div>
-                                                    <div className="flex items-center text-gray-400"><div className={`w-1.5 h-1.5 rounded-full ${item.color} mr-1.5`}></div>{item.dentist}</div>
-                                                    <div className="text-center"><span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${item.statusColor}`}>{item.status}</span></div>
-                                                    <div className="text-center"><span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${item.payColor}`}>{item.pay}</span></div>
-                                                    <div className="text-right text-gray-500 flex justify-end gap-2">
-                                                        <Trash2 size={12} className="hover:text-red-400 cursor-pointer"/>
-                                                    </div>
+                                        {device === 'mobile' ? (
+                                            <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2">
+                                                {/* Mobile Compact List */}
+                                                <div className="flex text-[9px] font-bold text-gray-500 uppercase px-2 mb-1 justify-between">
+                                                    <span>Data Horário</span> <span>Paciente / Dentista</span>
                                                 </div>
-                                            ))}
-                                        </div>
+                                                {[
+                                                    { date: '10/05', start: '08:00', end: '09:00', name: 'Roberto Silva', dentist: 'Dr. André', status: 'CONFIRMADO', statusColor: 'text-green-400 border-green-500/30', payColor: 'text-green-400' },
+                                                    { date: '10/05', start: '09:00', end: '10:00', name: 'Fernanda Oliveira', dentist: 'Dra. Juliana', status: 'AGENDADO', statusColor: 'text-blue-400 border-blue-500/30', payColor: 'text-yellow-400' },
+                                                    { date: '10/05', start: '10:00', end: '11:30', name: 'Carlos Souza', sub: 'Canal', dentist: 'Dr. André', status: 'AGENDADO', statusColor: 'text-blue-400 border-blue-500/30', payColor: 'text-yellow-400' }
+                                                ].map((item, i) => (
+                                                    <div key={i} className="bg-gray-950 border border-white/5 rounded-lg p-3 flex justify-between items-center">
+                                                        <div className="flex flex-col gap-1 w-20 shrink-0 border-r border-white/5 pr-2 mr-2">
+                                                            <span className="text-white font-bold text-xs">{item.date}</span>
+                                                            <span className="text-gray-500 text-[10px]">{item.start} - {item.end}</span>
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="font-bold text-white text-xs truncate">{item.name}</div>
+                                                            {item.sub && <div className="text-[10px] text-gray-500">{item.sub}</div>}
+                                                            <div className="text-[10px] text-gray-400 truncate mt-0.5">{item.dentist}</div>
+                                                        </div>
+                                                        <div className="flex flex-col gap-1 items-end ml-2">
+                                                            <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded border bg-gray-900 ${item.statusColor}`}>{item.status}</span>
+                                                            <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded border bg-gray-900 border-white/10 ${item.payColor}`}>{item.payColor.includes('green') ? 'PAGO' : 'PENDENTE'}</span>
+                                                            <Trash2 size={12} className="text-gray-600 mt-1"/>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            /* Desktop Table */
+                                            <>
+                                                <div className="grid grid-cols-7 bg-gray-800/50 p-2 text-[9px] font-bold text-gray-500 uppercase tracking-wide">
+                                                    <div>Data</div><div>Horário</div><div className="col-span-1">Paciente</div><div className="col-span-1">Dentista</div><div className="text-center">Status</div><div className="text-center">Pagamento</div><div className="text-right">Ações</div>
+                                                </div>
+                                                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                                                    {[
+                                                        { date: '06/02', time: '08:00 - 09:00', name: 'João Miguel', dentist: 'Dr. André', status: 'CONFIRMADO', pay: 'PAGO', val: '0', color: 'bg-blue-500', statusColor: 'text-green-400 bg-green-900/20 border-green-500/30', payColor: 'text-green-400 bg-green-900/20 border-green-500/30' },
+                                                        { date: '06/02', time: '09:00 - 10:00', name: 'Ana Clara', dentist: 'Dra. Juliana', status: 'AGENDADO', pay: 'PENDENTE', val: '0', color: 'bg-purple-500', statusColor: 'text-blue-400 bg-blue-900/20 border-blue-500/30', payColor: 'text-yellow-400 bg-yellow-900/20 border-yellow-500/30' },
+                                                        { date: '06/02', time: '10:00 - 11:30', name: 'Lucas Ferrari', sub: 'Canal', dentist: 'Dr. André', status: 'AGENDADO', pay: 'PENDENTE', val: '0', color: 'bg-blue-500', statusColor: 'text-blue-400 bg-blue-900/20 border-blue-500/30', payColor: 'text-yellow-400 bg-yellow-900/20 border-yellow-500/30' }
+                                                    ].map((item, i) => (
+                                                        <div key={i} className="grid grid-cols-7 items-center p-3 border-b border-white/5 hover:bg-gray-800/30 text-xs">
+                                                            <div className="text-gray-300 font-bold">{item.date}</div>
+                                                            <div className="text-gray-400">{item.time}</div>
+                                                            <div>
+                                                                <div className="font-bold text-white">{item.name}</div>
+                                                                {item.sub && <div className="text-[10px] text-gray-500">{item.sub}</div>}
+                                                            </div>
+                                                            <div className="flex items-center text-gray-400"><div className={`w-1.5 h-1.5 rounded-full ${item.color} mr-1.5`}></div>{item.dentist}</div>
+                                                            <div className="text-center"><span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${item.statusColor}`}>{item.status}</span></div>
+                                                            <div className="text-center"><span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${item.payColor}`}>{item.pay}</span></div>
+                                                            <div className="text-right text-gray-500 flex justify-end gap-2">
+                                                                <Trash2 size={12} className="hover:text-red-400 cursor-pointer"/>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             )}
+
                              {activeMockup === 'Pacientes' && (
                                 <div className="space-y-4 animate-fade-in h-full flex flex-col">
                                     <div className="flex justify-between items-center mb-2">
                                         <h2 className="text-lg font-bold text-white flex items-center gap-2">Pacientes <span className="text-xs bg-gray-800 px-2 py-0.5 rounded border border-white/10 text-gray-400">6 / 30</span></h2>
                                         <div className="flex gap-2">
-                                            <button className="bg-gray-800 text-gray-300 border border-white/10 px-3 py-1.5 rounded text-xs font-bold flex items-center"><Folder size={12} className="mr-1"/> Modelo</button>
-                                            <button className="bg-gray-800 text-gray-300 border border-white/10 px-3 py-1.5 rounded text-xs font-bold flex items-center"><Upload size={12} className="mr-1"/> Importar Excel</button>
-                                            <button className="bg-primary text-white text-xs px-3 py-1.5 rounded font-bold flex items-center"><Plus size={14} className="mr-1"/> Novo</button>
+                                            {device === 'mobile' ? (
+                                                <button className="bg-primary text-white text-xs px-3 py-1.5 rounded font-bold flex items-center w-full justify-center"><Plus size={14} className="mr-1"/> Novo Paciente</button>
+                                            ) : (
+                                                <>
+                                                    <button className="bg-gray-800 text-gray-300 border border-white/10 px-3 py-1.5 rounded text-xs font-bold flex items-center"><Folder size={12} className="mr-1"/> Modelo</button>
+                                                    <button className="bg-gray-800 text-gray-300 border border-white/10 px-3 py-1.5 rounded text-xs font-bold flex items-center"><Upload size={12} className="mr-1"/> Importar Excel</button>
+                                                    <button className="bg-primary text-white text-xs px-3 py-1.5 rounded font-bold flex items-center"><Plus size={14} className="mr-1"/> Novo</button>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                     
@@ -521,32 +655,68 @@ const LandingPage: React.FC = () => {
                                         <input className="w-full bg-gray-800 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-primary" placeholder="Buscar por nome ou CPF..." />
                                     </div>
 
-                                    <div className="flex-1 bg-gray-900/50 border border-white/5 rounded-lg overflow-y-auto custom-scrollbar">
-                                        {[
-                                            { name: 'Mariana Costa', phone: '(11) 99999-1234', cpf: '***.456.789-**' },
-                                            { name: 'Carlos Souza', phone: '(11) 98888-2222', cpf: '***.123.456-**' },
-                                            { name: 'Fernanda Lima', phone: '(11) 97777-3333', cpf: '***.789.012-**' },
-                                            { name: 'Ricardo Oliveira', phone: '(11) 96666-4444', cpf: '***.345.678-**' },
-                                            { name: 'Patrícia Santos', phone: '(11) 95555-5555', cpf: '***.901.234-**' },
-                                            { name: 'Roberto Almeida', phone: '(11) 94444-6666', cpf: '***.567.890-**' }
-                                        ].map((p, i) => (
-                                            <div key={i} className="p-3 border-b border-white/5 hover:bg-gray-800/30 flex justify-between items-center group">
-                                                <div>
-                                                    <h4 className="text-sm font-bold text-white">{p.name}</h4>
-                                                    <p className="text-[10px] text-gray-500">{p.phone} | {p.cpf}</p>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="flex gap-1">
-                                                        <button className="p-1.5 bg-gray-800 border border-white/5 rounded text-gray-400 hover:text-blue-400 transition" title="Receita"><FileText size={12}/></button>
-                                                        <button className="p-1.5 bg-gray-800 border border-white/5 rounded text-gray-400 hover:text-purple-400 transition" title="Prontuário"><CheckCircle size={12}/></button>
-                                                        <button className="p-1.5 bg-gray-800 border border-white/5 rounded text-gray-400 hover:text-yellow-400 transition" title="Arquivos"><Folder size={12}/></button>
+                                    <div className="flex-1 bg-gray-900/50 border border-white/5 rounded-lg overflow-y-auto custom-scrollbar p-1">
+                                        {device === 'mobile' ? (
+                                            /* Mobile Cards for Patients */
+                                            <div className="space-y-3">
+                                                {[
+                                                    { name: 'Maria Eduarda', phone: '(11) 98765-4321', email: 'maria.eduarda@email.com', birth: '15/05/1990', cpf: '123.456.789-00' },
+                                                    { name: 'José Santos', phone: '(11) 91234-5678', email: 'jose.santos@email.com', birth: '20/10/1985', cpf: '987.654.321-11' }
+                                                ].map((p, i) => (
+                                                    <div key={i} className="bg-gray-900 border border-white/10 rounded-xl p-4 flex flex-col gap-3">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="h-10 w-10 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 font-bold text-lg border border-white/5">
+                                                                {p.name.charAt(0)}
+                                                            </div>
+                                                            <div>
+                                                                <h4 className="font-bold text-white text-base">{p.name}</h4>
+                                                                <p className="text-xs text-gray-500 font-mono">{p.cpf}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-1.5">
+                                                            <div className="flex items-center text-xs text-gray-400"><Smartphone size={12} className="mr-2 opacity-50"/> {p.phone}</div>
+                                                            <div className="flex items-center text-xs text-gray-400"><Mail size={12} className="mr-2 opacity-50"/> <span className="truncate">{p.email}</span></div>
+                                                            <div className="flex items-center text-xs text-gray-400"><Calendar size={12} className="mr-2 opacity-50"/> {p.birth}</div>
+                                                        </div>
+                                                        <div className="flex gap-2 pt-2 border-t border-white/5 mt-1">
+                                                            <button className="flex-1 p-2 bg-gray-800 rounded border border-white/5 text-gray-400 hover:text-white flex justify-center"><FileText size={16}/></button>
+                                                            <button className="flex-1 p-2 bg-gray-800 rounded border border-white/5 text-gray-400 hover:text-white flex justify-center"><CheckCircle size={16}/></button>
+                                                            <button className="flex-1 p-2 bg-gray-800 rounded border border-white/5 text-gray-400 hover:text-white flex justify-center"><Folder size={16}/></button>
+                                                            <div className="w-px bg-white/10 mx-1"></div>
+                                                            <button className="p-2 text-gray-500 hover:text-white"><Edit2 size={16}/></button>
+                                                            <button className="p-2 text-gray-500 hover:text-red-400"><Trash2 size={16}/></button>
+                                                        </div>
                                                     </div>
-                                                    <div className="w-px h-4 bg-gray-700 mx-1"></div>
-                                                    <Edit2 size={14} className="text-gray-500 hover:text-blue-400 cursor-pointer"/>
-                                                    <Trash2 size={14} className="text-gray-500 hover:text-red-400 cursor-pointer"/>
-                                                </div>
+                                                ))}
                                             </div>
-                                        ))}
+                                        ) : (
+                                            /* Desktop List */
+                                            [
+                                                { name: 'Mariana Costa', phone: '(11) 99999-1234', cpf: '***.456.789-**' },
+                                                { name: 'Carlos Souza', phone: '(11) 98888-2222', cpf: '***.123.456-**' },
+                                                { name: 'Fernanda Lima', phone: '(11) 97777-3333', cpf: '***.789.012-**' },
+                                                { name: 'Ricardo Oliveira', phone: '(11) 96666-4444', cpf: '***.345.678-**' },
+                                                { name: 'Patrícia Santos', phone: '(11) 95555-5555', cpf: '***.901.234-**' },
+                                                { name: 'Roberto Almeida', phone: '(11) 94444-6666', cpf: '***.567.890-**' }
+                                            ].map((p, i) => (
+                                                <div key={i} className="p-3 border-b border-white/5 hover:bg-gray-800/30 flex justify-between items-center group">
+                                                    <div>
+                                                        <h4 className="text-sm font-bold text-white">{p.name}</h4>
+                                                        <p className="text-[10px] text-gray-500">{p.phone} | {p.cpf}</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="flex gap-1">
+                                                            <button className="p-1.5 bg-gray-800 border border-white/5 rounded text-gray-400 hover:text-blue-400 transition" title="Receita"><FileText size={12}/></button>
+                                                            <button className="p-1.5 bg-gray-800 border border-white/5 rounded text-gray-400 hover:text-purple-400 transition" title="Prontuário"><CheckCircle size={12}/></button>
+                                                            <button className="p-1.5 bg-gray-800 border border-white/5 rounded text-gray-400 hover:text-yellow-400 transition" title="Arquivos"><Folder size={12}/></button>
+                                                        </div>
+                                                        <div className="w-px h-4 bg-gray-700 mx-1"></div>
+                                                        <Edit2 size={14} className="text-gray-500 hover:text-blue-400 cursor-pointer"/>
+                                                        <Trash2 size={14} className="text-gray-500 hover:text-red-400 cursor-pointer"/>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -868,7 +1038,6 @@ const LandingPage: React.FC = () => {
                                 </div>
                             )}
 
-
                         </div>
 
                         {/* Mobile Menu Overlay Mockup */}
@@ -898,8 +1067,7 @@ const LandingPage: React.FC = () => {
 
       {/* VIDEO DEMO SECTION */}
       <section id="ai-section" className="py-32 relative z-10 border-t border-white/5 bg-gray-900/50 backdrop-blur-sm">
-        {/* ... (Video Section Content) ... */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid lg:grid-cols-2 gap-16 items-center">
                 <div>
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-900/50 border border-purple-500/30 text-purple-300 text-xs font-bold uppercase mb-6 shadow-[0_0_15px_rgba(168,85,247,0.2)]">
@@ -973,12 +1141,11 @@ const LandingPage: React.FC = () => {
                 </div>
                 <p className="text-center text-gray-500 text-sm mt-4">Veja a Inteligência Artificial criando um prontuário em tempo real.</p>
             </div>
-        </div>
+         </div>
       </section>
 
       {/* FEATURES SECTION */}
       <section id="features" className="py-24 relative z-10 bg-gray-950">
-        {/* ... (Features Content) ... */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
                 <h2 className="text-3xl font-bold text-white">Recursos que transformam</h2>
@@ -1021,7 +1188,7 @@ const LandingPage: React.FC = () => {
                 </div>
             ))}
             </div>
-
+            
             {/* Technical & Security Section */}
             <div className="mt-32">
                 <div className="text-center mb-16">
@@ -1194,12 +1361,23 @@ const LandingPage: React.FC = () => {
             <span>Denti<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Hub</span></span>
           </div>
           
-          <div className="mb-6 flex justify-center gap-6">
+          <div className="mb-6 flex flex-wrap justify-center gap-6">
             <button onClick={() => navigate('/blog')} className="text-gray-400 hover:text-white transition-colors font-medium">
                 Blog
             </button>
             <button onClick={() => navigate('/sobre')} className="text-gray-400 hover:text-white transition-colors font-medium">
                 Sobre Nós
+            </button>
+            {/* Added Buttons */}
+            <button onClick={() => navigate('/comparativo-de-planos')} className="text-gray-400 hover:text-white transition-colors font-medium">
+                Comparar Planos
+            </button>
+            <button onClick={() => navigate('/compare-sistemas')} className="text-gray-400 hover:text-white transition-colors font-medium">
+                Comparar Sistemas
+            </button>
+            {/* End Added Buttons */}
+            <button onClick={() => navigate('/indique-e-ganhe')} className="text-yellow-500 hover:text-yellow-400 transition-colors font-medium">
+                Indique e Ganhe
             </button>
           </div>
 

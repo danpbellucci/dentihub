@@ -23,11 +23,14 @@ import AppointmentActionPage from './components/AppointmentActionPage';
 import LearnMorePage from './components/LearnMorePage';
 import BlogPage from './components/BlogPage';
 import AboutPage from './components/AboutPage';
+import ReferralPage from './components/ReferralPage'; 
+import PlansComparisonPage from './components/PlansComparisonPage'; // Importado
+import SystemComparisonPage from './components/SystemComparisonPage'; // Importado
 import SuperAdminPage from './components/SuperAdminPage';
 import SuperAdminCampaigns from './components/SuperAdminCampaigns';
 import SuperAdminLeads from './components/SuperAdminLeads';
 import SuperAdminSubscriptions from './components/SuperAdminSubscriptions';
-import SuperAdminAds from './components/SuperAdminAds'; // Importado
+import SuperAdminAds from './components/SuperAdminAds';
 import UpdatePasswordPage from './components/UpdatePasswordPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Loader2 } from 'lucide-react';
@@ -183,6 +186,9 @@ const App: React.FC = () => {
           <Route path="/entenda" element={<LearnMorePage />} />
           <Route path="/blog" element={<BlogPage />} />
           <Route path="/sobre" element={<AboutPage />} />
+          <Route path="/indique-e-ganhe" element={<ReferralPage />} />
+          <Route path="/comparativo-de-planos" element={<PlansComparisonPage />} />
+          <Route path="/compare-sistemas" element={<SystemComparisonPage />} />
           <Route path="/auth" element={<AuthPage />} />
           
           {/* Rota de senha acessível diretamente */}

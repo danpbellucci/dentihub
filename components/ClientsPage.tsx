@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabase';
-import { Client, ClinicalRecord } from '../types';
+import { Client, ClinicalRecord, Dentist } from '../types';
 import { 
   Plus, Edit2, Trash2, Search, X, Loader2, User, Phone, Mail, 
   Calendar, FileText, Folder, Upload, Download, CheckCircle, 
-  ClipboardList, Printer, Eye
+  ClipboardList, Printer, Eye, Send, Save, Lock
 } from 'lucide-react';
 import Toast, { ToastType } from './Toast';
 import { useDashboard } from './DashboardLayout';
@@ -22,6 +22,8 @@ interface FileObject {
 const ClientsPage: React.FC = () => {
   const { userProfile } = useDashboard() || {};
   const [clients, setClients] = useState<Client[]>([]);
+  const [dentists, setDentists] = useState<Dentist[]>([]); // Estado para lista de dentistas
+  const [clinicInfo, setClinicInfo] = useState<any>(null); // Estado para dados completos da clínica
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -40,9 +42,15 @@ const ClientsPage: React.FC = () => {
   
   // Estado para Receita
   const [prescriptionText, setPrescriptionText] = useState('');
+  const [selectedDentistId, setSelectedDentistId] = useState(''); // Estado para dentista selecionado na receita
+  
+  // Estado para capturar email se não existir
+  const [showEmailPrompt, setShowEmailPrompt] = useState(false);
+  const [emailToSave, setEmailToSave] = useState('');
 
   // Estado para Novo Prontuário Rápido
   const [newRecordText, setNewRecordText] = useState('');
+  const [recordDentistId, setRecordDentistId] = useState(''); // Dentista selecionado no prontuário
 
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -63,6 +71,8 @@ const ClientsPage: React.FC = () => {
   useEffect(() => {
     if (userProfile?.clinic_id) {
         fetchClients();
+        fetchDentists();
+        fetchClinicDetails();
     }
   }, [userProfile?.clinic_id]);
 
@@ -83,18 +93,58 @@ const ClientsPage: React.FC = () => {
     setLoading(false);
   };
 
+  const fetchDentists = async () => {
+    if (!userProfile?.clinic_id) return;
+    const { data } = await supabase
+        .from('dentists')
+        .select('id, name, cro')
+        .eq('clinic_id', userProfile.clinic_id)
+        .order('name');
+    if (data) setDentists(data as Dentist[]);
+  };
+
+  const fetchClinicDetails = async () => {
+      if (!userProfile?.clinic_id) return;
+      const { data } = await supabase
+        .from('clinics')
+        .select('name, address, city, state, phone, subscription_tier')
+        .eq('id', userProfile.clinic_id)
+        .single();
+      if (data) setClinicInfo(data);
+  };
+
+  const getPlanLimitDisplay = () => {
+      const tier = userProfile?.clinics?.subscription_tier || 'free';
+      if (tier === 'free') return '30';
+      if (tier === 'starter') return '100';
+      return '∞'; // Pro e Enterprise
+  };
+
   // --- AÇÕES DOS NOVOS MODAIS ---
 
   const openActionModal = async (client: Client, type: 'prescription' | 'records' | 'files') => {
+      // VERIFICAÇÃO DE PLANO PARA ARQUIVOS
+      if (type === 'files') {
+          const tier = userProfile?.clinics?.subscription_tier || 'free';
+          if (tier === 'free') {
+              setToast({ message: "O upload de arquivos está disponível apenas nos planos Starter e Pro.", type: 'warning' });
+              return;
+          }
+      }
+
       setActionClient(client);
       setActiveActionModal(type);
       
       if (type === 'records') {
           fetchRecords(client.id);
+          // Tenta pré-selecionar o primeiro dentista ou nenhum
+          setRecordDentistId(dentists.length > 0 ? dentists[0].id : '');
       } else if (type === 'files') {
           fetchFiles(client.id);
       } else if (type === 'prescription') {
-          setPrescriptionText(`Receituário\n\nPaciente: ${client.name}\n\nUso Oral:\n\n1. ________________________\n   Tomar 1 comprimido de 8 em 8 horas por 3 dias.\n\n\nData: ${new Date().toLocaleDateString('pt-BR')}`);
+          // Reseta seleção e texto
+          setSelectedDentistId(dentists.length > 0 ? dentists[0].id : ''); 
+          setPrescriptionText(`Receituário\n\nPaciente: ${client.name}\n\nUso Oral:\n\n1. \n\n\n\n\nData: ${new Date().toLocaleDateString('pt-BR')}`);
       }
   };
 
@@ -111,11 +161,17 @@ const ClientsPage: React.FC = () => {
 
   const saveQuickRecord = async () => {
       if (!newRecordText.trim() || !actionClient || !userProfile?.clinic_id) return;
+      if (!recordDentistId) {
+          setToast({ message: "Selecione o dentista responsável.", type: 'warning' });
+          return;
+      }
+
       setProcessing(true);
       try {
           const { error } = await supabase.from('clinical_records').insert({
               clinic_id: userProfile.clinic_id,
               client_id: actionClient.id,
+              dentist_id: recordDentistId,
               date: new Date().toISOString().split('T')[0],
               description: newRecordText,
               created_at: new Date().toISOString()
@@ -188,9 +244,6 @@ const ClientsPage: React.FC = () => {
   const downloadFile = async (fileName: string) => {
       if (!actionClient || !userProfile?.clinic_id) return;
       const filePath = `${userProfile.clinic_id}/${actionClient.id}/${fileName}`;
-      const { data } = supabase.storage.from('patient-files').getPublicUrl(filePath);
-      // Para arquivos privados, seria createSignedUrl, mas vamos usar PublicUrl assumindo bucket publico ou signedUrl flow se fosse strict private
-      // Como configuramos RLS mas não public, vamos usar download direto via blob
       
       try {
           const { data: blob, error } = await supabase.storage.from('patient-files').download(filePath);
@@ -199,7 +252,7 @@ const ClientsPage: React.FC = () => {
               const url = window.URL.createObjectURL(blob);
               const a = document.createElement('a');
               a.href = url;
-              a.download = fileName; // ou nome original se tiver guardado
+              a.download = fileName; 
               document.body.appendChild(a);
               a.click();
               window.URL.revokeObjectURL(url);
@@ -211,17 +264,26 @@ const ClientsPage: React.FC = () => {
       }
   };
 
-  const generatePDF = () => {
-      if (!actionClient) return;
+  // Função auxiliar para criar o objeto PDF
+  const createPrescriptionPDF = () => {
+      if (!actionClient) return null;
       const doc = new jsPDF();
       
-      // Header Simples
-      doc.setFontSize(18);
-      doc.text("RECEITUÁRIO", 105, 20, { align: "center" });
+      const clinicName = clinicInfo?.name || userProfile?.clinics?.name || "Clínica Odontológica";
+      const selectedDentist = dentists.find(d => d.id === selectedDentistId);
+      const dentistName = selectedDentist ? selectedDentist.name : "_________________________________";
+      const dentistCro = selectedDentist?.cro ? ` - CRO: ${selectedDentist.cro}` : "";
+
+      // Header
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text(clinicName.toUpperCase(), 105, 20, { align: "center" });
       
-      doc.setFontSize(12);
-      doc.text(userProfile?.clinics?.name || "Clínica Odontológica", 105, 30, { align: "center" });
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text("RECEITUÁRIO", 105, 28, { align: "center" });
       
+      doc.setLineWidth(0.5);
       doc.line(20, 35, 190, 35);
       
       // Conteúdo
@@ -229,13 +291,127 @@ const ClientsPage: React.FC = () => {
       const splitText = doc.splitTextToSize(prescriptionText, 170);
       doc.text(splitText, 20, 50);
       
-      // Footer
-      doc.line(20, 270, 190, 270);
-      doc.setFontSize(10);
-      doc.text("Assinatura / Carimbo", 105, 280, { align: "center" });
+      // Footer Setup
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const footerY = pageHeight - 35;
+
+      doc.setLineWidth(0.5);
+      doc.line(40, footerY, 170, footerY); // Linha de assinatura
+
+      // Dados do Dentista
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.text(`Dr(a). ${dentistName}${dentistCro}`, 105, footerY + 8, { align: "center" });
       
-      doc.save(`Receita_${actionClient.name.replace(/\s+/g, '_')}.pdf`);
-      setToast({ message: "PDF gerado!", type: 'success' });
+      // Dados da Clínica
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100);
+      
+      let clinicAddress = "";
+      if (clinicInfo) {
+          clinicAddress = `${clinicInfo.address || ''}`;
+          if (clinicInfo.city) clinicAddress += ` - ${clinicInfo.city}`;
+          if (clinicInfo.state) clinicAddress += `/${clinicInfo.state}`;
+          if (clinicInfo.phone) clinicAddress += ` | Tel: ${clinicInfo.phone}`;
+      }
+      
+      doc.text(clinicAddress, 105, footerY + 14, { align: "center" });
+      return doc;
+  };
+
+  const handleDownloadPDF = () => {
+      const doc = createPrescriptionPDF();
+      if (doc && actionClient) {
+          doc.save(`Receita_${actionClient.name.replace(/\s+/g, '_')}.pdf`);
+          setToast({ message: "PDF baixado!", type: 'success' });
+      }
+  };
+
+  const handleSendPrescriptionEmail = async () => {
+      if (!actionClient) return;
+
+      if (!actionClient.email) {
+          setShowEmailPrompt(true);
+          setEmailToSave('');
+          return;
+      }
+
+      setProcessing(true);
+      try {
+          const doc = createPrescriptionPDF();
+          if (!doc) throw new Error("Erro ao gerar PDF");
+
+          const pdfBase64 = doc.output('datauristring').split(',')[1];
+          
+          const { data, error } = await supabase.functions.invoke('send-emails', {
+              body: {
+                  type: 'prescription',
+                  client: { name: actionClient.name, email: actionClient.email },
+                  attachments: [{
+                      filename: `Receita_${actionClient.name.replace(/\s+/g, '_')}.pdf`,
+                      content: pdfBase64
+                  }]
+              }
+          });
+
+          if (error) throw error;
+          if (data && data.error) throw new Error(data.error);
+
+          setToast({ message: "Receita enviada por e-mail!", type: 'success' });
+      } catch (err: any) {
+          console.error(err);
+          setToast({ message: "Erro ao enviar: " + err.message, type: 'error' });
+      } finally {
+          setProcessing(false);
+      }
+  };
+
+  const saveClientEmailAndSend = async () => {
+      if (!emailToSave || !actionClient) return;
+      setProcessing(true);
+      try {
+          const { error } = await supabase.from('clients').update({ email: emailToSave }).eq('id', actionClient.id);
+          if (error) throw error;
+          
+          // Atualiza estado local
+          const updatedClient = { ...actionClient, email: emailToSave };
+          setActionClient(updatedClient);
+          
+          // Atualiza lista geral
+          setClients(prev => prev.map(c => c.id === actionClient.id ? updatedClient : c));
+          
+          setShowEmailPrompt(false);
+          setToast({ message: "E-mail salvo! Enviando receita...", type: 'info' });
+          
+          setTimeout(() => {
+             forceSendEmail(updatedClient);
+          }, 500);
+
+      } catch (err: any) {
+          setToast({ message: "Erro ao salvar e-mail: " + err.message, type: 'error' });
+          setProcessing(false);
+      }
+  };
+
+  const forceSendEmail = async (clientWithEmail: Client) => {
+      try {
+          const doc = createPrescriptionPDF();
+          if (!doc) throw new Error("Erro PDF");
+          const pdfBase64 = doc.output('datauristring').split(',')[1];
+          await supabase.functions.invoke('send-emails', {
+              body: {
+                  type: 'prescription',
+                  client: { name: clientWithEmail.name, email: clientWithEmail.email },
+                  attachments: [{ filename: `Receita.pdf`, content: pdfBase64 }]
+              }
+          });
+          setToast({ message: "Receita enviada!", type: 'success' });
+      } catch (err) {
+          setToast({ message: "Erro no envio final.", type: 'error' });
+      } finally {
+          setProcessing(false);
+      }
   };
 
   // --- FIM AÇÕES ---
@@ -336,7 +512,7 @@ const ClientsPage: React.FC = () => {
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <User size={24} className="text-primary"/> Pacientes
             <span className="text-sm font-normal bg-gray-800 text-gray-300 px-2 py-0.5 rounded border border-white/10">
-                {clients.length}
+                {clients.length} / {getPlanLimitDisplay()}
             </span>
         </h1>
         <button onClick={() => handleOpenModal()} className="flex items-center justify-center px-4 py-2 bg-primary text-white rounded hover:bg-sky-600 transition shadow-sm font-bold w-full sm:w-auto">
@@ -397,22 +573,30 @@ const ClientsPage: React.FC = () => {
                           </div>
                           
                           <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                              <div className="flex gap-1">
-                                  <button onClick={() => openActionModal(client, 'prescription')} className="p-1.5 bg-gray-800 border border-white/5 rounded text-gray-400 hover:text-blue-400 hover:bg-gray-700 transition" title="Receita">
-                                      <FileText size={16}/>
+                              <div className="flex gap-2">
+                                  <button onClick={() => openActionModal(client, 'prescription')} className="flex flex-col items-center justify-center p-2 bg-gray-800 border border-white/5 rounded text-gray-400 hover:text-blue-400 hover:bg-gray-700 transition w-16" title="Receita">
+                                      <FileText size={18}/>
+                                      <span className="text-[9px] font-medium mt-1">Receita</span>
                                   </button>
-                                  <button onClick={() => openActionModal(client, 'records')} className="p-1.5 bg-gray-800 border border-white/5 rounded text-gray-400 hover:text-green-400 hover:bg-gray-700 transition" title="Prontuário">
-                                      <ClipboardList size={16}/>
+                                  <button onClick={() => openActionModal(client, 'records')} className="flex flex-col items-center justify-center p-2 bg-gray-800 border border-white/5 rounded text-gray-400 hover:text-green-400 hover:bg-gray-700 transition w-16" title="Prontuário">
+                                      <ClipboardList size={18}/>
+                                      <span className="text-[9px] font-medium mt-1">Prontuário</span>
                                   </button>
-                                  <button onClick={() => openActionModal(client, 'files')} className="p-1.5 bg-gray-800 border border-white/5 rounded text-gray-400 hover:text-yellow-400 hover:bg-gray-700 transition" title="Arquivos">
-                                      <Folder size={16}/>
+                                  <button onClick={() => openActionModal(client, 'files')} className="flex flex-col items-center justify-center p-2 bg-gray-800 border border-white/5 rounded text-gray-400 hover:text-yellow-400 hover:bg-gray-700 transition w-16 group/files relative" title="Arquivos">
+                                      <Folder size={18}/>
+                                      <span className="text-[9px] font-medium mt-1">Arquivos</span>
+                                      {(userProfile?.clinics?.subscription_tier === 'free') && (
+                                          <div className="absolute top-0 right-0 p-0.5 bg-gray-900 rounded-bl text-xs">
+                                              <Lock size={8} className="text-gray-500" />
+                                          </div>
+                                      )}
                                   </button>
                               </div>
-                              <div className="flex gap-1">
-                                  <button onClick={() => handleOpenModal(client)} className="p-1.5 text-gray-500 hover:text-blue-400 transition" title="Editar">
+                              <div className="flex gap-1 items-end">
+                                  <button onClick={() => handleOpenModal(client)} className="p-2 text-gray-500 hover:text-blue-400 transition" title="Editar">
                                       <Edit2 size={16}/>
                                   </button>
-                                  <button onClick={() => setDeleteId(client.id)} className="p-1.5 text-gray-500 hover:text-red-400 transition" title="Excluir">
+                                  <button onClick={() => setDeleteId(client.id)} className="p-2 text-gray-500 hover:text-red-400 transition" title="Excluir">
                                       <Trash2 size={16}/>
                                   </button>
                               </div>
@@ -423,36 +607,87 @@ const ClientsPage: React.FC = () => {
           )}
       </div>
 
-      {/* --- MODAIS DE AÇÃO --- */}
-
+      {/* --- MODAIS DE AÇÃO (Com largura reduzida e Z-Index 100 para sobrepor sidebar) --- */}
+      {/* ... Rest of modals unchanged ... */}
+      
       {/* 1. RECEITA MODAL */}
       {activeActionModal === 'prescription' && actionClient && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in">
-              <div className="bg-gray-900 border border-white/10 p-6 rounded-xl shadow-2xl w-full max-w-2xl h-[80vh] flex flex-col">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in">
+              <div className="bg-gray-900 border border-white/10 p-6 rounded-xl shadow-2xl w-full max-w-md h-[80vh] flex flex-col relative">
                   <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
                       <h2 className="text-xl font-bold text-white flex items-center gap-2"><FileText size={20} className="text-blue-400"/> Receituário</h2>
-                      <button onClick={() => { setActiveActionModal(null); setActionClient(null); }} className="text-gray-400 hover:text-white"><X size={24}/></button>
+                      <button onClick={() => { setActiveActionModal(null); setActionClient(null); setShowEmailPrompt(false); }} className="text-gray-400 hover:text-white"><X size={24}/></button>
                   </div>
+                  
+                  {/* Dentist Selector */}
+                  <div className="mb-4">
+                      <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Dentista Responsável</label>
+                      <select 
+                          className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white outline-none focus:border-primary text-sm"
+                          value={selectedDentistId}
+                          onChange={(e) => setSelectedDentistId(e.target.value)}
+                      >
+                          <option value="">Selecione o Dentista...</option>
+                          {dentists.map(d => (
+                              <option key={d.id} value={d.id}>{d.name}</option>
+                          ))}
+                      </select>
+                  </div>
+
                   <div className="flex-1 flex flex-col bg-white rounded-lg p-1 text-gray-900 overflow-hidden">
                       <textarea 
                           className="flex-1 w-full p-4 outline-none resize-none font-mono text-sm"
                           value={prescriptionText}
                           onChange={(e) => setPrescriptionText(e.target.value)}
+                          placeholder="Digite a prescrição aqui..."
                       />
                   </div>
-                  <div className="flex justify-end gap-3 mt-4">
-                      <button onClick={generatePDF} className="px-6 py-2 bg-blue-600 text-white rounded font-bold hover:bg-blue-700 flex items-center shadow-lg">
-                          <Printer size={18} className="mr-2"/> Imprimir / PDF
+                  <div className="flex justify-end gap-2 mt-4">
+                      <button 
+                        onClick={handleSendPrescriptionEmail} 
+                        disabled={processing}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded font-bold hover:bg-indigo-700 flex items-center shadow-lg text-xs"
+                      >
+                          {processing ? <Loader2 className="animate-spin mr-2" size={14}/> : <Send size={14} className="mr-2"/>} Enviar por E-mail
+                      </button>
+                      <button onClick={handleDownloadPDF} className="px-4 py-2 bg-blue-600 text-white rounded font-bold hover:bg-blue-700 flex items-center shadow-lg text-xs">
+                          <Printer size={14} className="mr-2"/> Imprimir / PDF
                       </button>
                   </div>
+
+                  {/* MINI MODAL: CADASTRAR EMAIL SE FALTAR */}
+                  {showEmailPrompt && (
+                      <div className="absolute inset-0 bg-black/90 flex items-center justify-center p-6 z-50 rounded-xl">
+                          <div className="bg-gray-900 border border-white/20 p-5 rounded-lg w-full max-w-xs text-center shadow-2xl animate-fade-in-up">
+                              <div className="bg-yellow-500/20 p-3 rounded-full inline-block mb-3 border border-yellow-500/30">
+                                  <Mail className="text-yellow-500" size={24} />
+                              </div>
+                              <h3 className="text-white font-bold mb-2">E-mail não cadastrado</h3>
+                              <p className="text-gray-400 text-xs mb-4">O paciente não possui e-mail. Informe abaixo para salvar e enviar.</p>
+                              <input 
+                                  type="email" 
+                                  className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white text-sm mb-4 outline-none focus:border-primary"
+                                  placeholder="exemplo@email.com"
+                                  value={emailToSave}
+                                  onChange={e => setEmailToSave(e.target.value)}
+                              />
+                              <div className="flex gap-2">
+                                  <button onClick={() => setShowEmailPrompt(false)} className="flex-1 bg-gray-800 text-gray-300 py-2 rounded text-xs font-bold hover:bg-gray-700">Cancelar</button>
+                                  <button onClick={saveClientEmailAndSend} disabled={processing} className="flex-1 bg-primary text-white py-2 rounded text-xs font-bold hover:bg-sky-600 flex justify-center items-center">
+                                      {processing ? <Loader2 className="animate-spin" size={14}/> : 'Salvar e Enviar'}
+                                  </button>
+                              </div>
+                          </div>
+                      </div>
+                  )}
               </div>
           </div>
       )}
 
       {/* 2. PRONTUÁRIO MODAL */}
       {activeActionModal === 'records' && actionClient && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in">
-              <div className="bg-gray-900 border border-white/10 p-6 rounded-xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in">
+              <div className="bg-gray-900 border border-white/10 p-6 rounded-xl shadow-2xl w-full max-w-xl max-h-[85vh] flex flex-col">
                   <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
                       <h2 className="text-xl font-bold text-white flex items-center gap-2"><ClipboardList size={20} className="text-green-400"/> Prontuário: {actionClient.name}</h2>
                       <button onClick={() => { setActiveActionModal(null); setActionClient(null); }} className="text-gray-400 hover:text-white"><X size={24}/></button>
@@ -474,7 +709,22 @@ const ClientsPage: React.FC = () => {
                   </div>
 
                   <div className="pt-4 border-t border-white/10">
-                      <label className="text-xs font-bold text-gray-400 uppercase mb-2 block">Adicionar Anotação Rápida</label>
+                      <label className="text-xs font-bold text-gray-400 uppercase mb-2 block">Adicionar Anotação Manual</label>
+                      
+                      {/* Dentist Selector for Record */}
+                      <div className="mb-2">
+                          <select 
+                              className="w-full bg-gray-800 border border-gray-700 rounded p-1.5 text-white outline-none focus:border-primary text-xs"
+                              value={recordDentistId}
+                              onChange={(e) => setRecordDentistId(e.target.value)}
+                          >
+                              <option value="">Selecione o Dentista...</option>
+                              {dentists.map(d => (
+                                  <option key={d.id} value={d.id}>{d.name}</option>
+                              ))}
+                          </select>
+                      </div>
+
                       <div className="flex gap-2">
                           <textarea 
                               className="flex-1 bg-gray-800 border border-gray-700 rounded p-2 text-white outline-none focus:border-primary text-sm resize-none"
@@ -484,7 +734,7 @@ const ClientsPage: React.FC = () => {
                               placeholder="Descreva o procedimento..."
                           />
                           <button onClick={saveQuickRecord} disabled={processing || !newRecordText.trim()} className="px-4 bg-green-600 text-white rounded font-bold hover:bg-green-700 disabled:opacity-50 flex items-center">
-                              {processing ? <Loader2 className="animate-spin"/> : <Plus size={20}/>}
+                              {processing ? <Loader2 className="animate-spin"/> : <Save size={20}/>}
                           </button>
                       </div>
                   </div>
@@ -494,8 +744,8 @@ const ClientsPage: React.FC = () => {
 
       {/* 3. ARQUIVOS MODAL */}
       {activeActionModal === 'files' && actionClient && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in">
-              <div className="bg-gray-900 border border-white/10 p-6 rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in">
+              <div className="bg-gray-900 border border-white/10 p-6 rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col">
                   <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
                       <h2 className="text-xl font-bold text-white flex items-center gap-2"><Folder size={20} className="text-yellow-400"/> Arquivos: {actionClient.name}</h2>
                       <button onClick={() => { setActiveActionModal(null); setActionClient(null); }} className="text-gray-400 hover:text-white"><X size={24}/></button>

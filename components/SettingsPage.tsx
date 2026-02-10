@@ -9,7 +9,8 @@ import { useDashboard } from './DashboardLayout';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isAfter } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 const stripePromise = loadStripe('pk_live_51SlBFr2Obfcu36b5A1xwCAouBbAsnZWRFEOEWYcfOmASaVvaBZM8uMhCCc11M3CNuaprfNXsVS0YnV3mlHQrXXKy00uj8Jzf7g');
 
@@ -209,6 +210,8 @@ const SettingsPage: React.FC = () => {
   const handleDeleteAccount = async () => { if (!deleteConfirmed) return; setIsDeletingAccount(true); try { const { data: { session } } = await supabase.auth.getSession(); if (!session) throw new Error("Sessão inválida."); const { error } = await supabase.functions.invoke('delete-account', { headers: { Authorization: `Bearer ${session.access_token}` } }); if (error) throw error; await supabase.auth.signOut(); setToast({ message: "Conta excluída. Adeus!", type: 'success' }); setTimeout(() => { navigate('/'); window.location.reload(); }, 2000); } catch (err: any) { setToast({ message: "Erro: " + err.message, type: 'error' }); setIsDeletingAccount(false); setShowDeleteAccountModal(false); } };
   
   const openPaymentModal = async (planName: string, priceDisplay: string, priceId?: string, items?: any[], limits?: any) => { 
+      // Reseta o clientSecret para garantir que o loader apareça
+      setClientSecret(null);
       setSelectedPlan({ name: planName, price: priceDisplay, priceId, items, limits }); 
       setShowPaymentModal(true); 
       setLoadingPayment(true); 
@@ -254,6 +257,9 @@ const SettingsPage: React.FC = () => {
   const copyToClipboard = (text: string) => { navigator.clipboard.writeText(text); setToast({ message: "Copiado para a área de transferência!", type: 'success' }); };
   const currentTier = contextProfile?.clinics?.subscription_tier || 'free';
 
+  // Check bonus expiration
+  const hasBonus = clinicData.bonus_expires_at && isAfter(new Date(clinicData.bonus_expires_at), new Date());
+
   if (loading) return <div className="flex h-96 w-full items-center justify-center"><div className="flex flex-col items-center gap-3"><Loader2 className="h-10 w-10 animate-spin text-primary" /><span className="text-gray-500 font-medium">Carregando...</span></div></div>;
 
   return (
@@ -291,6 +297,22 @@ const SettingsPage: React.FC = () => {
                     <h2 className="text-xl font-bold text-white mb-6 pb-2 border-b border-white/10 flex items-center gap-2">
                         <Gift className="text-primary" size={24}/> Programa de Indicações
                     </h2>
+
+                    {hasBonus && (
+                        <div className="mb-6 bg-gradient-to-r from-green-900/40 to-green-800/40 border border-green-500/30 rounded-xl p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-green-500/20 rounded-lg text-green-400"><Award size={24}/></div>
+                                <div>
+                                    <h3 className="font-bold text-white text-sm">Bônus Ativo!</h3>
+                                    <p className="text-xs text-gray-300">Você possui dias de acesso gratuito disponíveis.</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <span className="block text-xs text-gray-400 uppercase font-bold">Expira em</span>
+                                <span className="block text-lg font-bold text-green-400">{format(parseISO(clinicData.bonus_expires_at), "dd 'de' MMMM, yyyy", { locale: ptBR })}</span>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="relative bg-gradient-to-r from-blue-900/40 to-purple-900/40 border border-white/10 rounded-2xl p-8 mb-8 overflow-hidden">
                         <div className="absolute top-0 right-0 p-4 opacity-10">
@@ -346,13 +368,14 @@ const SettingsPage: React.FC = () => {
                                         <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Data Cadastro</th>
                                         <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Pacientes</th>
                                         <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Plano</th>
+                                        <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Recompensa</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-white/5">
                                     {loadingReferrals ? (
-                                        <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500"><Loader2 className="animate-spin inline mr-2"/> Carregando...</td></tr>
+                                        <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500"><Loader2 className="animate-spin inline mr-2"/> Carregando...</td></tr>
                                     ) : referredClinics.length === 0 ? (
-                                        <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">Nenhuma indicação realizada ainda.</td></tr>
+                                        <tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">Nenhuma indicação realizada ainda.</td></tr>
                                     ) : (
                                         referredClinics.map((clinic) => (
                                             <tr key={clinic.id} className="hover:bg-white/5">
@@ -365,6 +388,15 @@ const SettingsPage: React.FC = () => {
                                                     <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${clinic.subscription_tier === 'pro' ? 'bg-yellow-900/30 text-yellow-400 border border-yellow-500/20' : clinic.subscription_tier === 'starter' ? 'bg-blue-900/30 text-blue-400 border border-blue-500/20' : 'bg-gray-700 text-gray-300'}`}>
                                                         {clinic.subscription_tier}
                                                     </span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                    {clinic.bonus_earned ? (
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-900/30 text-green-400 border border-green-500/20">
+                                                            <Award size={10} className="mr-1"/> {clinic.bonus_earned === 'pro' ? 'Pro' : 'Starter'} (+30 Dias)
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-gray-600 text-xs">-</span>
+                                                    )}
                                                 </td>
                                             </tr>
                                         ))
