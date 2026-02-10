@@ -1,6 +1,6 @@
 
 -- ============================================================================
--- RPC ATUALIZADA: ESTATÍSTICAS DE INDICAÇÕES COM BÔNUS
+-- RPC ATUALIZADA: ESTATÍSTICAS DE INDICAÇÕES COM BÔNUS E DATA
 -- ============================================================================
 
 DROP FUNCTION IF EXISTS public.get_my_referrals_stats();
@@ -12,7 +12,8 @@ RETURNS TABLE (
   created_at TIMESTAMPTZ,
   subscription_tier TEXT,
   patient_count BIGINT,
-  bonus_earned TEXT -- Nova coluna para indicar o bônus ganho ('starter', 'pro' ou null)
+  bonus_earned TEXT,
+  bonus_date TIMESTAMPTZ -- Campo novo para data do bônus
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -31,7 +32,7 @@ BEGIN
      RETURN;
   END IF;
 
-  -- 2. Retornar dados agregados + Bônus
+  -- 2. Retornar dados agregados + Bônus via Lateral Join
   RETURN QUERY
   SELECT
     c.id,
@@ -39,18 +40,20 @@ BEGIN
     c.created_at,
     c.subscription_tier::TEXT,
     COUNT(cl.id) as patient_count,
-    (
-        -- Busca o maior bônus ganho com esta clínica (Pro > Starter)
-        SELECT bonus_applied 
-        FROM public.referral_events re 
-        WHERE re.referred_clinic_id = c.id 
-        ORDER BY CASE WHEN bonus_applied = 'pro' THEN 1 ELSE 2 END ASC 
-        LIMIT 1
-    ) as bonus_earned
+    reward.bonus_applied::TEXT as bonus_earned,
+    reward.created_at as bonus_date
   FROM public.clinics c
   LEFT JOIN public.clients cl ON c.id = cl.clinic_id
+  -- Busca o melhor bônus ganho com esta clínica (Prioridade para Pro)
+  LEFT JOIN LATERAL (
+    SELECT bonus_applied, created_at
+    FROM public.referral_events re 
+    WHERE re.referred_clinic_id = c.id 
+    ORDER BY CASE WHEN bonus_applied = 'pro' THEN 1 ELSE 2 END ASC 
+    LIMIT 1
+  ) reward ON true
   WHERE c.referred_by = my_clinic_id
-  GROUP BY c.id, c.name, c.created_at, c.subscription_tier
+  GROUP BY c.id, c.name, c.created_at, c.subscription_tier, reward.bonus_applied, reward.created_at
   ORDER BY c.created_at DESC;
 END;
 $$;

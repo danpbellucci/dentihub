@@ -20,7 +20,9 @@ import {
   AlertTriangle,
   ShieldAlert,
   Activity,
-  Box
+  Box,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { UserProfile } from '../types';
 
@@ -34,7 +36,10 @@ export const DashboardContext = createContext<DashboardContextType | null>(null)
 export const useDashboard = () => useContext(DashboardContext);
 
 const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Mobile toggle
+  const [isCollapsed, setIsCollapsed] = useState(false); // Desktop pinned state
+  const [isHovered, setIsHovered] = useState(false); // Desktop hover state
+  
   const [pendingRequests, setPendingRequests] = useState(0);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [dbError, setDbError] = useState<string | null>(null);
@@ -47,6 +52,10 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
   
   const channelRef = useRef<any>(null);
   const pollIntervalRef = useRef<any>(null);
+
+  // Computed state for desktop sidebar width/mode
+  // O menu fica "estreito" apenas se estiver colapsado E o mouse NÃO estiver em cima.
+  const isNarrow = isCollapsed && !isHovered;
 
   const fetchCount = async (clinicId: string) => {
     if (!clinicId) return;
@@ -239,42 +248,73 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
 
         {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm md:hidden" onClick={() => setSidebarOpen(false)}></div>}
 
-        <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-900/95 backdrop-blur-xl border-r border-white/5 shadow-2xl transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-            <div className="flex items-center justify-between p-4 border-b border-white/5">
-            <div className="flex flex-col w-full">
-                <div className="flex items-center space-x-2 text-white font-bold text-xl mb-1 cursor-pointer" onClick={() => navigate('/dashboard')}>
-                    <div className="bg-gradient-to-tr from-blue-600 to-purple-600 p-1.5 rounded-lg shadow-lg shadow-purple-500/20">
-                        <Logo className="w-5 h-5 text-white" />
+        <div 
+            className={`fixed inset-y-0 left-0 z-50 bg-gray-900/95 backdrop-blur-xl border-r border-white/5 shadow-2xl transform transition-all duration-300 ease-in-out 
+            ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
+            md:relative md:translate-x-0 ${isNarrow ? 'md:w-20' : 'md:w-64'}
+            `}
+            onMouseEnter={() => isCollapsed && setIsHovered(true)}
+            onMouseLeave={() => isCollapsed && setIsHovered(false)}
+        >
+            <div className={`flex items-center p-4 border-b border-white/5 ${isNarrow ? 'justify-center' : 'justify-between'}`}>
+                <div className={`flex flex-col w-full ${isNarrow ? 'items-center' : ''}`}>
+                    <div className="flex items-center space-x-2 text-white font-bold text-xl mb-1 cursor-pointer" onClick={() => navigate('/dashboard')}>
+                        <div className="bg-gradient-to-tr from-blue-600 to-purple-600 p-1.5 rounded-lg shadow-lg shadow-purple-500/20 shrink-0">
+                            <Logo className="w-5 h-5 text-white" />
+                        </div>
+                        {!isNarrow && (
+                            <span className="whitespace-nowrap transition-opacity duration-300">
+                                Denti<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Hub</span>
+                            </span>
+                        )}
                     </div>
-                    <span>Denti<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Hub</span></span>
-                </div>
-                {isSuperAdmin ? (
-                    <span className="text-[10px] bg-red-500/20 text-red-300 border border-red-500/30 px-2 py-0.5 rounded-full font-bold mt-1 inline-flex items-center w-fit">
-                        <ShieldAlert size={10} className="mr-1"/> SYSTEM ADMIN
-                    </span>
-                ) : (
-                    clinicName && <span className="text-xs text-gray-500 font-medium ml-9 truncate max-w-[180px]">{clinicName}</span>
-                )}
-            </div>
-            <button className="md:hidden text-gray-400 hover:text-white" onClick={() => setSidebarOpen(false)}><X size={24} /></button>
-            </div>
-
-            <div className="px-4 py-4 bg-gray-900/50 border-b border-white/5">
-                <p className="text-xs text-gray-500 uppercase font-bold mb-1">Logado como</p>
-                <p className="text-sm font-medium text-white truncate" title={userProfile?.email}>{userProfile?.email}</p>
-                <div className="flex items-center mt-2 space-x-2">
-                    <span className="text-[10px] bg-blue-500/10 text-blue-300 px-2 py-0.5 rounded-full inline-block capitalize font-bold border border-blue-500/20">
-                        {userProfile?.role === 'administrator' ? 'Administrador' : 
-                        userProfile?.role === 'dentist' ? 'Dentista' : 
-                        userProfile?.role === 'employee' ? 'Funcionário' : 
-                        userProfile?.role}
-                    </span>
-                    {userProfile?.clinics?.subscription_tier && (
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full inline-block uppercase font-bold border ${userProfile.clinics.subscription_tier === 'pro' ? 'bg-gradient-to-r from-yellow-600/20 to-yellow-800/20 text-yellow-200 border-yellow-500/30' : userProfile.clinics.subscription_tier === 'starter' ? 'bg-blue-900/30 text-blue-300 border-blue-500/20' : 'bg-gray-800 text-gray-400 border-gray-700'}`}>
-                        {userProfile.clinics.subscription_tier}
-                    </span>
+                    {!isNarrow && isSuperAdmin && (
+                        <span className="text-[10px] bg-red-500/20 text-red-300 border border-red-500/30 px-2 py-0.5 rounded-full font-bold mt-1 inline-flex items-center w-fit whitespace-nowrap">
+                            <ShieldAlert size={10} className="mr-1"/> SYSTEM ADMIN
+                        </span>
+                    )}
+                    {!isNarrow && !isSuperAdmin && clinicName && (
+                        <span className="text-xs text-gray-500 font-medium ml-9 truncate max-w-[180px]">{clinicName}</span>
                     )}
                 </div>
+                
+                {/* Mobile Close Button */}
+                <button className="md:hidden text-gray-400 hover:text-white" onClick={() => setSidebarOpen(false)}><X size={24} /></button>
+                
+                {/* Desktop Collapse Button */}
+                <button 
+                    className={`hidden md:flex text-gray-500 hover:text-white transition-colors items-center justify-center p-1 rounded-md hover:bg-white/5 ${isNarrow ? 'hidden' : 'block'}`}
+                    onClick={() => setIsCollapsed(!isCollapsed)}
+                    title={isCollapsed ? "Expandir" : "Recolher"}
+                >
+                    {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+                </button>
+            </div>
+
+            <div className={`px-4 py-4 bg-gray-900/50 border-b border-white/5 ${isNarrow ? 'flex flex-col items-center' : ''}`}>
+                {!isNarrow ? (
+                    <>
+                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Logado como</p>
+                        <p className="text-sm font-medium text-white truncate" title={userProfile?.email}>{userProfile?.email}</p>
+                        <div className="flex items-center mt-2 space-x-2">
+                            <span className="text-[10px] bg-blue-500/10 text-blue-300 px-2 py-0.5 rounded-full inline-block capitalize font-bold border border-blue-500/20">
+                                {userProfile?.role === 'administrator' ? 'Administrador' : 
+                                userProfile?.role === 'dentist' ? 'Dentista' : 
+                                userProfile?.role === 'employee' ? 'Funcionário' : 
+                                userProfile?.role}
+                            </span>
+                            {userProfile?.clinics?.subscription_tier && (
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full inline-block uppercase font-bold border ${userProfile.clinics.subscription_tier === 'pro' ? 'bg-gradient-to-r from-yellow-600/20 to-yellow-800/20 text-yellow-200 border-yellow-500/30' : userProfile.clinics.subscription_tier === 'starter' ? 'bg-blue-900/30 text-blue-300 border-blue-500/20' : 'bg-gray-800 text-gray-400 border-gray-700'}`}>
+                                {userProfile.clinics.subscription_tier}
+                            </span>
+                            )}
+                        </div>
+                    </>
+                ) : (
+                    <div className="w-8 h-8 rounded-full bg-blue-900/30 border border-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-xs" title={userProfile?.email}>
+                        {userProfile?.email?.charAt(0).toUpperCase()}
+                    </div>
+                )}
             </div>
 
             <nav className="mt-4 px-3 space-y-1 pb-20 overflow-y-auto max-h-[calc(100vh-180px)] custom-scrollbar">
@@ -284,14 +324,15 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
                     isActive 
                     ? 'bg-primary text-white shadow-[0_0_15px_rgba(14,165,233,0.3)] border border-primary/50' 
                     : 'text-gray-400 hover:bg-white/5 hover:text-white hover:border hover:border-white/5 border border-transparent'
-                }`}
+                } ${isNarrow ? 'justify-center' : ''}`}
+                title={isNarrow ? item.label : ''}
                 >
-                <div className="relative mr-3">
+                <div className={`relative ${isNarrow ? '' : 'mr-3'}`}>
                     <item.icon className={`h-5 w-5 ${item.key === 'smart-record' ? 'text-purple-400' : ''}`} />
                     {item.badge && pendingRequests > 0 && <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span></span>}
                 </div>
-                <span className="flex-1">{item.label}</span>
-                {item.badge && pendingRequests > 0 && <span className="ml-auto bg-red-500 text-white py-0.5 px-1.5 rounded-md text-[10px] font-bold min-w-[18px] text-center">{pendingRequests}</span>}
+                {!isNarrow && <span className="flex-1 whitespace-nowrap">{item.label}</span>}
+                {!isNarrow && item.badge && pendingRequests > 0 && <span className="ml-auto bg-red-500 text-white py-0.5 px-1.5 rounded-md text-[10px] font-bold min-w-[18px] text-center">{pendingRequests}</span>}
                 </NavLink>
             ))}
 
@@ -299,10 +340,11 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
                 <NavLink 
                     to="/super-admin" 
                     onClick={() => setSidebarOpen(false)}
-                    className={({ isActive }) => `group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-colors mt-6 border border-red-500/30 ${isActive ? 'bg-red-500/20 text-red-200' : 'text-red-400 hover:bg-red-500/10'}`}
+                    className={({ isActive }) => `group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-colors mt-6 border border-red-500/30 ${isActive ? 'bg-red-500/20 text-red-200' : 'text-red-400 hover:bg-red-500/10'} ${isNarrow ? 'justify-center' : ''}`}
+                    title={isNarrow ? 'God Mode' : ''}
                 >
-                    <Activity className="mr-3 h-5 w-5" />
-                    <span className="flex-1 font-bold">God Mode</span>
+                    <Activity className={`${isNarrow ? '' : 'mr-3'} h-5 w-5`} />
+                    {!isNarrow && <span className="flex-1 font-bold whitespace-nowrap">God Mode</span>}
                 </NavLink>
             )}
             </nav>
@@ -310,10 +352,11 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
             <div className="absolute bottom-0 w-full border-t border-white/5 bg-gray-900/95 p-4 backdrop-blur-sm">
             <button 
                 onClick={handleLogout} 
-                className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+                className={`flex items-center w-full px-3 py-2 text-sm font-medium text-gray-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors ${isNarrow ? 'justify-center' : ''}`}
+                title={isNarrow ? "Sair" : ""}
             >
-                <LogOut className="mr-3 h-5 w-5" />
-                Sair
+                <LogOut className={`${isNarrow ? '' : 'mr-3'} h-5 w-5`} />
+                {!isNarrow && "Sair"}
             </button>
             </div>
         </div>

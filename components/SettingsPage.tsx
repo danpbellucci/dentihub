@@ -257,7 +257,6 @@ const SettingsPage: React.FC = () => {
   const copyToClipboard = (text: string) => { navigator.clipboard.writeText(text); setToast({ message: "Copiado para a área de transferência!", type: 'success' }); };
   const currentTier = contextProfile?.clinics?.subscription_tier || 'free';
 
-  // Check bonus expiration
   const hasBonus = clinicData.bonus_expires_at && isAfter(new Date(clinicData.bonus_expires_at), new Date());
 
   if (loading) return <div className="flex h-96 w-full items-center justify-center"><div className="flex flex-col items-center gap-3"><Loader2 className="h-10 w-10 animate-spin text-primary" /><span className="text-gray-500 font-medium">Carregando...</span></div></div>;
@@ -461,8 +460,6 @@ const SettingsPage: React.FC = () => {
                     </div>
                 </div>
             )}
-            
-            {/* ... other tabs ... */}
             
             {activeTab === 'billing' && (
                 <div className="bg-gray-900/60 backdrop-blur-md rounded-lg shadow-sm p-6 animate-fade-in border border-white/5">
