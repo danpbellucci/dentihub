@@ -80,6 +80,11 @@ Deno.serve(async (req) => {
 
     const sub = subscriptions.data[0];
     const price = sub.items.data[0].price;
+    const unitAmount = price.unit_amount || 0;
+
+    // Lógica ajustada: Starter (100 cents = R$ 1), Pro (200 cents = R$ 2)
+    // Se > 150 cents, é Pro. Se <= 150, é Starter (assumindo que só existem esses dois pagos principais além do Enterprise)
+    const planName = 'DentiHub ' + (unitAmount > 150 ? 'Pro' : 'Starter');
 
     const details = {
         hasSubscription: true,
@@ -87,10 +92,10 @@ Deno.serve(async (req) => {
         status: sub.status,
         current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
         cancel_at_period_end: sub.cancel_at_period_end,
-        amount: (price.unit_amount || 0) / 100,
+        amount: unitAmount / 100,
         currency: price.currency,
         interval: price.recurring?.interval,
-        product_name: 'DentiHub ' + ((price.unit_amount || 0) > 10000 ? 'Pro' : 'Starter')
+        product_name: planName
     };
 
     return new Response(JSON.stringify(details), {

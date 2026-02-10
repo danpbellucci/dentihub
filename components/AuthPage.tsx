@@ -189,6 +189,21 @@ const AuthPage: React.FC = () => {
       if (error) throw new Error(error.message || "Erro de comunicação.");
       if (data && data.error) throw new Error(data.error);
 
+      // --- GOOGLE ADS CONVERSION TRACKING ---
+      if (typeof window !== 'undefined' && (window as any).gtag) {
+          try {
+              (window as any).gtag('event', 'conversion', {
+                  'send_to': 'AW-17939139169/SEU_LABEL_AQUI', // <--- SUBSTITUA PELO RÓTULO GERADO NO GOOGLE ADS
+                  'value': 1.0,
+                  'currency': 'BRL'
+              });
+              console.log('Conversão Google Ads disparada');
+          } catch (e) {
+              console.warn('Erro ao disparar conversão:', e);
+          }
+      }
+      // --------------------------------------
+
       setMessage("Conta criada! Entrando...");
       await handleLogin();
   };
@@ -227,7 +242,6 @@ const AuthPage: React.FC = () => {
     <div className="min-h-screen bg-gray-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans text-gray-100 overflow-hidden relative">
       
       {/* BACKGROUND GLOWS - Otimizado: Oculto no mobile para evitar travamentos de GPU */}
-      {/* Use will-change-transform para otimizar renderização */}
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 hidden md:block">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/10 rounded-full blur-[100px] will-change-transform"></div>
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/10 rounded-full blur-[100px] will-change-transform"></div>
@@ -517,7 +531,6 @@ const AuthPage: React.FC = () => {
                     </button>
                 </div>
                 <div className="p-6 overflow-y-auto text-sm text-gray-300 leading-relaxed whitespace-pre-wrap custom-scrollbar">
-                    {/* (Mantendo texto original por brevidade) */}
                     {TERMS_OF_USE_TEXT}
                 </div>
                 <div className="p-4 border-t border-white/10 bg-gray-800/50 rounded-b-xl flex justify-end gap-3">

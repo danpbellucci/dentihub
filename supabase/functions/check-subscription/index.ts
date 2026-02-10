@@ -10,11 +10,11 @@ declare const Deno: {
 };
 
 const TIER_MAPPING = {
-  'price_1SlMYr2Obfcu36b5HzK9JQPO': 'starter',
-  'price_1SlEBs2Obfcu36b5HrWAo2Fh': 'pro',
+  // New Config
   'prod_TifWKWr1WU3XbW': 'starter',
   'prod_TifWS13bkpeoaA': 'pro',
   'price_1SrN3I2Obfcu36b5MmVEv6qq': 'starter',
+  'price_1Sz4tG2Obfcu36b5sVI27lo8': 'pro',
   // Enterprise IDs
   'price_1SykFl2Obfcu36b5rdtYse4m': 'enterprise', 
   'price_1SykGo2Obfcu36b5TmDgIM4d': 'enterprise'

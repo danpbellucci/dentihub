@@ -11,9 +11,8 @@ declare const Deno: {
 
 // WHITELIST
 const ALLOWED_PRICE_IDS = [
-    'price_1SlMYr2Obfcu36b5HzK9JQPO', // Starter
-    'price_1SlEBs2Obfcu36b5HrWAo2Fh', // Pro
-    'price_1SrN3I2Obfcu36b5MmVEv6qq',  // Starter (Legacy/Test)
+    'price_1SrN3I2Obfcu36b5MmVEv6qq', // Starter
+    'price_1Sz4tG2Obfcu36b5sVI27lo8', // Pro
     // IDs Enterprise
     'price_1SykFl2Obfcu36b5rdtYse4m', // Enterprise - Licença Dentista (R$ 100)
     'price_1SykGo2Obfcu36b5TmDgIM4d'  // Enterprise - Pacote IA (R$ 30)
