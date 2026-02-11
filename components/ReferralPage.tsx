@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Logo } from './Logo';
@@ -103,7 +102,7 @@ const ReferralPage: React.FC = () => {
                         30 Dias Grátis
                     </div>
                     <p className="text-gray-400 mb-6 min-h-[50px]">
-                        Para cada colega indicado que realizar o cadastro e atingir a marca de <strong>10 pacientes cadastrados</strong> no sistema.
+                        Para cada colega indicado que realizar o cadastro e atingir a marca de <strong>30 pacientes cadastrados</strong> no sistema.
                     </p>
                     
                     <ul className="space-y-3">

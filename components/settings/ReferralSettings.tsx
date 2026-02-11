@@ -72,7 +72,7 @@ const ReferralSettings: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
                     <div className="bg-gray-800/50 p-4 rounded-xl border border-white/5 flex items-start text-left">
                         <div className="p-3 bg-blue-500/20 rounded-lg text-blue-400 mr-4"><Users size={24}/></div>
-                        <div><h4 className="font-bold text-white text-sm">Ganhe 1 Mês de Starter</h4><p className="text-xs text-gray-400 mt-1">Para cada indicação que atingir 10 pacientes cadastrados.</p></div>
+                        <div><h4 className="font-bold text-white text-sm">Ganhe 1 Mês de Starter</h4><p className="text-xs text-gray-400 mt-1">Para cada indicação que atingir 30 pacientes cadastrados.</p></div>
                     </div>
                     <div className="bg-gray-800/50 p-4 rounded-xl border border-white/5 flex items-start text-left">
                         <div className="p-3 bg-yellow-500/20 rounded-lg text-yellow-400 mr-4"><Zap size={24}/></div>
