@@ -193,7 +193,8 @@ const FeaturesSection: React.FC = () => {
                     Plano Free disponível para consultórios iniciantes.
                 </p>
             </div>
-      </section>
+        </div>
+    </section>
   );
 };
 
