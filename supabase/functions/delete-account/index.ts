@@ -15,7 +15,8 @@ Deno.serve(async (req) => {
   const allowedOrigins = [
     'https://dentihub.com.br', 
     'https://www.dentihub.com.br',
-    'https://app.dentihub.com.br'
+    'https://app.dentihub.com.br',
+    'https://aistudio.google.com'
   ];
   const corsOrigin = allowedOrigins.includes(origin) ? origin : 'https://dentihub.com.br';
 

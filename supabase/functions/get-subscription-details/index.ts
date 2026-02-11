@@ -1,6 +1,6 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
-import Stripe from "https://esm.sh/stripe@14.21.0";
+import Stripe from "https://esm.sh/stripe@11.18.0?target=deno&no-check";
 
 declare const Deno: {
   env: {
@@ -15,7 +15,8 @@ Deno.serve(async (req) => {
     'http://localhost:5173', 
     'https://dentihub.com.br', 
     'https://www.dentihub.com.br',
-    'https://app.dentihub.com.br'
+    'https://app.dentihub.com.br',
+    'https://aistudio.google.com'
   ];
   const corsOrigin = allowedOrigins.includes(origin) ? origin : 'https://dentihub.com.br';
 
@@ -32,8 +33,9 @@ Deno.serve(async (req) => {
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!stripeKey || !supabaseUrl || !supabaseAnonKey) {
+    if (!stripeKey || !supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
         throw new Error("Configuração do servidor incompleta.");
     }
 
@@ -44,10 +46,15 @@ Deno.serve(async (req) => {
         global: { headers: { Authorization: authHeader } }
     });
 
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     if (userError || !user) throw new Error("Usuário inválido");
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+    const stripe = new Stripe(stripeKey, { 
+      apiVersion: "2022-11-15",
+      httpClient: Stripe.createFetchHttpClient(),
+    });
 
     const { data: clinic } = await supabaseClient
         .from('clinics')
@@ -78,13 +85,32 @@ Deno.serve(async (req) => {
         });
     }
 
-    const sub = subscriptions.data[0];
-    const price = sub.items.data[0].price;
-    const unitAmount = price.unit_amount || 0;
+    // Pega a primeira assinatura ativa (ou a mais recente)
+    const sub = subscriptions.data.find(s => ['active', 'trialing'].includes(s.status)) || subscriptions.data[0];
+    
+    // Soma total de todos os itens (importante para Enterprise que tem múltiplos itens)
+    let totalAmount = 0;
+    const priceIds: string[] = [];
+    const productIds: string[] = [];
+    
+    sub.items.data.forEach((item: any) => {
+        totalAmount += (item.price.unit_amount || 0) * (item.quantity || 1);
+        priceIds.push(item.price.id);
+        if (item.price.product) productIds.push(item.price.product as string);
+    });
 
-    // Lógica ajustada: Starter (100 cents = R$ 1), Pro (200 cents = R$ 2)
-    // Se > 150 cents, é Pro. Se <= 150, é Starter (assumindo que só existem esses dois pagos principais além do Enterprise)
-    const planName = 'DentiHub ' + (unitAmount > 150 ? 'Pro' : 'Starter');
+    // Pega dados do primeiro item para metadados básicos
+    const firstPrice = sub.items.data[0].price;
+
+    // Busca nome do plano no banco usando todos os IDs encontrados
+    const { data: planData } = await supabaseAdmin
+        .from('subscription_plans')
+        .select('name')
+        .or(`stripe_price_id.in.(${priceIds.join(',')}),stripe_product_id.in.(${productIds.join(',')}),stripe_dentist_price_id.in.(${priceIds.join(',')}),stripe_ai_price_id.in.(${priceIds.join(',')})`)
+        .limit(1)
+        .maybeSingle();
+
+    const planName = planData?.name || `Plano Personalizado`;
 
     const details = {
         hasSubscription: true,
@@ -92,9 +118,9 @@ Deno.serve(async (req) => {
         status: sub.status,
         current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
         cancel_at_period_end: sub.cancel_at_period_end,
-        amount: unitAmount / 100,
-        currency: price.currency,
-        interval: price.recurring?.interval,
+        amount: totalAmount / 100,
+        currency: firstPrice.currency,
+        interval: firstPrice.recurring?.interval,
         product_name: planName
     };
 

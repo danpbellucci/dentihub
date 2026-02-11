@@ -533,7 +533,10 @@ const CalendarPage: React.FC = () => {
       const end = parseISO(appointment.end_time);
       const diffMins = Math.round((end.getTime() - start.getTime()) / 60000);
       const dentist = dentists.find(d => d.id === appointment.dentist_id);
-      const isKnownService = dentist?.services?.some(s => s.name === appointment.service_name);
+      const isKnownService = dentist?.services?.some(s => {
+          if (typeof s === 'string') return s === appointment.service_name;
+          return s.name === appointment.service_name;
+      });
       setIsCustomService(!isKnownService && appointment.service_name !== '');
       setFormData({ client_id: appointment.client_id, dentist_id: appointment.dentist_id, service_name: appointment.service_name, date: format(start, 'yyyy-MM-dd'), time: format(start, 'HH:mm'), duration: diffMins, status: appointment.status, payment_status: appointment.payment_status || 'pending', amount: appointment.amount || 0 });
     } else {
@@ -552,8 +555,17 @@ const CalendarPage: React.FC = () => {
       } else {
           setIsCustomService(false);
           const dentist = dentists.find(d => d.id === formData.dentist_id);
-          const service = dentist?.services?.find(s => s.name === val);
-          setFormData({ ...formData, service_name: val, amount: service ? service.price : formData.amount, duration: service ? (service.duration || 60) : 60 });
+          const service = dentist?.services?.find(s => (typeof s === 'string' ? s : s.name) === val);
+          
+          let price = formData.amount;
+          let duration = 60;
+
+          if (service && typeof service !== 'string') {
+              price = service.price;
+              duration = service.duration || 60;
+          }
+
+          setFormData({ ...formData, service_name: val, amount: price, duration: duration });
       }
   };
 
@@ -1099,9 +1111,12 @@ const CalendarPage: React.FC = () => {
                     disabled={!formData.dentist_id}
                   >
                     <option value="">Selecione...</option>
-                    {dentists.find(d => d.id === formData.dentist_id)?.services?.map((s, idx) => (
-                        <option key={idx} value={s.name}>{s.name} - {s.duration}min - R$ {Number(s.price).toFixed(2)}</option>
-                    ))}
+                    {dentists.find(d => d.id === formData.dentist_id)?.services?.map((s, idx) => {
+                        const item = typeof s === 'string' ? { name: s, price: 0, duration: 60 } : s;
+                        return (
+                            <option key={idx} value={item.name}>{item.name} - {item.duration}min - R$ {Number(item.price).toFixed(2)}</option>
+                        );
+                    })}
                     <option value="custom_option_other">Outro...</option>
                   </select>
                   

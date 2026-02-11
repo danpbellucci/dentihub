@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
@@ -7,13 +6,13 @@ import {
   FileText, CalendarRange, RefreshCw,
   BarChart3, ArrowLeft, Sparkles, CreditCard,
   Monitor, Menu, X, HeartPulse, AlertTriangle, CheckCircle, TrendingUp,
-  Megaphone, Trash2, Send, AlertOctagon, UserX, Clock
+  Megaphone, Trash2, Send, AlertOctagon, UserX, Clock, Tag
 } from 'lucide-react';
 import { format, subDays, startOfDay, endOfDay, parseISO, differenceInHours } from 'date-fns';
 import Toast, { ToastType } from './Toast';
 
 // ... (MetricCard e HealthIndicator mantidos iguais) ...
-const MetricCard: React.FC<{title: string, value: string, icon: any, color: string, trend?: string}> = ({ title, value, icon: Icon, color, trend }) => (
+const MetricCard: React.FC<{title: string, value: string, icon: any, color: string, trend?: string, subtext?: string}> = ({ title, value, icon: Icon, color, trend, subtext }) => (
   <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
     <div className={`p-4 rounded-full mr-4 ${color.replace('text-', 'bg-').replace('600', '50').replace('500', '50')}`}>
       <Icon size={24} className={color} />
@@ -22,6 +21,7 @@ const MetricCard: React.FC<{title: string, value: string, icon: any, color: stri
       <p className="text-sm text-gray-500 font-medium uppercase">{title}</p>
       <p className="text-2xl font-black text-gray-800">{value}</p>
       {trend && <p className="text-xs text-green-500 font-bold mt-1 flex items-center"><TrendingUp size={10} className="mr-1"/> {trend}</p>}
+      {subtext && <p className="text-xs text-gray-400 mt-1">{subtext}</p>}
     </div>
   </div>
 );
@@ -153,6 +153,7 @@ const SuperAdminPage: React.FC = () => {
                   <button onClick={() => { navigate('/super-admin/ads'); }} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/5 hover:text-white"><Monitor size={18} className="mr-3"/> Google Ads</button>
                   <button onClick={() => { navigate('/super-admin/leads'); }} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/5 hover:text-white"><Users size={18} className="mr-3"/> Gestão de Leads</button>
                   <button onClick={() => { navigate('/super-admin/subscriptions'); }} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/5 hover:text-white"><CreditCard size={18} className="mr-3"/> Assinaturas</button>
+                  <button onClick={() => { navigate('/super-admin/plans'); }} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/5 hover:text-white"><Tag size={18} className="mr-3"/> Preços e Planos</button>
               </div>
           </nav>
           <div className="p-4 border-t border-gray-800"><button onClick={() => navigate('/dashboard')} className="w-full flex items-center justify-center px-4 py-2 border border-gray-700 text-gray-400 rounded-lg hover:text-white hover:border-gray-500 transition text-xs font-bold"><ArrowLeft size={14} className="mr-2"/> Voltar à Clínica</button></div>
@@ -182,9 +183,9 @@ const SuperAdminPage: React.FC = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <MetricCard title="MRR Estimado" value={systemHealth?.mrr_estimate ? `R$ ${systemHealth.mrr_estimate.toLocaleString('pt-BR')}` : 'R$ 0'} icon={CreditCard} color="text-green-600" subtext="Baseado em assinaturas ativas"/>
-                        <MetricCard title="Clínicas Ativas" value={systemHealth?.active_clinics || 0} icon={Building2} color="text-indigo-600" trend={`+${systemHealth?.new_clinics_month || 0} este mês`}/>
-                        <MetricCard title="Volume (Filtro)" value={metrics.transactionsCount} icon={FileText} color="text-blue-600" subtext="Lançamentos Financeiros" />
-                        <MetricCard title="Uso de IA" value={metrics.aiRecords} icon={Mic} color="text-purple-600" subtext="Prontuários Gerados"/>
+                        <MetricCard title="Clínicas Ativas" value={(systemHealth?.active_clinics || 0).toString()} icon={Building2} color="text-indigo-600" trend={`+${systemHealth?.new_clinics_month || 0} este mês`}/>
+                        <MetricCard title="Volume (Filtro)" value={metrics.transactionsCount.toString()} icon={FileText} color="text-blue-600" subtext="Lançamentos Financeiros" />
+                        <MetricCard title="Uso de IA" value={metrics.aiRecords.toString()} icon={Mic} color="text-purple-600" subtext="Prontuários Gerados"/>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

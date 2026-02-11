@@ -1,23 +1,13 @@
 
 // @ts-nocheck
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno'
+import Stripe from 'https://esm.sh/stripe@11.18.0?target=deno&no-check'
 
 declare const Deno: {
   env: {
     get(key: string): string | undefined;
   };
   serve(handler: (req: Request) => Promise<Response>): void;
-};
-
-// Mapeamento de Price ID para Nome do Plano
-const PRICE_ID_TO_TIER: Record<string, string> = {
-  // IDs Reais (Produção)
-  'price_1SrN3I2Obfcu36b5MmVEv6qq': 'starter', 
-  'price_1Sz4tG2Obfcu36b5sVI27lo8': 'pro',
-  // Enterprise
-  'price_1SykFl2Obfcu36b5rdtYse4m': 'enterprise', 
-  'price_1SykGo2Obfcu36b5TmDgIM4d': 'enterprise',
 };
 
 Deno.serve(async (req) => {
@@ -35,7 +25,7 @@ Deno.serve(async (req) => {
   }
 
   const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') as string, {
-    apiVersion: '2023-10-16',
+    apiVersion: '2022-11-15',
     httpClient: Stripe.createFetchHttpClient(),
   });
 
@@ -55,46 +45,51 @@ Deno.serve(async (req) => {
     );
   } catch (err: any) {
     console.error(`❌ Erro de Assinatura do Webhook: ${err.message}`);
-    // Retorna 400 para o Stripe saber que a assinatura falhou (não tente reenviar se a chave estiver errada)
     return new Response(`Webhook Signature Error: ${err.message}`, { status: 400 });
   }
 
   console.log(`🔔 Evento Recebido: ${event.type} | ID: ${event.id}`);
 
   try {
-    // FUNÇÃO AUXILIAR PARA ATUALIZAR USUÁRIO E ENVIAR EMAIL
-    const updateUserTier = async (userId: string | undefined, customerId: string, subscriptionId: string, priceId: string, customerEmail?: string, customLimits?: any) => {
-        const tier = PRICE_ID_TO_TIER[priceId] || 'free';
-        console.log(`Processando atualização: Customer ${customerId} -> Plano ${tier}`);
-
-        // 1. Tenta achar pelo User ID (Metadados)
-        if (userId) {
-             console.log(`Localizado via Metadata: User ID ${userId}`);
+    // FUNÇÃO AUXILIAR PARA DETERMINAR O PLANO (TIER) A PARTIR DO PRICE ID
+    const getTierFromPriceId = async (priceId: string): Promise<string> => {
+        const { data, error } = await supabase
+            .from('subscription_plans')
+            .select('slug')
+            .or(`stripe_price_id.eq.${priceId},stripe_dentist_price_id.eq.${priceId},stripe_ai_price_id.eq.${priceId}`)
+            .maybeSingle();
+        
+        if (error) {
+            console.error("Erro ao buscar plano no DB:", error);
+            return 'free';
         }
+        
+        return data ? data.slug : 'free';
+    };
 
-        // 2. Se não achou, tenta pelo Customer ID na tabela clinics
+    const updateUserTier = async (userId: string | undefined, customerId: string, subscriptionId: string, priceId: string, stripeCustomerEmail?: string, customLimits?: any) => {
+        const tier = await getTierFromPriceId(priceId);
+        
+        console.log(`Processando atualização: Customer ${customerId} -> Plano ${tier} (Price: ${priceId})`);
+
+        // 1. Tenta encontrar usuário pelo ID nos metadados
         if (!userId) {
             const { data } = await supabase.from('clinics').select('id').eq('stripe_customer_id', customerId).maybeSingle();
-            if (data) {
-                userId = data.id;
-                console.log(`Localizado via Stripe Customer ID: User ID ${userId}`);
-            }
+            if (data) userId = data.id;
         }
 
-        // 3. Fallback: Tenta pelo E-mail
-        if (!userId && customerEmail) {
-            const { data } = await supabase.from('clinics').select('id').eq('email', customerEmail).maybeSingle();
-            if (data) {
-                userId = data.id;
-                console.log(`Localizado via E-mail (${customerEmail}): User ID ${userId}`);
-            }
+        // 2. Se não achou por ID/StripeID, tenta pelo e-mail do Stripe
+        if (!userId && stripeCustomerEmail) {
+            const { data } = await supabase.from('clinics').select('id').eq('email', stripeCustomerEmail).maybeSingle();
+            if (data) userId = data.id;
         }
 
         if (userId) {
-            // Verificar o plano atual antes de atualizar para saber se é um upgrade/compra nova
+            // Busca dados atuais da clínica para garantir que temos o e-mail correto para notificação
             const { data: currentClinic } = await supabase.from('clinics').select('subscription_tier, email').eq('id', userId).single();
-            const oldTier = currentClinic?.subscription_tier;
-            const targetEmail = customerEmail || currentClinic?.email;
+            
+            // Prioriza o e-mail do banco de dados, fallback para o do Stripe
+            const targetEmail = currentClinic?.email || stripeCustomerEmail;
 
             const updatePayload: any = {
                 subscription_tier: tier,
@@ -102,12 +97,10 @@ Deno.serve(async (req) => {
                 stripe_subscription_id: subscriptionId
             };
 
-            // Atualiza limites customizados se for Enterprise e vier nos metadados
-            if (tier === 'enterprise' && customLimits) {
-                if (customLimits.customDentistLimit) updatePayload.custom_dentist_limit = Number(customLimits.customDentistLimit);
-                if (customLimits.customAiDailyLimit) updatePayload.custom_ai_daily_limit = Number(customLimits.customAiDailyLimit);
-            } else if (tier !== 'enterprise') {
-                // Limpa custom limits se mudar de plano
+            if (tier === 'enterprise' || customLimits?.customDentistLimit || customLimits?.customAiDailyLimit) {
+                if (customLimits?.customDentistLimit) updatePayload.custom_dentist_limit = Number(customLimits.customDentistLimit);
+                if (customLimits?.customAiDailyLimit) updatePayload.custom_ai_daily_limit = Number(customLimits.customAiDailyLimit);
+            } else {
                 updatePayload.custom_dentist_limit = null;
                 updatePayload.custom_ai_daily_limit = null;
             }
@@ -120,46 +113,54 @@ Deno.serve(async (req) => {
             }
             console.log(`✅ Sucesso! Usuário ${userId} atualizado para ${tier}.`);
 
-            // ENVIO DE E-MAIL DE CONGRATULAÇÕES (Se for Starter ou Pro e o plano mudou ou foi renovado explicitamente)
-            if ((tier === 'starter' || tier === 'pro') && targetEmail) {
-                // Dispara a Edge Function de envio de e-mail
-                // Nota: Usamos fetch direto para a função send-emails, passando a chave de serviço
-                const planDisplay = tier === 'starter' ? 'Starter' : 'Pro';
-                
-                try {
-                    await fetch(`${supabaseUrl}/functions/v1/send-emails`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${serviceRoleKey}`
-                        },
-                        body: JSON.stringify({
-                            type: 'subscription_success',
-                            recipients: [{ email: targetEmail }],
-                            planName: planDisplay
-                        })
-                    });
-                    console.log(`📧 E-mail de boas-vindas ao plano ${planDisplay} enviado para ${targetEmail}`);
-                } catch (emailErr) {
-                    console.error("Falha ao enviar e-mail de plano:", emailErr);
+            // ENVIO DE E-MAIL CONFIRMAÇÃO
+            if (tier !== 'free') {
+                if (targetEmail) {
+                    const { data: planData } = await supabase.from('subscription_plans').select('name').eq('slug', tier).maybeSingle();
+                    const planDisplay = planData?.name || tier.charAt(0).toUpperCase() + tier.slice(1);
+                    
+                    console.log(`📧 Enviando e-mail de boas-vindas ao plano ${planDisplay} para ${targetEmail}`);
+
+                    try {
+                        const emailRes = await fetch(`${supabaseUrl}/functions/v1/send-emails`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${serviceRoleKey}`
+                            },
+                            body: JSON.stringify({
+                                type: 'subscription_success',
+                                recipients: [{ email: targetEmail }],
+                                planName: planDisplay
+                            })
+                        });
+                        
+                        if (!emailRes.ok) {
+                            const errText = await emailRes.text();
+                            console.error("❌ Falha na Edge Function de Email:", errText);
+                        } else {
+                            console.log("✅ Email enviado.");
+                        }
+                    } catch (emailErr) {
+                        console.error("❌ Exceção ao enviar e-mail de plano:", emailErr);
+                    }
+                } else {
+                    console.warn("⚠️ Não foi possível enviar e-mail: Nenhum e-mail encontrado para a clínica.");
                 }
             }
 
         } else {
-            console.warn(`⚠️ ALERTA: Usuário não identificado para o Customer ${customerId} / Email ${customerEmail}`);
+            console.warn(`⚠️ ALERTA: Usuário não identificado para o Customer ${customerId}`);
         }
     };
 
-    // CENÁRIO A: Pagamento de Assinatura (Elements / Renovação)
     if (event.type === 'invoice.payment_succeeded') {
         const invoice = event.data.object;
-        
         if (invoice.subscription) {
             const subscriptionId = invoice.subscription as string;
             const customerId = invoice.customer as string;
             const customerEmail = invoice.customer_email || undefined;
             
-            // Busca detalhes extras da assinatura para garantir o priceId correto e metadados
             const subscription = await stripe.subscriptions.retrieve(subscriptionId);
             const userId = subscription.metadata?.supabaseUUID;
             const customLimits = {
@@ -171,8 +172,6 @@ Deno.serve(async (req) => {
             await updateUserTier(userId, customerId, subscriptionId, priceId, customerEmail, customLimits);
         }
     }
-
-    // CENÁRIO B: Checkout Session
     else if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
       const userId = session.metadata?.supabaseUUID;
@@ -189,14 +188,10 @@ Deno.serve(async (req) => {
 
       await updateUserTier(userId, customerId, subscriptionId, priceId, customerEmail, customLimits);
     }
-
-    // CENÁRIO C: Assinatura Cancelada
     else if (event.type === 'customer.subscription.deleted') {
       const subscription = event.data.object;
       const customerId = subscription.customer as string;
       
-      console.log(`Assinatura cancelada para Customer ${customerId}`);
-      // Busca o usuário antes para logar
       const { data: user } = await supabase.from('clinics').select('id').eq('stripe_customer_id', customerId).maybeSingle();
       
       if (user) {
@@ -208,16 +203,10 @@ Deno.serve(async (req) => {
             })
             .eq('id', user.id);
           console.log(`✅ Usuário ${user.id} revertido para FREE.`);
-      } else {
-          console.warn(`⚠️ Usuário não encontrado para cancelamento (Customer ${customerId})`);
       }
     }
-
-    // CENÁRIO D: Atualização de Assinatura
     else if (event.type === 'customer.subscription.updated') {
         const subscription = event.data.object;
-        
-        // Só processa se não for cancelamento (status active ou trialing)
         if (subscription.status === 'active' || subscription.status === 'trialing') {
             const priceId = subscription.items.data[0].price.id;
             const customerId = subscription.customer as string;
@@ -227,13 +216,10 @@ Deno.serve(async (req) => {
                 customAiDailyLimit: subscription.metadata?.customAiDailyLimit
             };
             
-            // Tenta buscar email do customer se não vier no objeto subscription
             let customerEmail;
             try {
                 const customer = await stripe.customers.retrieve(customerId);
-                if (!customer.deleted) {
-                    customerEmail = customer.email || undefined;
-                }
+                if (!customer.deleted) customerEmail = customer.email || undefined;
             } catch (e) {}
 
             await updateUserTier(userId, customerId, subscription.id, priceId, customerEmail, customLimits);
@@ -248,7 +234,7 @@ Deno.serve(async (req) => {
   } catch (err: any) {
     console.error(`❌ Erro de Lógica no Webhook: ${err.message}`);
     return new Response(JSON.stringify({ error: err.message }), { 
-        status: 500, // Stripe tentará novamente
+        status: 500,
         headers: { 'Content-Type': 'application/json' } 
     });
   }

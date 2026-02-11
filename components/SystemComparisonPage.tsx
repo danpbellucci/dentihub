@@ -1,8 +1,7 @@
-
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Logo } from './Logo';
-import { ArrowLeft, CheckCircle, XCircle, Cloud, Server, Smartphone, Monitor, Mic, Keyboard, DollarSign, Wallet, ShieldCheck, Lock } from 'lucide-react';
+import { ArrowLeft, Check, X, HelpCircle, CheckCircle, XCircle } from 'lucide-react';
 
 const SystemComparisonPage: React.FC = () => {
   const navigate = useNavigate();
@@ -15,48 +14,45 @@ const SystemComparisonPage: React.FC = () => {
     navigate('/auth', { state: { view } });
   };
 
-  const comparisons = [
+  const comparisonData = [
     {
-      title: "Prontuário",
-      icon: Mic,
-      dentiHub: { title: "Inteligência Artificial", desc: "Você dita, a IA escreve e estrutura (SOAP).", positive: true },
-      others: { title: "Digitação Manual", desc: "Você perde tempo digitando textos longos após cada consulta.", positive: false }
+        category: "Tecnologia & Acesso",
+        items: [
+            { feature: "Infraestrutura", dentihub: "100% Nuvem (Acesse de onde quiser)", legacy: "Servidor Local (Preso na clínica)" },
+            { feature: "Acesso Mobile", dentihub: "Nativo (Celular e Tablet)", legacy: "Não funciona ou Acesso Remoto lento" },
+            { feature: "Instalação", dentihub: "Instantânea (Nenhuma)", legacy: "Técnico presencial / CD / Pendrive" },
+            { feature: "Backups", dentihub: "Automáticos & Criptografados", legacy: "Manual (Risco de HD queimado/Vírus)" },
+        ]
     },
     {
-      title: "Infraestrutura",
-      icon: Cloud,
-      dentiHub: { title: "100% na Nuvem", desc: "Acesse de qualquer lugar. Sem instalação, sem servidor.", positive: true },
-      others: { title: "Servidor Local", desc: "Precisa de um PC dedicado, instalação de CD/Pendrive e técnico de TI.", positive: false }
+        category: "Produtividade Clínica",
+        items: [
+            { feature: "Prontuário", dentihub: "IA (Voz para Texto + SOAP Automático)", legacy: "Digitação Manual demorada" },
+            { feature: "Agendamento", dentihub: "Híbrido (Link Online + Balcão)", legacy: "Apenas Balcão/Telefone" },
+            { feature: "Confirmação", dentihub: "Automática (E-mail Interativo)", legacy: "Manual (WhatsApp um por um)" },
+            { feature: "Marketing (Recall)", dentihub: "Filtros e Disparos em Massa", legacy: "Relatórios manuais complexos" },
+        ]
     },
     {
-      title: "Acesso Mobile",
-      icon: Smartphone,
-      dentiHub: { title: "Mobile First", desc: "Funciona perfeitamente no celular e tablet, igual um App.", positive: true },
-      others: { title: "Apenas Desktop", desc: "Interface antiga que não abre no celular ou acesso remoto lento.", positive: false }
-    },
-    {
-      title: "Agendamento",
-      icon: Monitor,
-      dentiHub: { title: "Híbrido (Online + Balcão)", desc: "Link público para pacientes agendarem sozinhos (tipo Calendly).", positive: true },
-      others: { title: "Apenas Balcão", desc: "Dependência total da secretária ou telefone tocando.", positive: false }
-    },
-    {
-      title: "Custo-Benefício",
-      icon: DollarSign,
-      dentiHub: { title: "Assinatura Transparente", desc: "Sem taxa de adesão, sem multa de cancelamento. Comece grátis.", positive: true },
-      others: { title: "Custos Ocultos", desc: "Taxa de implantação alta, custo de suporte e fidelidade contratual.", positive: false }
-    },
-    {
-        title: "Backup & Segurança",
-        icon: ShieldCheck,
-        dentiHub: { title: "Automático & Criptografado", desc: "Backups diários na nuvem sem você precisar fazer nada.", positive: true },
-        others: { title: "Manual & Arriscado", desc: "Você é responsável por fazer backup em HD externo (risco de vírus/perda).", positive: false }
-      },
+        category: "Modelo Comercial",
+        items: [
+            { feature: "Custo Inicial", dentihub: "Zero (Grátis para começar)", legacy: "Taxa de Licença/Implantação alta" },
+            { feature: "Contrato", dentihub: "Mensal (Cancele quando quiser)", legacy: "Fidelidade anual + Multa" },
+            { feature: "Atualizações", dentihub: "Automáticas e Gratuitas", legacy: "Pagas ou requerem visita técnica" },
+            { feature: "Suporte", dentihub: "Incluso no plano", legacy: "Cobrado por hora/visita" },
+        ]
+    }
   ];
 
   return (
     <div className="min-h-screen bg-gray-950 font-sans text-gray-100 selection:bg-purple-500 selection:text-white">
       
+      {/* Background Ambience */}
+      <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 hidden md:block">
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/10 rounded-full blur-[120px]"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/10 rounded-full blur-[120px]"></div>
+      </div>
+
       {/* Header */}
       <header className="fixed w-full top-0 z-50 border-b border-white/5 bg-gray-950/90 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -72,64 +68,76 @@ const SystemComparisonPage: React.FC = () => {
         </div>
       </header>
 
-      <main className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+      <main className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto relative z-10">
         
         <div className="text-center mb-16">
             <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-blue-900/30 border border-blue-500/30 text-blue-300 text-xs font-bold uppercase tracking-wide mb-6">
-                Modernize sua Clínica
+                Comparativo de Tecnologia
             </div>
             <h1 className="text-4xl sm:text-5xl font-black text-white mb-6 tracking-tight leading-tight">
                 DentiHub vs. Sistemas Tradicionais
             </h1>
             <p className="text-lg text-gray-400 max-w-2xl mx-auto">
-                Veja porque clínicas modernas estão migrando de softwares antigos para a nossa plataforma inteligente.
+                Veja porque clínicas modernas estão migrando de softwares antigos e planilhas para a nossa plataforma inteligente.
             </p>
         </div>
 
-        <div className="grid gap-6">
-            {/* Headers da Tabela Visual */}
-            <div className="hidden md:grid grid-cols-12 gap-4 px-6 mb-2 text-sm font-bold text-gray-500 uppercase tracking-widest">
-                <div className="col-span-2 text-center">Recurso</div>
-                <div className="col-span-5 pl-4 text-blue-400">DentiHub</div>
-                <div className="col-span-5 pl-4 text-gray-400">Outros Sistemas (ERP Legado)</div>
+        {/* Table Container */}
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-gray-900/50 backdrop-blur-sm shadow-2xl">
+            <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr>
+                            <th className="p-6 bg-gray-900 border-b border-r border-white/10 min-w-[200px] sticky left-0 z-20">
+                                <span className="text-gray-400 font-medium text-sm uppercase tracking-wider">Recurso / Funcionalidade</span>
+                            </th>
+                            
+                            {/* DentiHub Header */}
+                            <th className="p-6 bg-blue-900/10 border-b border-blue-500/20 text-center min-w-[250px] relative">
+                                <div className="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
+                                <h3 className="text-xl font-bold text-blue-400 mb-1 flex items-center justify-center gap-2">
+                                    DentiHub <CheckCircle size={20} className="fill-blue-500 text-gray-900"/>
+                                </h3>
+                                <p className="text-sm text-gray-400 mb-4">SaaS Moderno (Nuvem)</p>
+                                <button onClick={() => goToAuth('signup')} className="w-full py-2 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-500 transition shadow-lg shadow-blue-900/20">Criar Conta Grátis</button>
+                            </th>
+
+                            {/* Legacy Header */}
+                            <th className="p-6 bg-gray-900/80 border-b border-white/10 text-center min-w-[250px] opacity-80">
+                                <h3 className="text-xl font-bold text-gray-500 mb-1 flex items-center justify-center gap-2">
+                                    Outros Sistemas <XCircle size={20}/>
+                                </h3>
+                                <p className="text-sm text-gray-600 mb-4">Software Legado / Planilha</p>
+                                <div className="w-full py-2 rounded-lg border border-white/5 text-gray-600 text-sm font-bold cursor-not-allowed bg-white/5">Tecnologia Antiga</div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                        {comparisonData.map((section, idx) => (
+                            <React.Fragment key={idx}>
+                                <tr>
+                                    <td colSpan={3} className="p-4 bg-gray-900/80 text-xs font-bold text-gray-500 uppercase tracking-widest sticky left-0 z-10 border-y border-white/5">
+                                        {section.category}
+                                    </td>
+                                </tr>
+                                {section.items.map((item, i) => (
+                                    <tr key={i} className="hover:bg-white/5 transition-colors">
+                                        <td className="p-4 border-r border-white/5 text-sm text-gray-300 font-medium sticky left-0 bg-gray-950 md:bg-transparent z-10 flex items-center h-full min-h-[60px]">
+                                            {item.feature}
+                                        </td>
+                                        <td className="p-4 text-center text-blue-200 bg-blue-900/5 font-medium border-x border-blue-500/10">
+                                            {item.dentihub}
+                                        </td>
+                                        <td className="p-4 text-center text-gray-500">
+                                            {item.legacy}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </React.Fragment>
+                        ))}
+                    </tbody>
+                </table>
             </div>
-
-            {comparisons.map((item, idx) => (
-                <div key={idx} className="bg-gray-900/40 border border-white/5 rounded-2xl p-6 md:p-4 grid grid-cols-1 md:grid-cols-12 gap-6 items-center hover:bg-gray-900/60 transition-colors">
-                    
-                    {/* Icone e Titulo - Centralizado */}
-                    <div className="col-span-12 md:col-span-2 flex md:flex-col items-center md:items-center gap-3 md:gap-1">
-                        <div className="p-3 bg-gray-800 rounded-xl border border-white/10 text-gray-300">
-                            <item.icon size={24}/>
-                        </div>
-                        <h3 className="font-bold text-white text-lg md:text-sm text-center">{item.title}</h3>
-                    </div>
-
-                    {/* DentiHub Side */}
-                    <div className="col-span-12 md:col-span-5 bg-blue-900/10 border border-blue-500/20 rounded-xl p-5 md:p-4 relative overflow-hidden group">
-                         <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
-                         <div className="flex items-start gap-3 relative z-10">
-                             <CheckCircle className="text-blue-400 shrink-0 mt-1" size={20} />
-                             <div>
-                                 <h4 className="font-bold text-white text-lg md:text-base mb-1">{item.dentiHub.title}</h4>
-                                 <p className="text-sm text-gray-400 leading-relaxed">{item.dentiHub.desc}</p>
-                             </div>
-                         </div>
-                    </div>
-
-                    {/* Others Side */}
-                    <div className="col-span-12 md:col-span-5 bg-gray-800/30 border border-white/5 rounded-xl p-5 md:p-4 relative opacity-80 grayscale-[0.5]">
-                         <div className="flex items-start gap-3">
-                             <XCircle className="text-gray-500 shrink-0 mt-1" size={20} />
-                             <div>
-                                 <h4 className="font-bold text-gray-300 text-lg md:text-base mb-1">{item.others.title}</h4>
-                                 <p className="text-sm text-gray-500 leading-relaxed">{item.others.desc}</p>
-                             </div>
-                         </div>
-                    </div>
-
-                </div>
-            ))}
         </div>
 
         {/* CTA */}

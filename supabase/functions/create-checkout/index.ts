@@ -1,12 +1,17 @@
 
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@14.21.0";
+import Stripe from "https://esm.sh/stripe@11.18.0?target=deno&no-check";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 serve(async (req) => {
   const origin = req.headers.get('origin') ?? '';
-  const allowedOrigins = ['http://localhost:5173', 'https://dentihub.com.br', 'https://app.dentihub.com.br'];
+  const allowedOrigins = [
+    'http://localhost:5173', 
+    'https://dentihub.com.br', 
+    'https://app.dentihub.com.br',
+    'https://aistudio.google.com'
+  ];
   const corsOrigin = allowedOrigins.includes(origin) ? origin : 'https://dentihub.com.br';
 
   const corsHeaders = {
@@ -39,7 +44,10 @@ serve(async (req) => {
     const { price_id } = await req.json();
     if (!price_id) throw new Error("price_id is required");
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+    const stripe = new Stripe(stripeKey, { 
+      apiVersion: "2022-11-15",
+      httpClient: Stripe.createFetchHttpClient(),
+    });
     
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     let customerId: string | undefined;

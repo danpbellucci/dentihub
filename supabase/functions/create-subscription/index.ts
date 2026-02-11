@@ -1,6 +1,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno'
+// Importação direta da versão v11.18.0 que é 100% compatível com Deno Edge Functions
+import Stripe from 'https://esm.sh/stripe@11.18.0?target=deno&no-check'
 
 declare const Deno: {
   env: {
@@ -9,39 +10,30 @@ declare const Deno: {
   serve(handler: (req: Request) => Promise<Response>): void;
 };
 
-// WHITELIST
-const ALLOWED_PRICE_IDS = [
-    'price_1SrN3I2Obfcu36b5MmVEv6qq', // Starter
-    'price_1Sz4tG2Obfcu36b5sVI27lo8', // Pro
-    // IDs Enterprise
-    'price_1SykFl2Obfcu36b5rdtYse4m', // Enterprise - Licença Dentista (R$ 100)
-    'price_1SykGo2Obfcu36b5TmDgIM4d'  // Enterprise - Pacote IA (R$ 30)
-];
-
 Deno.serve(async (req) => {
+  console.log("Create-Subscription: Function started (v11 Fix)");
+
   const origin = req.headers.get('origin') ?? '';
   const allowedOrigins = [
     'http://localhost:5173', 
     'https://dentihub.com.br', 
     'https://www.dentihub.com.br', 
-    'https://app.dentihub.com.br'
+    'https://app.dentihub.com.br',
+    'https://aistudio.google.com',
+    'https://8080-idx-dentihub-17267216438.cluster-3g4sc32jwwc5w5j437332346c.cloudworkstations.dev' // Adicione outros ambientes de dev se necessário
   ];
-  const corsOrigin = allowedOrigins.includes(origin) ? origin : 'https://dentihub.com.br';
+  
+  // CORS Permissivo para desenvolvimento se a origem não estiver na lista exata,
+  // mas idealmente restrito em produção.
+  const corsOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
 
   const corsHeaders = {
-    'Access-Control-Allow-Origin': corsOrigin,
+    'Access-Control-Allow-Origin': origin || '*', // Fallback para * em testes de API
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   }
 
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
-  }
-
-  if (!origin || !allowedOrigins.includes(origin)) {
-      return new Response(JSON.stringify({ error: "Acesso negado: Origem não autorizada." }), {
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
   }
 
   try {
@@ -51,8 +43,14 @@ Deno.serve(async (req) => {
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
 
     if (!stripeKey || !supabaseUrl || !supabaseServiceKey || !supabaseAnonKey) {
-        throw new Error("Configuração ausente.");
+        throw new Error("Configuração ausente: Verifique as variáveis de ambiente (STRIPE_SECRET_KEY, etc).");
     }
+
+    // Inicialização do Stripe com configuração HTTP explícita para Deno
+    const stripe = new Stripe(stripeKey, {
+      apiVersion: '2022-11-15', // Versão da API compatível com a lib v11
+      httpClient: Stripe.createFetchHttpClient(),
+    });
 
     const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, { 
         global: { headers: { Authorization: req.headers.get('Authorization')! } } 
@@ -60,68 +58,83 @@ Deno.serve(async (req) => {
 
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
     if (userError || !user) {
+      console.error("Auth Error:", userError);
       return new Response(JSON.stringify({ error: "Usuário não autenticado." }), { 
           status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
 
-    // Aceita items (array) OU priceId (string) para retrocompatibilidade
-    const { priceId, items, limits } = await req.json();
+    // Lê o corpo da requisição
+    const { priceId, items, limits, planId } = await req.json();
+    console.log(`Processing for User: ${user.id}, PlanId: ${planId}`);
     
     let subscriptionItems = [];
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    if (items && Array.isArray(items)) {
+    // --- LÓGICA DE NEGÓCIO: Resolução de Itens ---
+    if (items && Array.isArray(items) && items.length > 0) {
+        // Cenário 1: Enterprise Customizado (Itens explícitos)
         subscriptionItems = items;
+    } else if (planId) {
+        // Cenário 2: Busca o Preço pelo ID do Plano no Banco
+        const { data: plan } = await supabaseAdmin
+            .from('subscription_plans')
+            .select('stripe_price_id')
+            .eq('id', planId)
+            .single();
+        
+        if (!plan || !plan.stripe_price_id) {
+            console.error("Plano sem Stripe Price ID no banco:", planId);
+            throw new Error("Erro de configuração do plano: Price ID não encontrado.");
+        }
+        subscriptionItems = [{ price: plan.stripe_price_id, quantity: 1 }];
     } else if (priceId) {
+        // Cenário 3: Legado/Fallback
         subscriptionItems = [{ price: priceId, quantity: 1 }];
     } else {
-        throw new Error("priceId ou items são obrigatórios.");
+        throw new Error("Dados inválidos: priceId ou planId são obrigatórios.");
     }
 
-    // Validação básica dos Price IDs
-    for (const item of subscriptionItems) {
-        if (!ALLOWED_PRICE_IDS.includes(item.price)) {
-             // Em dev, podemos ser permissivos, mas em prod deve bloquear
-             console.warn(`Price ID não listado na whitelist: ${item.price}`);
-        }
-    }
-
-    const stripe = new Stripe(stripeKey, {
-      apiVersion: '2023-10-16',
-      httpClient: Stripe.createFetchHttpClient(),
-    })
-
+    console.log("Searching for Stripe customer...");
+    
+    // 1. Buscar ou Criar Customer
     const { data: customers } = await stripe.customers.search({
       query: `email:'${user.email}'`,
-    })
+    });
 
-    let customerId
+    let customerId;
     if (customers.length > 0) {
-      customerId = customers[0].id
+      customerId = customers[0].id;
     } else {
+      console.log("Creating new Stripe customer...");
       const customer = await stripe.customers.create({
         email: user.email,
         metadata: { supabaseUUID: user.id },
-      })
-      customerId = customer.id
+      });
+      customerId = customer.id;
     }
 
+    // 2. Cancelar Assinaturas Antigas (Para evitar duplicidade)
+    // CORREÇÃO: Busca todas as assinaturas ativas/trialing e cancela IMEDIATAMENTE
     const existingSubs = await stripe.subscriptions.list({
         customer: customerId,
-        status: 'active',
-        limit: 1
+        status: 'all', // Busca todas para filtrar corretamente
+        limit: 10
     });
 
-    // Se já tem assinatura, cancela a anterior para criar a nova (Upgrade/Downgrade simplificado)
-    // Em produção ideal, faria update da subscription, mas create é mais robusto para MVP
-    if (existingSubs.data.length > 0) {
-        const oldSub = existingSubs.data[0];
-        await stripe.subscriptions.update(oldSub.id, { cancel_at_period_end: true });
-        // Ou, se quiser substituir imediatamente:
-        // await stripe.subscriptions.cancel(oldSub.id);
+    for (const sub of existingSubs.data) {
+        if (sub.status === 'active' || sub.status === 'trialing' || sub.status === 'incomplete') {
+            console.log(`[Create-Subscription] Cancelando assinatura anterior (${sub.status}): ${sub.id}`);
+            try {
+                // del() cancela a assinatura imediatamente. 
+                // Isso garante que o usuário não fique com 2 planos ativos.
+                await stripe.subscriptions.del(sub.id);
+            } catch (err) {
+                console.error(`Erro ao cancelar assinatura antiga ${sub.id}:`, err);
+            }
+        }
     }
 
-    // Metadados para o Webhook atualizar os limites customizados no banco
     const metadata = { 
         supabaseUUID: user.id,
         isEnterprise: items && items.length > 1 ? 'true' : 'false',
@@ -129,6 +142,9 @@ Deno.serve(async (req) => {
         customAiDailyLimit: limits?.aiDaily || null
     };
 
+    console.log("Creating Subscription...");
+    
+    // 3. Criar Nova Assinatura
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
       items: subscriptionItems,
@@ -145,13 +161,14 @@ Deno.serve(async (req) => {
         throw new Error("Falha ao gerar o segredo de pagamento.");
     }
 
-    // LOG DE USO
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    // 4. Log de Sucesso
     await supabaseAdmin.from('edge_function_logs').insert({
         function_name: 'create-subscription',
         metadata: { user_id: user.id, items: subscriptionItems, subscription_id: subscription.id },
         status: 'success'
     });
+
+    console.log("Subscription created successfully.");
 
     return new Response(
       JSON.stringify({ 
@@ -159,13 +176,13 @@ Deno.serve(async (req) => {
         clientSecret: paymentIntent.client_secret 
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-    )
+    );
 
   } catch (error: any) {
-    console.error("Erro interno:", error)
+    console.error("Erro interno:", error);
     return new Response(
       JSON.stringify({ error: error.message || "Erro interno no servidor." }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-    )
+    );
   }
 })

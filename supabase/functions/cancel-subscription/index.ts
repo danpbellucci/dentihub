@@ -1,6 +1,6 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
+import Stripe from "https://esm.sh/stripe@11.18.0?target=deno&no-check";
 
 declare const Deno: {
   env: {
@@ -15,7 +15,8 @@ Deno.serve(async (req) => {
     'http://localhost:5173', 
     'https://dentihub.com.br', 
     'https://www.dentihub.com.br',
-    'https://app.dentihub.com.br'
+    'https://app.dentihub.com.br',
+    'https://aistudio.google.com'
   ];
   const corsOrigin = allowedOrigins.includes(origin) ? origin : 'https://dentihub.com.br';
 
@@ -72,7 +73,10 @@ Deno.serve(async (req) => {
         throw new Error("Usuário não autenticado.");
     }
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16", httpClient: Stripe.createFetchHttpClient() });
+    const stripe = new Stripe(stripeKey, { 
+      apiVersion: "2022-11-15", 
+      httpClient: Stripe.createFetchHttpClient() 
+    });
 
     try {
         const sub = await stripe.subscriptions.retrieve(subscriptionId);

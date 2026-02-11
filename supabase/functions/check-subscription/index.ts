@@ -1,6 +1,6 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
-import Stripe from "https://esm.sh/stripe@14.21.0";
+import Stripe from "https://esm.sh/stripe@11.18.0?target=deno&no-check";
 
 declare const Deno: {
   env: {
@@ -9,24 +9,14 @@ declare const Deno: {
   serve(handler: (req: Request) => Promise<Response>): void;
 };
 
-const TIER_MAPPING = {
-  // New Config
-  'prod_TifWKWr1WU3XbW': 'starter',
-  'prod_TifWS13bkpeoaA': 'pro',
-  'price_1SrN3I2Obfcu36b5MmVEv6qq': 'starter',
-  'price_1Sz4tG2Obfcu36b5sVI27lo8': 'pro',
-  // Enterprise IDs
-  'price_1SykFl2Obfcu36b5rdtYse4m': 'enterprise', 
-  'price_1SykGo2Obfcu36b5TmDgIM4d': 'enterprise'
-};
-
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin') ?? '';
   const allowedOrigins = [
     'http://localhost:5173', 
     'https://dentihub.com.br', 
     'https://www.dentihub.com.br',
-    'https://app.dentihub.com.br'
+    'https://app.dentihub.com.br',
+    'https://aistudio.google.com'
   ];
   const corsOrigin = allowedOrigins.includes(origin) ? origin : 'https://dentihub.com.br';
 
@@ -95,11 +85,14 @@ Deno.serve(async (req) => {
         }
     }
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+    const stripe = new Stripe(stripeKey, { 
+      apiVersion: "2022-11-15",
+      httpClient: Stripe.createFetchHttpClient(),
+    });
     
+    // 2. Busca Clientes no Stripe
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     
-    // Se não tem customer no Stripe, é Free
     if (customers.data.length === 0) {
       if (clinicData?.subscription_tier !== 'free') {
           await supabaseAdmin.from('clinics').update({ subscription_tier: 'free' }).eq('id', user.id);
@@ -111,6 +104,8 @@ Deno.serve(async (req) => {
     }
 
     const customerId = customers.data[0].id;
+    
+    // 3. Busca Assinaturas Ativas
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
       status: "active",
@@ -119,27 +114,55 @@ Deno.serve(async (req) => {
     });
 
     if (subscriptions.data.length === 0) {
-      if (clinicData?.subscription_tier !== 'free') {
-          await supabaseAdmin.from('clinics').update({ subscription_tier: 'free' }).eq('id', user.id);
-      }
-      return new Response(JSON.stringify({ subscribed: false, tier: 'free' }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
+        // Verifica se tem trialing (período de teste)
+        const trials = await stripe.subscriptions.list({
+            customer: customerId,
+            status: "trialing",
+            limit: 1,
+            expand: ['data.items.data.price']
+        });
+
+        if (trials.data.length === 0) {
+            if (clinicData?.subscription_tier !== 'free') {
+                await supabaseAdmin.from('clinics').update({ subscription_tier: 'free' }).eq('id', user.id);
+            }
+            return new Response(JSON.stringify({ subscribed: false, tier: 'free' }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 200,
+            });
+        }
+        // Se encontrou trial, usa ele
+        subscriptions.data = trials.data;
     }
 
     const subscription = subscriptions.data[0];
-    const priceId = subscription.items.data[0].price.id;
-    const productId = subscription.items.data[0].price.product as string;
     
-    const detectedTier = TIER_MAPPING[priceId] || TIER_MAPPING[productId] || 'free';
+    // 4. Detecção de Plano Robusta (Multi-item Enterprise support)
+    // Coleta todos os Price IDs e Product IDs da assinatura
+    const priceIds = subscription.items.data.map((item: any) => item.price.id);
+    const productIds = subscription.items.data.map((item: any) => item.price.product as string);
+    
+    // Busca no banco qual plano corresponde a ALGUM desses IDs
+    // Enterprise terá múltiplos itens, mas se um deles bater com os IDs cadastrados, encontramos o plano.
+    const { data: matchedPlan } = await supabaseAdmin
+        .from('subscription_plans')
+        .select('slug')
+        .or(`stripe_price_id.in.(${priceIds.join(',')}),stripe_product_id.in.(${productIds.join(',')}),stripe_dentist_price_id.in.(${priceIds.join(',')}),stripe_ai_price_id.in.(${priceIds.join(',')})`)
+        .limit(1)
+        .maybeSingle();
 
-    // Atualiza apenas se mudou ou para garantir sincronia
+    const detectedTier = matchedPlan ? matchedPlan.slug : 'free';
+
+    // 5. Atualiza o banco se houver discrepância
     if (clinicData?.subscription_tier !== detectedTier) {
+        console.log(`[Check-Sub] Updating tier for user ${user.id}: ${clinicData?.subscription_tier} -> ${detectedTier}`);
         await supabaseAdmin.from('clinics').update({ 
             subscription_tier: detectedTier,
             stripe_customer_id: customerId,
-            stripe_subscription_id: subscription.id
+            stripe_subscription_id: subscription.id,
+            // Atualiza limites customizados se disponíveis nos metadados
+            custom_dentist_limit: subscription.metadata?.customDentistLimit ? Number(subscription.metadata.customDentistLimit) : null,
+            custom_ai_daily_limit: subscription.metadata?.customAiDailyLimit ? Number(subscription.metadata.customAiDailyLimit) : null
         }).eq('id', user.id);
     }
 
@@ -149,9 +172,10 @@ Deno.serve(async (req) => {
     });
 
   } catch (error: any) {
+    console.error("Check-sub Error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
+      status: 200, // Retorna 200 com erro para não quebrar o frontend
     });
   }
 });

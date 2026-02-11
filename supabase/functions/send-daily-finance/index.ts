@@ -135,6 +135,12 @@ Deno.serve(async (req) => {
         const valWeekOut = sumAmount(weekExpenseData || []);
         const valWeekBal = valWeekIn - valWeekOut;
 
+        // SUPRESSÃO DE ENVIO:
+        // Se não houver movimentação financeira na semana inteira (R$ 0,00), não envia o email.
+        if (valWeekIn === 0 && valWeekOut === 0) {
+            continue;
+        }
+
         // Identificar Destinatários
         const { data: targetRoles } = await supabase.from('role_notifications').select('role').eq('clinic_id', clinicId).eq('notification_type', 'finance_daily').eq('is_enabled', true);
         const roles = targetRoles?.map(r => r.role) || [];

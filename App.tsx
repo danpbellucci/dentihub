@@ -1,6 +1,5 @@
-
 import React, { useEffect, useState } from 'react';
-import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 import AuthPage from './components/AuthPage';
@@ -24,13 +23,14 @@ import LearnMorePage from './components/LearnMorePage';
 import BlogPage from './components/BlogPage';
 import AboutPage from './components/AboutPage';
 import ReferralPage from './components/ReferralPage'; 
-import PlansComparisonPage from './components/PlansComparisonPage'; // Importado
-import SystemComparisonPage from './components/SystemComparisonPage'; // Importado
+import PlansComparisonPage from './components/PlansComparisonPage';
+import SystemComparisonPage from './components/SystemComparisonPage';
 import SuperAdminPage from './components/SuperAdminPage';
 import SuperAdminCampaigns from './components/SuperAdminCampaigns';
 import SuperAdminLeads from './components/SuperAdminLeads';
 import SuperAdminSubscriptions from './components/SuperAdminSubscriptions';
 import SuperAdminAds from './components/SuperAdminAds';
+import SuperAdminPlans from './components/SuperAdminPlans';
 import UpdatePasswordPage from './components/UpdatePasswordPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Loader2 } from 'lucide-react';
@@ -227,6 +227,7 @@ const App: React.FC = () => {
                   <Route path="leads" element={<SuperAdminLeads />} />
                   <Route path="subscriptions" element={<SuperAdminSubscriptions />} />
                   <Route path="ads" element={<SuperAdminAds />} />
+                  <Route path="plans" element={<SuperAdminPlans />} />
                 </Routes>
               </SuperAdminRoute>
             </PrivateRoute>
