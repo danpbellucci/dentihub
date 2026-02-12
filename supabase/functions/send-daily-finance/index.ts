@@ -18,12 +18,12 @@ const formatMoney = (amount: number) => {
 };
 
 const formatDate = (date: Date) => {
-    return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+    return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`;
 };
 
-// Helper para somar valores de um array de objetos
-const sumAmount = (data: any[]) => {
-    return data?.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) || 0;
+const getDayName = (date: Date) => {
+    const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+    return days[date.getDay()];
 };
 
 async function sendEmail(apiKey: string, to: string, subject: string, html: string, clinicName: string, replyTo: string) {
@@ -57,33 +57,17 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // --- Definição de Datas ---
+    // --- Definição de Datas (D0 a D+7) ---
     const now = new Date();
+    // Ajuste fuso horário simples (considerando que o servidor roda em UTC, ajustamos para início do dia local aproximado)
+    const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
     
-    // Hoje
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).toISOString();
-    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
-    const todayLabel = formatDate(now);
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + 7); // +7 dias
+    endDate.setHours(23, 59, 59, 999);
 
-    // Amanhã
-    const tomorrow = new Date(now);
-    tomorrow.setDate(now.getDate() + 1);
-    const startOfTomorrow = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 0, 0, 0).toISOString();
-    const endOfTomorrow = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 23, 59, 59).toISOString();
-    const tomorrowLabel = formatDate(tomorrow);
-
-    // Semana (Domingo a Sábado atual)
-    const currentDay = now.getDay(); // 0 (Domingo) a 6 (Sábado)
-    const startOfWeekDate = new Date(now);
-    startOfWeekDate.setDate(now.getDate() - currentDay); // Volta para Domingo
-    startOfWeekDate.setHours(0,0,0,0);
-    
-    const endOfWeekDate = new Date(startOfWeekDate);
-    endOfWeekDate.setDate(startOfWeekDate.getDate() + 6); // Vai até Sábado
-    endOfWeekDate.setHours(23,59,59,999);
-
-    const startOfWeek = startOfWeekDate.toISOString();
-    const endOfWeek = endOfWeekDate.toISOString();
+    const startISO = startDate.toISOString();
+    const endISO = endDate.toISOString();
 
     // Busca configurações ativas
     const { data: activeConfigs } = await supabase
@@ -100,45 +84,119 @@ Deno.serve(async (req) => {
     let emailsSent = 0;
 
     for (const clinicId of uniqueClinicIds) {
-        // --- Queries em Paralelo para Performance ---
-        // Entradas (Agendamentos não cancelados) e Saídas (Transações de despesa)
-        
-        const incomeQuery = (start: string, end: string) => 
-            supabase.from('appointments').select('amount').eq('clinic_id', clinicId).gte('start_time', start).lte('start_time', end).neq('status', 'cancelled');
-        
-        const expenseQuery = (start: string, end: string) => 
-            supabase.from('transactions').select('amount').eq('clinic_id', clinicId).eq('type', 'expense').gte('date', start).lte('date', end);
+        // 1. Buscar Receitas Previstas (Agendamentos)
+        const { data: appointments } = await supabase
+            .from('appointments')
+            .select('start_time, amount, service_name, client:clients(name)')
+            .eq('clinic_id', clinicId)
+            .gte('start_time', startISO)
+            .lte('start_time', endISO)
+            .neq('status', 'cancelled');
 
-        const [
-            { data: todayIncomeData }, { data: todayExpenseData },
-            { data: tomIncomeData }, { data: tomExpenseData },
-            { data: weekIncomeData }, { data: weekExpenseData }
-        ] = await Promise.all([
-            incomeQuery(startOfToday, endOfToday),
-            expenseQuery(startOfToday, endOfToday),
-            incomeQuery(startOfTomorrow, endOfTomorrow),
-            expenseQuery(startOfTomorrow, endOfTomorrow),
-            incomeQuery(startOfWeek, endOfWeek),
-            expenseQuery(startOfWeek, endOfWeek)
-        ]);
+        // 2. Buscar Despesas Previstas (Transações)
+        const { data: expenses } = await supabase
+            .from('transactions')
+            .select('date, amount, category, observation')
+            .eq('clinic_id', clinicId)
+            .eq('type', 'expense')
+            .gte('date', startISO)
+            .lte('date', endISO);
 
-        // Cálculos
-        const valTodayIn = sumAmount(todayIncomeData || []);
-        const valTodayOut = sumAmount(todayExpenseData || []);
-        const valTodayBal = valTodayIn - valTodayOut;
-
-        const valTomIn = sumAmount(tomIncomeData || []);
-        const valTomOut = sumAmount(tomExpenseData || []);
-        const valTomBal = valTomIn - valTomOut;
-
-        const valWeekIn = sumAmount(weekIncomeData || []);
-        const valWeekOut = sumAmount(weekExpenseData || []);
-        const valWeekBal = valWeekIn - valWeekOut;
-
-        // SUPRESSÃO DE ENVIO:
-        // Se não houver movimentação financeira na semana inteira (R$ 0,00), não envia o email.
-        if (valWeekIn === 0 && valWeekOut === 0) {
+        // Se não houver nada, pula
+        if ((!appointments || appointments.length === 0) && (!expenses || expenses.length === 0)) {
             continue;
+        }
+
+        // 3. Unificar e Agrupar Dados
+        const items = [];
+
+        // Processar Receitas
+        if (appointments) {
+            appointments.forEach(appt => {
+                if (Number(appt.amount) > 0) {
+                    items.push({
+                        date: new Date(appt.start_time),
+                        desc: `${appt.client?.name || 'Paciente'} - ${appt.service_name}`,
+                        amount: Number(appt.amount),
+                        type: 'income'
+                    });
+                }
+            });
+        }
+
+        // Processar Despesas
+        if (expenses) {
+            expenses.forEach(exp => {
+                items.push({
+                    date: new Date(exp.date),
+                    desc: `${exp.category} ${exp.observation ? `(${exp.observation})` : ''}`,
+                    amount: Number(exp.amount),
+                    type: 'expense'
+                });
+            });
+        }
+
+        // Ordenar por data
+        items.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+        // Agrupar por dia (YYYY-MM-DD)
+        const groupedByDay: Record<string, typeof items> = {};
+        
+        items.forEach(item => {
+            // Ajuste de fuso horário manual para exibição correta (UTC-3 aprox)
+            const localDate = new Date(item.date.getTime() - (3 * 60 * 60 * 1000));
+            const dayKey = localDate.toISOString().split('T')[0];
+            if (!groupedByDay[dayKey]) groupedByDay[dayKey] = [];
+            groupedByDay[dayKey].push(item);
+        });
+
+        // 4. Construir HTML da Lista
+        let listHtml = '';
+        const sortedDays = Object.keys(groupedByDay).sort();
+
+        let totalPeriodBalance = 0;
+
+        for (const dayKey of sortedDays) {
+            const dayItems = groupedByDay[dayKey];
+            const dateObj = new Date(dayKey + 'T12:00:00'); // Meio dia para evitar problemas de fuso no getDay
+            
+            let dayIncome = 0;
+            let dayExpense = 0;
+
+            let dayRows = '';
+            
+            dayItems.forEach(item => {
+                const isIncome = item.type === 'income';
+                if (isIncome) dayIncome += item.amount; else dayExpense += item.amount;
+                
+                dayRows += `
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 8px 0; font-size: 13px; color: #334155;">
+                            ${item.desc}
+                        </td>
+                        <td style="padding: 8px 0; font-size: 13px; text-align: right; font-weight: bold; color: ${isIncome ? '#16a34a' : '#ef4444'};">
+                            ${isIncome ? '+' : '-'} ${formatMoney(item.amount)}
+                        </td>
+                    </tr>
+                `;
+            });
+
+            const dayBalance = dayIncome - dayExpense;
+            totalPeriodBalance += dayBalance;
+
+            listHtml += `
+                <div style="margin-bottom: 25px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+                    <div style="background-color: #f8fafc; padding: 10px 15px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                        <strong style="color: #0f172a; font-size: 14px;">${formatDate(dateObj)} - ${getDayName(dateObj)}</strong>
+                        <span style="font-size: 12px; font-weight: bold; color: ${dayBalance >= 0 ? '#16a34a' : '#ef4444'};">Saldo: ${formatMoney(dayBalance)}</span>
+                    </div>
+                    <div style="padding: 0 15px;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            ${dayRows}
+                        </table>
+                    </div>
+                </div>
+            `;
         }
 
         // Identificar Destinatários
@@ -152,59 +210,44 @@ Deno.serve(async (req) => {
         const { data: clinic } = await supabase.from('clinics').select('name, email').eq('id', clinicId).single();
         const clinicName = clinic?.name || 'Sua Clínica';
 
-        // Template HTML Melhorado
+        const subject = `Previsão Financeira (7 Dias) 📅 - ${clinicName}`;
+
+        // Template HTML Final
         const htmlContent = `
-            <div style="font-family: Helvetica, Arial, sans-serif; color: #333; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; max-width: 600px; margin: 0 auto;">
-                <div style="text-align: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 20px;">
-                    <h2 style="color: #10b981; margin: 0;">Resumo Financeiro 💰</h2>
-                    <p style="color: #64748b; font-size: 14px; margin-top: 5px;">${clinicName}</p>
-                </div>
+            <div style="font-family: Helvetica, Arial, sans-serif; color: #333; padding: 20px; background-color: #f8fafc;">
+                <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                    
+                    <div style="text-align: center; border-bottom: 1px solid #e2e8f0; padding: 20px;">
+                        <h2 style="color: #0ea5e9; margin: 0; font-size: 22px;">Fluxo de Caixa Previsto 💰</h2>
+                        <p style="color: #64748b; font-size: 14px; margin-top: 5px;">${clinicName}</p>
+                    </div>
 
-                <!-- HOJE -->
-                <div style="margin-bottom: 25px;">
-                    <h3 style="margin: 0 0 10px 0; color: #0f172a; font-size: 16px;">📅 Hoje (${todayLabel})</h3>
-                    <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px;">
-                        <p style="margin: 5px 0;">Entradas Previstas: <strong style="color: #10b981;">${formatMoney(valTodayIn)}</strong></p>
-                        <p style="margin: 5px 0;">Contas a Pagar: <strong style="color: #ef4444;">${formatMoney(valTodayOut)}</strong></p>
-                        <div style="border-top: 1px solid #e2e8f0; margin-top: 10px; padding-top: 10px;">
-                            <p style="margin: 0; font-size: 15px;">Saldo do Dia: <strong>${formatMoney(valTodayBal)}</strong></p>
+                    <div style="padding: 20px;">
+                        <p style="font-size: 14px; color: #64748b; margin-bottom: 20px;">
+                            Abaixo estão listadas todas as receitas (agendamentos) e despesas previstas para os próximos 7 dias.
+                        </p>
+
+                        ${listHtml}
+
+                        <div style="background-color: #f0f9ff; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #bae6fd;">
+                            <p style="margin: 0; font-size: 14px; color: #0369a1;">Resultado Previsto no Período</p>
+                            <p style="margin: 5px 0 0 0; font-size: 24px; font-weight: bold; color: ${totalPeriodBalance >= 0 ? '#0284c7' : '#ef4444'};">
+                                ${formatMoney(totalPeriodBalance)}
+                            </p>
                         </div>
                     </div>
-                </div>
 
-                <!-- AMANHÃ -->
-                <div style="margin-bottom: 25px;">
-                    <h3 style="margin: 0 0 10px 0; color: #0f172a; font-size: 16px;">⏩ Amanhã (${tomorrowLabel})</h3>
-                    <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px;">
-                        <p style="margin: 5px 0;">Entradas Previstas: <strong style="color: #10b981;">${formatMoney(valTomIn)}</strong></p>
-                        <p style="margin: 5px 0;">Contas a Pagar: <strong style="color: #ef4444;">${formatMoney(valTomOut)}</strong></p>
-                        <div style="border-top: 1px solid #e2e8f0; margin-top: 10px; padding-top: 10px;">
-                            <p style="margin: 0; font-size: 15px;">Saldo Previsto: <strong>${formatMoney(valTomBal)}</strong></p>
-                        </div>
+                    <div style="background-color: #f1f5f9; padding: 15px; text-align: center; font-size: 12px; color: #94a3b8;">
+                        <p>Enviado automaticamente pelo DentiHub</p>
+                        <a href="https://dentihub.com.br/#/dashboard/finance" style="color: #0ea5e9; text-decoration: none;">Acessar Financeiro Completo</a>
                     </div>
-                </div>
-
-                <!-- SEMANA -->
-                <div>
-                    <h3 style="margin: 0 0 10px 0; color: #0f172a; font-size: 16px;">📊 Esta Semana (Dom - Sáb)</h3>
-                    <div style="background-color: #f0f9ff; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6;">
-                        <p style="margin: 5px 0;">Total Entradas: <strong style="color: #10b981;">${formatMoney(valWeekIn)}</strong></p>
-                        <p style="margin: 5px 0;">Total Saídas: <strong style="color: #ef4444;">${formatMoney(valWeekOut)}</strong></p>
-                        <div style="border-top: 1px solid #bfdbfe; margin-top: 10px; padding-top: 10px;">
-                            <p style="margin: 0; font-size: 16px;">Saldo da Semana: <strong style="color: #0f172a;">${formatMoney(valWeekBal)}</strong></p>
-                        </div>
-                    </div>
-                </div>
-
-                <div style="margin-top: 30px; text-align: center; font-size: 12px; color: #94a3b8;">
-                    <p>Enviado automaticamente pelo DentiHub</p>
                 </div>
             </div>
         `;
 
         for (const recipient of recipients) {
             try {
-                await sendEmail(resendApiKey, recipient.email, `Resumo Financeiro - ${clinicName}`, htmlContent, clinicName, clinic?.email || 'contato@dentihub.com.br');
+                await sendEmail(resendApiKey, recipient.email, subject, htmlContent, clinicName, clinic?.email || 'contato@dentihub.com.br');
                 emailsSent++;
             } catch (e) {}
         }
@@ -212,7 +255,7 @@ Deno.serve(async (req) => {
 
     await supabase.from('edge_function_logs').insert({
         function_name: 'send-daily-finance',
-        metadata: { sent_count: emailsSent },
+        metadata: { sent_count: emailsSent, type: 'detailed_7_days' },
         status: 'success'
     });
 

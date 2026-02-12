@@ -90,6 +90,18 @@ const CAMPAIGNS = {
         ctaLink: 'mailto:contato@dentihub.com.br',
         ctaText: 'Falar com Suporte'
     },
+    'referral_promo_4d': {
+        subject: '🎁 Ganhe meses grátis no DentiHub',
+        getContent: (name: string) => `
+            <p>Olá, <strong>${name}</strong>!</p>
+            <p>Sabia que você pode usar os planos <strong>Starter</strong> e <strong>Pro</strong> do DentiHub sem pagar nada?</p>
+            <p>Com nosso programa de indicações, você ganha <strong>30 dias de acesso premium</strong> para cada colega dentista que começar a usar o sistema por sua recomendação.</p>
+            <p>Ajude outros profissionais a modernizarem suas clínicas e seja recompensado por isso!</p>
+            <p>Pegue seu link exclusivo e comece a indicar agora mesmo:</p>
+        `,
+        ctaLink: 'https://dentihub.com.br/#/indique-e-ganhe',
+        ctaText: 'Pegar Meu Link de Indicação'
+    },
     'onboarding_7d': {
         subject: 'Uma semana juntos! 🚀',
         getContent: (name: string) => `

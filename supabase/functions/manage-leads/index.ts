@@ -112,21 +112,76 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // 2. CRON FOLLOW-UP (A cada 5 dias)
+    // 2. CRON FOLLOW-UP (Diário)
     else if (type === 'cron_followup') {
-        const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+        const now = Date.now();
+        const threeDaysAgo = new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString();
+        const fourDaysAgo = new Date(now - 4 * 24 * 60 * 60 * 1000).toISOString();
+        
+        const fiveDaysAgo = new Date(now - 5 * 24 * 60 * 60 * 1000).toISOString();
 
-        // Busca leads pendentes que não receberam contato recente
-        const { data: leads } = await supabase
+        // A. PROMOÇÃO DE INDICAÇÃO (3 DIAS APÓS CADASTRO)
+        const { data: promoLeads } = await supabase
+            .from('leads')
+            .select('email, email_count')
+            .eq('unsubscribed', false)
+            .lt('created_at', threeDaysAgo) 
+            .gt('created_at', fourDaysAgo) // Janela de 24h para pegar apenas os de 3 dias atrás
+            .lt('email_count', 2); // Garante que só recebeu o welcome (1)
+
+        let sentPromo = 0;
+        
+        for (const lead of (promoLeads || [])) {
+             // CRUCIAL: Verifica se virou usuário (conta criada)
+            const { data: user } = await supabase.from('user_profiles').select('id').eq('email', lead.email).maybeSingle();
+            
+            if (user) {
+                // Se já criou conta, para de mandar e-mails de lead
+                await supabase.from('leads').update({ unsubscribed: true }).eq('email', lead.email);
+                continue;
+            }
+
+            const subject = "🎁 Use o DentiHub Premium de graça";
+            const html = `
+                <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
+                    <p>Olá,</p>
+                    <p>Sabia que você pode usar os planos <strong>Starter</strong> e <strong>Pro</strong> do DentiHub sem pagar nada?</p>
+                    <p>Ao criar sua conta, você recebe um código de indicação exclusivo.</p>
+                    <p>Cada colega dentista que você indicar e que se cadastrar na plataforma garante a você <strong>30 dias de acesso premium gratuito</strong>.</p>
+                    <p>Crie sua conta agora para pegar seu código e começar a indicar:</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="https://dentihub.com.br/#/auth?view=signup" style="background-color: #0f172a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                            Criar Conta e Pegar Código
+                        </a>
+                    </div>
+                    ${getFooter(lead.email)}
+                </div>
+            `;
+
+            try {
+                await sendEmail(resendApiKey, lead.email, subject, html, 'contato@dentihub.com.br');
+                await supabase.from('leads').update({ 
+                    last_contact_at: new Date().toISOString(),
+                    email_count: (lead.email_count || 0) + 1
+                }).eq('email', lead.email);
+                sentPromo++;
+            } catch (err) {
+                console.error(`Erro envio lead promo ${lead.email}:`, err);
+            }
+        }
+
+        // B. FOLLOW-UP PADRÃO (5+ DIAS) - Lógica Antiga
+        const { data: oldLeads } = await supabase
             .from('leads')
             .select('email, email_count')
             .eq('unsubscribed', false)
             .lt('last_contact_at', fiveDaysAgo)
+            .gte('email_count', 2) // Já recebeu a promo, agora recebe o follow-up padrão
             .limit(50); 
 
-        let sent = 0;
+        let sentFollowUp = 0;
 
-        for (const lead of (leads || [])) {
+        for (const lead of (oldLeads || [])) {
             // Verifica se virou usuário
             const { data: user } = await supabase.from('user_profiles').select('id').eq('email', lead.email).maybeSingle();
             
@@ -157,13 +212,13 @@ Deno.serve(async (req) => {
                     last_contact_at: new Date().toISOString(),
                     email_count: (lead.email_count || 0) + 1
                 }).eq('email', lead.email);
-                sent++;
+                sentFollowUp++;
             } catch (err) {
-                console.error(`Erro envio lead ${lead.email}:`, err);
+                console.error(`Erro envio lead followup ${lead.email}:`, err);
             }
         }
 
-        return new Response(JSON.stringify({ success: true, sent }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ success: true, sentPromo, sentFollowUp }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // 3. UNSUBSCRIBE

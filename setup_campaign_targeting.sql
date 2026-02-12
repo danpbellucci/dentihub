@@ -140,7 +140,26 @@ BEGIN
                 AND cm.subject LIKE '%opinião%'
             );
 
-    -- 7. ONBOARDING: 7 DIAS (Check-in Semanal)
+    -- 7. REFERRAL PROMO (4 DIAS): Indique e Ganhe
+    ELSIF p_campaign_key = 'referral_promo_4d' THEN
+        RETURN QUERY
+        SELECT 
+            p.id, p.email, c.name, c.name, 0
+        FROM public.user_profiles p
+        JOIN public.clinics c ON p.clinic_id = c.id
+        JOIN public.role_notifications rn ON rn.clinic_id = c.id AND rn.role = p.role
+        WHERE 
+            p.role = 'administrator'
+            AND p.created_at < NOW() - INTERVAL '4 days'
+            AND p.created_at > NOW() - INTERVAL '5 days' -- Janela de 24h
+            AND rn.notification_type = 'system_campaigns' AND rn.is_enabled = true
+            AND NOT EXISTS (
+                SELECT 1 FROM public.communications cm 
+                WHERE cm.recipient_email = p.email 
+                AND cm.subject LIKE '%Ganhe meses grátis%'
+            );
+
+    -- 8. ONBOARDING: 7 DIAS (Check-in Semanal)
     ELSIF p_campaign_key = 'onboarding_7d' THEN
         RETURN QUERY
         SELECT 
@@ -158,7 +177,7 @@ BEGIN
                 AND cm.subject LIKE '%Uma semana juntos%'
             );
 
-    -- 8. ONBOARDING: 30 DIAS (Milestone Mensal)
+    -- 9. ONBOARDING: 30 DIAS (Milestone Mensal)
     ELSIF p_campaign_key = 'onboarding_30d' THEN
         RETURN QUERY
         SELECT 
