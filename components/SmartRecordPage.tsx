@@ -2,9 +2,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import { Client, Dentist } from '../types';
-import { Mic, Square, Save, Loader2, Info, FileText, CheckCircle, Lock, Zap, HelpCircle, X, AlertTriangle, Sparkles } from 'lucide-react';
+import { Mic, Square, Save, Loader2, Info, FileText, CheckCircle, Lock, Zap, HelpCircle, X, AlertTriangle, Sparkles, PenTool, Activity, Hammer, Shield, Box, Ban } from 'lucide-react';
 import Toast, { ToastType } from './Toast';
 import { useNavigate } from 'react-router-dom';
+import DentalArch, { ToothCondition } from './DentalArch';
+
+// Mapeamento de condições para rótulos legíveis (Copiado de ClientsPage para consistência)
+const CONDITIONS_MAP: Record<string, { label: string, color: string, icon: any }> = {
+    healthy: { label: 'Saudável / Limpar', color: 'bg-gray-200 text-gray-800', icon: CheckCircle },
+    carie: { label: 'Cárie', color: 'bg-red-500 text-white', icon: Activity },
+    restoration: { label: 'Restauração', color: 'bg-blue-500 text-white', icon: Hammer },
+    canal: { label: 'Canal (Endo)', color: 'bg-green-500 text-white', icon: Shield },
+    protese: { label: 'Prótese/Coroa', color: 'bg-yellow-500 text-white', icon: Box },
+    implant: { label: 'Implante', color: 'bg-purple-500 text-white', icon: PenTool },
+    missing: { label: 'Extraído/Ausente', color: 'bg-slate-600 text-white', icon: Ban },
+};
 
 const SmartRecordPage: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -26,6 +38,11 @@ const SmartRecordPage: React.FC = () => {
     assessment: '',
     plan: ''
   });
+
+  // Odontogram States
+  const [showOdontogram, setShowOdontogram] = useState(false);
+  const [toothConditions, setToothConditions] = useState<Record<string, ToothCondition[]>>({});
+  const [activeTooth, setActiveTooth] = useState<string | null>(null);
 
   const [isReviewed, setIsReviewed] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -66,7 +83,16 @@ const SmartRecordPage: React.FC = () => {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
 
-  // Re-verifica limites quando o dentista muda (para planos Starter/Pro que são por dentista)
+  // Quando o paciente mudar, carregar o último estado da boca
+  useEffect(() => {
+      if (selectedClientId) {
+          fetchLatestToothData(selectedClientId);
+      } else {
+          setToothConditions({});
+      }
+  }, [selectedClientId]);
+
+  // Re-verifica limites quando o dentista muda
   useEffect(() => {
       if (clinicId) {
           checkUsageLimits(clinicId, selectedDentistId);
@@ -88,6 +114,24 @@ const SmartRecordPage: React.FC = () => {
     if (profile) targetClinicId = profile.clinic_id;
     setClinicId(targetClinicId);
     await Promise.all([fetchAuxData(targetClinicId), checkUsageLimits(targetClinicId, selectedDentistId)]);
+  };
+
+  const fetchLatestToothData = async (clientId: string) => {
+      // Busca o último prontuário que tenha dados de dentes para inicializar o visual
+      const { data } = await supabase
+          .from('clinical_records')
+          .select('tooth_data')
+          .eq('client_id', clientId)
+          .not('tooth_data', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+      if (data && data.tooth_data) {
+          setToothConditions(data.tooth_data as Record<string, ToothCondition[]>);
+      } else {
+          setToothConditions({});
+      }
   };
 
   const checkUsageLimits = async (targetId: string, dentistId: string) => {
@@ -217,6 +261,7 @@ const SmartRecordPage: React.FC = () => {
               }
             });
             if (error) throw error;
+            
             if (data) {
                 setTranscription(data.transcription || '');
                 if (data.summary) {
@@ -227,11 +272,74 @@ const SmartRecordPage: React.FC = () => {
                         plan: data.summary.plan || ''
                     });
                 }
+                
+                // Atualizar Odontograma com dados da IA
+                if (data.procedures && Array.isArray(data.procedures) && data.procedures.length > 0) {
+                    const newConditions = { ...toothConditions };
+                    let proceduresFound = false;
+
+                    data.procedures.forEach((proc: any) => {
+                        if (proc.tooth && proc.condition) {
+                            proceduresFound = true;
+                            const toothId = proc.tooth;
+                            const condition = proc.condition as ToothCondition;
+                            
+                            // Lógica de merge simples: Adiciona se não existe.
+                            // Se for 'healthy', limpa.
+                            if (condition === 'healthy') {
+                                delete newConditions[toothId];
+                            } else {
+                                const current = newConditions[toothId] || [];
+                                if (!current.includes(condition)) {
+                                    newConditions[toothId] = [...current, condition].filter(c => c !== 'healthy');
+                                }
+                            }
+                        }
+                    });
+
+                    if (proceduresFound) {
+                        setToothConditions(newConditions);
+                        setShowOdontogram(true); // Abre o odontograma automaticamente se houver dados
+                        setToast({ message: "Odontograma atualizado pela IA!", type: 'success' });
+                    }
+                }
+
                 setIsReviewed(false);
             }
         } catch (innerErr: any) { setToast({ message: "Erro IA: " + innerErr.message, type: 'error' }); } finally { setProcessing(false); }
       };
     } catch (err: any) { setToast({ message: "Erro arquivo: " + err.message, type: 'error' }); setProcessing(false); }
+  };
+
+  // Funções do Odontograma Manual
+  const handleToothClick = (toothId: string) => {
+      setActiveTooth(toothId);
+  };
+
+  const handleSetCondition = (condition: ToothCondition) => {
+      if (!activeTooth) return;
+
+      setToothConditions((prev: Record<string, ToothCondition[]>) => {
+          const newState = { ...prev };
+          const currentConditions = newState[activeTooth] || [];
+
+          if (condition === 'healthy') {
+              delete newState[activeTooth];
+          } else {
+              if (currentConditions.includes(condition)) {
+                  const updated = currentConditions.filter(c => c !== condition);
+                  if (updated.length === 0) {
+                      delete newState[activeTooth];
+                  } else {
+                      newState[activeTooth] = updated;
+                  }
+              } else {
+                  const filtered = currentConditions.filter(c => c !== 'healthy');
+                  newState[activeTooth] = [...filtered, condition];
+              }
+          }
+          return newState;
+      });
   };
 
   // Abre o modal de confirmação
@@ -246,11 +354,25 @@ const SmartRecordPage: React.FC = () => {
      if (!clinicId) return;
      setSaving(true);
      
-     const fullDescription = `[Transcrição]\n${transcription}\n\n[SOAP]\nS: ${soapData.subjective}\nO: ${soapData.objective}\nA: ${soapData.assessment}\nP: ${soapData.plan}`;
+     let fullDescription = `[Transcrição]\n${transcription}\n\n[SOAP]\nS: ${soapData.subjective}\nO: ${soapData.objective}\nA: ${soapData.assessment}\nP: ${soapData.plan}`;
      
+     // Adiciona resumo textual do odontograma se houver alterações
+     if (Object.keys(toothConditions).length > 0) {
+         const odontogramText = Object.entries(toothConditions).map(([toothId, conditions]) => {
+             const labels = conditions.map(c => CONDITIONS_MAP[c]?.label || c).join(', ');
+             return `Dente #${toothId}: ${labels}`;
+         }).join('\n');
+         fullDescription += `\n\n[ODONTOGRAMA IA]\n${odontogramText}`;
+     }
+
      const { error } = await supabase.from('clinical_records').insert({
-         clinic_id: clinicId, client_id: selectedClientId, dentist_id: selectedDentistId,
-         date: new Date().toISOString().split('T')[0], description: fullDescription, created_at: new Date().toISOString()
+         clinic_id: clinicId, 
+         client_id: selectedClientId, 
+         dentist_id: selectedDentistId,
+         date: new Date().toISOString().split('T')[0], 
+         description: fullDescription, 
+         tooth_data: Object.keys(toothConditions).length > 0 ? toothConditions : null, // Salva o JSON estruturado
+         created_at: new Date().toISOString()
      });
      
      setSaving(false);
@@ -260,8 +382,15 @@ const SmartRecordPage: React.FC = () => {
          setToast({ message: "Erro ao salvar: " + error.message, type: 'error' });
      } else {
          setToast({ message: "Prontuário salvo com sucesso!", type: 'success' });
-         // Reset form
-         setAudioBlob(null); setTranscription(''); setSoapData({ subjective: '', objective: '', assessment: '', plan: '' }); setIsReviewed(false);
+         // Reset form but KEEP dental state (visual consistency) or reset? 
+         // Reset implies starting fresh for next patient or same patient new record.
+         // Let's reset audio/text but maybe keep selected patient.
+         setAudioBlob(null); 
+         setTranscription(''); 
+         setSoapData({ subjective: '', objective: '', assessment: '', plan: '' }); 
+         setIsReviewed(false);
+         // Reload latest tooth data just in case
+         fetchLatestToothData(selectedClientId);
          checkUsageLimits(clinicId, selectedDentistId);
      }
   };
@@ -316,6 +445,54 @@ const SmartRecordPage: React.FC = () => {
                 </select>
              </div>
          </div>
+
+         {/* Odontograma Toggle / Display */}
+         {selectedClientId && (
+             <div className="mb-6">
+                 <button 
+                    onClick={() => setShowOdontogram(!showOdontogram)}
+                    className={`w-full py-2 border border-white/10 rounded-lg flex items-center justify-center font-bold text-sm transition-colors ${showOdontogram ? 'bg-gray-800 text-blue-400 border-blue-500/30' : 'bg-gray-900/50 text-gray-400 hover:text-white hover:bg-gray-800'}`}
+                 >
+                     <PenTool size={16} className="mr-2"/> {showOdontogram ? 'Ocultar Odontograma' : 'Abrir Odontograma (Visual)'}
+                 </button>
+
+                 {showOdontogram && (
+                    <div className="mt-4 p-4 bg-gray-900 border border-white/10 rounded-xl relative animate-fade-in">
+                        <div className="mb-4">
+                            <DentalArch toothConditions={toothConditions} onToothClick={handleToothClick} />
+                        </div>
+                        
+                        {/* Selector Flutuante */}
+                        {activeTooth && (
+                            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-gray-800 border border-white/20 rounded-xl shadow-2xl p-4 z-20 w-72 animate-fade-in-down">
+                                <div className="flex justify-between items-center mb-3 border-b border-white/10 pb-2">
+                                    <h4 className="text-sm font-bold text-white">Dente #{activeTooth}</h4>
+                                    <button onClick={() => setActiveTooth(null)} className="text-gray-400 hover:text-white"><X size={16}/></button>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {Object.entries(CONDITIONS_MAP).map(([key, config]) => {
+                                        const isActive = toothConditions[activeTooth]?.includes(key as any);
+                                        return (
+                                            <button key={key} onClick={() => handleSetCondition(key as any)} className={`flex items-center gap-2 p-2 rounded text-xs font-bold transition ${isActive ? 'ring-2 ring-white ' + config.color : config.color.replace('text-white', 'text-white/80 bg-opacity-70')}`}><config.icon size={12} />{config.label.split('/')[0]}</button>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex flex-wrap gap-3 justify-center text-xs text-gray-400 mt-2">
+                            <p className="w-full text-center mb-1">Legenda:</p>
+                            {Object.entries(CONDITIONS_MAP).filter(([k]) => k !== 'healthy').map(([key, config]) => (
+                                <div key={key} className="flex items-center gap-1.5 bg-gray-800 px-2 py-1 rounded border border-white/5">
+                                    <div className={`w-3 h-3 rounded-full ${config.color.split(' ')[0]}`}></div>
+                                    <span className="uppercase font-bold">{config.label.split('/')[0]}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                 )}
+             </div>
+         )}
 
          <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-700 rounded-xl bg-gray-800/30 relative">
              {!isRecording && !audioBlob && !processing && (
@@ -427,6 +604,9 @@ const SmartRecordPage: React.FC = () => {
                     <p>
                         Basta clicar no microfone e <strong>ditar o que foi feito</strong>. A Inteligência Artificial irá transcrever sua fala e criar um resumo técnico organizado (SOAP) automaticamente.
                     </p>
+                    <p className="mt-3 text-blue-300 font-bold">
+                        Novidade: Se você falar "fiz uma restauração no dente 16", o Odontograma Visual será atualizado automaticamente!
+                    </p>
                 </div>
 
                 <div className="mb-6 flex items-center justify-center">
@@ -495,8 +675,8 @@ const SmartRecordPage: React.FC = () => {
                 <ol className="list-decimal pl-5 space-y-2">
                    <li><strong>Identificação:</strong> Selecione Paciente e Dentista.</li>
                    <li><strong>Gravação:</strong> Clique no microfone e dite as observações.</li>
-                   <li><strong>Processamento:</strong> Clique em "Parar & Processar". A IA gerará o SOAP.</li>
-                   <li><strong>Revisão:</strong> Edite se necessário e salve.</li>
+                   <li><strong>Processamento:</strong> Clique em "Parar & Processar". A IA gerará o SOAP e atualizará o odontograma se você mencionar dentes específicos (ex: "Cárie no 46").</li>
+                   <li><strong>Revisão:</strong> Edite o texto ou o odontograma se necessário e salve.</li>
                 </ol>
              </div>
           </div>
