@@ -282,7 +282,14 @@ const DentistsPage: React.FC = () => {
         if (error) throw error;
         setToast({ message: "Dentista excluído.", type: 'success' });
         if (clinicId) fetchDentists(clinicId);
-    } catch (error: any) { setToast({ message: "Erro ao excluir: " + error.message, type: 'error' }); } 
+    } catch (error: any) { 
+        console.error(error);
+        if (error.message?.includes('foreign key constraint') || error.code === '23503') {
+            setToast({ message: "Não foi possível excluir: Este dentista possui prontuários ou agendamentos vinculados.", type: 'error' });
+        } else {
+            setToast({ message: "Erro ao excluir: " + error.message, type: 'error' }); 
+        }
+    } 
     finally { setProcessing(false); setDeleteId(null); }
   };
 
@@ -553,7 +560,7 @@ const DentistsPage: React.FC = () => {
              </div>
              <h3 className="text-lg font-bold text-gray-900 mb-2">Excluir Dentista?</h3>
              <p className="text-gray-600 mb-6 text-sm">
-               Tem certeza que deseja remover este profissional? Agendamentos futuros podem ser afetados.
+               Tem certeza que deseja remover este profissional?
              </p>
              <div className="flex space-x-3 w-full">
                 <button 

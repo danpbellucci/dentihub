@@ -58,7 +58,8 @@ Deno.serve(async (req) => {
         supabase.from('clients').select('*', { count: 'exact', head: true }).gte('created_at', startOfDay).lte('created_at', endOfDay),
         supabase.from('user_profiles').select('*', { count: 'exact', head: true }).eq('role', 'dentist').gte('created_at', startOfDay).lte('created_at', endOfDay),
         supabase.from('appointments').select('*', { count: 'exact', head: true }).gte('created_at', startOfDay).lte('created_at', endOfDay),
-        supabase.from('clinical_records').select('*', { count: 'exact', head: true }).gte('created_at', startOfDay).lte('created_at', endOfDay),
+        // CORREÇÃO: Conta logs de execução da função 'process-audio' com sucesso, em vez de todos os registros clínicos
+        supabase.from('edge_function_logs').select('*', { count: 'exact', head: true }).eq('function_name', 'process-audio').eq('status', 'success').gte('created_at', startOfDay).lte('created_at', endOfDay),
         supabase.from('communications').select('*', { count: 'exact', head: true }).eq('status', 'sent').gte('sent_at', startOfDay).lte('sent_at', endOfDay),
         supabase.from('transactions').select('amount').eq('type', 'income').gte('created_at', startOfDay).lte('created_at', endOfDay)
     ]);

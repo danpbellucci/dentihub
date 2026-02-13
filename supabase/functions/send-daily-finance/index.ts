@@ -102,17 +102,13 @@ Deno.serve(async (req) => {
             .gte('date', startISO)
             .lte('date', endISO);
 
-        // Se não houver nada, pula
-        if ((!appointments || appointments.length === 0) && (!expenses || expenses.length === 0)) {
-            continue;
-        }
-
         // 3. Unificar e Agrupar Dados
         const items = [];
 
         // Processar Receitas
         if (appointments) {
             appointments.forEach(appt => {
+                // Filtra apenas agendamentos com valor financeiro > 0
                 if (Number(appt.amount) > 0) {
                     items.push({
                         date: new Date(appt.start_time),
@@ -134,6 +130,11 @@ Deno.serve(async (req) => {
                     type: 'expense'
                 });
             });
+        }
+
+        // CHECK CRÍTICO: Se após o processamento não houver itens (ex: só tinha agendamentos valor 0), não envia.
+        if (items.length === 0) {
+            continue;
         }
 
         // Ordenar por data

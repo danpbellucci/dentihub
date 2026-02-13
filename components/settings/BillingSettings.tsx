@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../services/supabase';
 import { useDashboard } from '../DashboardLayout';
 import { SubscriptionPlan } from '../../types';
-import { CreditCard, Check, Zap, ExternalLink, Loader2, Crown, Clock, RefreshCw, CheckCircle } from 'lucide-react';
+import { CreditCard, Check, Zap, ExternalLink, Loader2, Crown, Clock, RefreshCw, CheckCircle, ShieldCheck } from 'lucide-react';
 import { format, parseISO, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Toast, { ToastType } from '../Toast';
@@ -85,8 +86,9 @@ const BillingSettings: React.FC = () => {
           if (refreshProfile) await refreshProfile();
           await fetchData();
           
+          const tierDisplay = data?.tier ? data.tier.toUpperCase() : (userProfile?.clinics?.subscription_tier?.toUpperCase() || 'FREE');
           setToast({ 
-              message: `Sincronizado! Plano atual: ${data?.tier?.toUpperCase() || 'Desconhecido'}`, 
+              message: `Sincronizado! Plano atual: ${tierDisplay}`, 
               type: 'success' 
           });
       } catch (err: any) {
@@ -103,7 +105,6 @@ const BillingSettings: React.FC = () => {
           if (!session) throw new Error("Sessão inválida.");
 
           // If plan is enterprise, redirect to contact or specific flow
-          // Note: Full enterprise checkout implementation would likely pass the custom limits/prices to the checkout function
           if (plan.is_enterprise) {
               window.open('https://wa.me/5511999999999?text=Tenho interesse no plano Enterprise do DentiHub', '_blank');
               setProcessing(null);
@@ -155,14 +156,17 @@ const BillingSettings: React.FC = () => {
 
   const currentTier = userProfile?.clinics?.subscription_tier || 'free';
   
+  // Logic to determine if user has a paid/active status
   const isStripeActive = subscription?.hasSubscription && ['active', 'trialing'].includes(subscription?.status);
   const isDbPaidTier = ['starter', 'pro', 'enterprise'].includes(currentTier);
   const showActiveCard = isStripeActive || isDbPaidTier;
 
   const currentPlanFromDb = plans.find(p => p.slug === currentTier);
 
+  // Fallback for display name if it's a custom Enterprise plan not in the standard list
+  // Se o backend detectou Enterprise (via fallback), mas não achou o plano no DB, usamos o nome do produto do Stripe ou "Enterprise (Custom)"
   const displayData = {
-      name: subscription?.product_name || currentPlanFromDb?.name || (currentTier.charAt(0).toUpperCase() + currentTier.slice(1)),
+      name: subscription?.product_name || currentPlanFromDb?.name || (currentTier === 'enterprise' ? 'Enterprise (Custom)' : currentTier.charAt(0).toUpperCase() + currentTier.slice(1)),
       status: subscription?.status || 'active',
       cancel_at_period_end: subscription?.cancel_at_period_end || false,
       amount: subscription?.amount || currentPlanFromDb?.price_monthly || 0,
@@ -179,11 +183,13 @@ const BillingSettings: React.FC = () => {
     <div className="space-y-8 animate-fade-in">
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-        {/* Current Subscription Status - ALTURA REDUZIDA */}
-        <div className="bg-gray-900/60 backdrop-blur-md rounded-xl border border-white/10 overflow-hidden">
+        {/* Current Subscription Status */}
+        <div className={`rounded-xl border overflow-hidden ${currentTier === 'enterprise' ? 'bg-gradient-to-r from-purple-900/40 to-blue-900/40 border-purple-500/30' : 'bg-gray-900/60 backdrop-blur-md border-white/10'}`}>
             <div className="px-6 py-4 border-b border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-900/20 rounded-lg text-primary"><CreditCard size={20}/></div>
+                    <div className={`p-2 rounded-lg ${currentTier === 'enterprise' ? 'bg-purple-500/20 text-purple-400' : 'bg-blue-900/20 text-primary'}`}>
+                        {currentTier === 'enterprise' ? <Crown size={20}/> : <CreditCard size={20}/>}
+                    </div>
                     <div>
                         <h2 className="text-lg font-bold text-white leading-tight">Assinatura Atual</h2>
                         <p className="text-xs text-gray-400">Gerencie seu plano e pagamentos.</p>
@@ -229,7 +235,7 @@ const BillingSettings: React.FC = () => {
                             </div>
                         </div>
                         <div className="hidden sm:block">
-                            <Zap size={24} className="text-blue-400 fill-current opacity-20"/>
+                            {currentTier === 'enterprise' ? <Crown size={32} className="text-purple-500 opacity-20"/> : <Zap size={24} className="text-blue-400 fill-current opacity-20"/>}
                         </div>
                     </div>
                 ) : (
@@ -258,7 +264,7 @@ const BillingSettings: React.FC = () => {
                         const aiBlockSize = plan.ai_block_size || 5;
 
                         return (
-                            <div key={plan.id} className="border border-purple-500/30 bg-gradient-to-b from-purple-900/20 to-gray-900 rounded-xl p-6 flex flex-col relative overflow-hidden ring-1 ring-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.15)] transition-all">
+                            <div key={plan.id} className={`border border-purple-500/30 bg-gradient-to-b from-purple-900/20 to-gray-900 rounded-xl p-6 flex flex-col relative overflow-hidden ring-1 ring-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.15)] transition-all ${isCurrent ? 'ring-2 ring-purple-500' : ''}`}>
                                 {isCurrent && <div className="absolute top-0 left-0 w-full bg-purple-600 text-white text-[10px] font-bold text-center py-1">SEU PLANO ATUAL</div>}
                                 <div className="absolute top-0 right-0 p-3"><Crown size={20} className="text-purple-400"/></div>
                                 <h4 className="font-bold text-purple-400 text-lg flex items-center gap-2 mt-2">{plan.name}</h4>
@@ -273,7 +279,7 @@ const BillingSettings: React.FC = () => {
                                             onChange={(e) => setEntDentists(parseInt(e.target.value))}
                                             className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
                                         />
-                                        <div className="text-right text-xs text-purple-300 font-bold mt-1">R$ {entDentists * priceDentist},00</div>
+                                        <div className="text-right text-xs text-purple-300 font-bold">R$ {entDentists * priceDentist},00</div>
                                     </div>
                                     
                                     <div>

@@ -52,23 +52,36 @@ Deno.serve(async (req) => {
 
   try {
     // FUNÇÃO AUXILIAR PARA DETERMINAR O PLANO (TIER) A PARTIR DO PRICE ID
-    const getTierFromPriceId = async (priceId: string): Promise<string> => {
+    const getTierFromPriceId = async (priceId: string, subscription?: any): Promise<string> => {
         const { data, error } = await supabase
             .from('subscription_plans')
             .select('slug')
             .or(`stripe_price_id.eq.${priceId},stripe_dentist_price_id.eq.${priceId},stripe_ai_price_id.eq.${priceId}`)
             .maybeSingle();
         
-        if (error) {
-            console.error("Erro ao buscar plano no DB:", error);
-            return 'free';
+        if (data) return data.slug;
+
+        // --- FALLBACK PARA PLANOS CUSTOMIZADOS (NÃO MAPEADOS NO DB) ---
+        // Se o banco não achou, mas temos a assinatura, tentamos inferir
+        if (subscription) {
+            // 1. Metadados explícitos
+            if (subscription.metadata?.isEnterprise === 'true' || subscription.metadata?.customDentistLimit) {
+                return 'enterprise';
+            }
+            // 2. Valor > 0 (Qualquer plano pago não mapeado vira Enterprise por segurança)
+            // (Para evitar travar o cliente em Free se ele pagou)
+            const amount = subscription.items?.data?.[0]?.price?.unit_amount || 0;
+            if (amount > 0) {
+                return 'enterprise'; 
+            }
         }
         
-        return data ? data.slug : 'free';
+        return 'free';
     };
 
-    const updateUserTier = async (userId: string | undefined, customerId: string, subscriptionId: string, priceId: string, stripeCustomerEmail?: string, customLimits?: any) => {
-        const tier = await getTierFromPriceId(priceId);
+    const updateUserTier = async (userId: string | undefined, customerId: string, subscriptionId: string, priceId: string, stripeCustomerEmail?: string, customLimits?: any, subscriptionObj?: any) => {
+        // Passa o objeto subscription completo para o fallback logic
+        const tier = await getTierFromPriceId(priceId, subscriptionObj);
         
         console.log(`Processando atualização: Customer ${customerId} -> Plano ${tier} (Price: ${priceId})`);
 
@@ -85,10 +98,14 @@ Deno.serve(async (req) => {
         }
 
         if (userId) {
-            // Busca dados atuais da clínica para garantir que temos o e-mail correto para notificação
-            const { data: currentClinic } = await supabase.from('clinics').select('subscription_tier, email').eq('id', userId).single();
+            // Verifica se tem TRAVA MANUAL (Override) antes de alterar via Webhook
+            const { data: currentClinic } = await supabase.from('clinics').select('subscription_tier, email, is_manual_override').eq('id', userId).single();
             
-            // Prioriza o e-mail do banco de dados, fallback para o do Stripe
+            if (currentClinic?.is_manual_override) {
+                console.log(`🔒 Usuário ${userId} possui TRAVA MANUAL. Ignorando atualização automática do Webhook.`);
+                return;
+            }
+
             const targetEmail = currentClinic?.email || stripeCustomerEmail;
 
             const updatePayload: any = {
@@ -113,16 +130,14 @@ Deno.serve(async (req) => {
             }
             console.log(`✅ Sucesso! Usuário ${userId} atualizado para ${tier}.`);
 
-            // ENVIO DE E-MAIL CONFIRMAÇÃO
-            if (tier !== 'free') {
+            // ENVIO DE E-MAIL CONFIRMAÇÃO (Apenas se mudou de Free para Pago)
+            if (tier !== 'free' && currentClinic?.subscription_tier === 'free') {
                 if (targetEmail) {
                     const { data: planData } = await supabase.from('subscription_plans').select('name').eq('slug', tier).maybeSingle();
                     const planDisplay = planData?.name || tier.charAt(0).toUpperCase() + tier.slice(1);
                     
-                    console.log(`📧 Enviando e-mail de boas-vindas ao plano ${planDisplay} para ${targetEmail}`);
-
                     try {
-                        const emailRes = await fetch(`${supabaseUrl}/functions/v1/send-emails`, {
+                        await fetch(`${supabaseUrl}/functions/v1/send-emails`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -134,18 +149,9 @@ Deno.serve(async (req) => {
                                 planName: planDisplay
                             })
                         });
-                        
-                        if (!emailRes.ok) {
-                            const errText = await emailRes.text();
-                            console.error("❌ Falha na Edge Function de Email:", errText);
-                        } else {
-                            console.log("✅ Email enviado.");
-                        }
                     } catch (emailErr) {
                         console.error("❌ Exceção ao enviar e-mail de plano:", emailErr);
                     }
-                } else {
-                    console.warn("⚠️ Não foi possível enviar e-mail: Nenhum e-mail encontrado para a clínica.");
                 }
             }
 
@@ -169,7 +175,7 @@ Deno.serve(async (req) => {
             };
             const priceId = subscription.items.data[0].price.id;
 
-            await updateUserTier(userId, customerId, subscriptionId, priceId, customerEmail, customLimits);
+            await updateUserTier(userId, customerId, subscriptionId, priceId, customerEmail, customLimits, subscription);
         }
     }
     else if (event.type === 'checkout.session.completed') {
@@ -186,15 +192,15 @@ Deno.serve(async (req) => {
       };
       const priceId = subscription.items.data[0].price.id;
 
-      await updateUserTier(userId, customerId, subscriptionId, priceId, customerEmail, customLimits);
+      await updateUserTier(userId, customerId, subscriptionId, priceId, customerEmail, customLimits, subscription);
     }
     else if (event.type === 'customer.subscription.deleted') {
       const subscription = event.data.object;
       const customerId = subscription.customer as string;
       
-      const { data: user } = await supabase.from('clinics').select('id').eq('stripe_customer_id', customerId).maybeSingle();
+      const { data: user } = await supabase.from('clinics').select('id, is_manual_override').eq('stripe_customer_id', customerId).maybeSingle();
       
-      if (user) {
+      if (user && !user.is_manual_override) {
           await supabase.from('clinics')
             .update({ 
                 subscription_tier: 'free',
@@ -203,6 +209,8 @@ Deno.serve(async (req) => {
             })
             .eq('id', user.id);
           console.log(`✅ Usuário ${user.id} revertido para FREE.`);
+      } else if (user?.is_manual_override) {
+          console.log(`🔒 Usuário ${user.id} tem override manual. Ignorando cancelamento do Stripe.`);
       }
     }
     else if (event.type === 'customer.subscription.updated') {
@@ -222,7 +230,7 @@ Deno.serve(async (req) => {
                 if (!customer.deleted) customerEmail = customer.email || undefined;
             } catch (e) {}
 
-            await updateUserTier(userId, customerId, subscription.id, priceId, customerEmail, customLimits);
+            await updateUserTier(userId, customerId, subscription.id, priceId, customerEmail, customLimits, subscription);
         }
     }
 

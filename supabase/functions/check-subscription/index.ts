@@ -110,7 +110,8 @@ Deno.serve(async (req) => {
       customer: customerId,
       status: "active",
       limit: 1,
-      expand: ['data.items.data.price']
+      // IMPORTANTE: Expandir produto para ler o nome caso o ID não bata
+      expand: ['data.items.data.price.product']
     });
 
     if (subscriptions.data.length === 0) {
@@ -119,7 +120,7 @@ Deno.serve(async (req) => {
             customer: customerId,
             status: "trialing",
             limit: 1,
-            expand: ['data.items.data.price']
+            expand: ['data.items.data.price.product']
         });
 
         if (trials.data.length === 0) {
@@ -137,13 +138,15 @@ Deno.serve(async (req) => {
 
     const subscription = subscriptions.data[0];
     
-    // 4. Detecção de Plano Robusta (Multi-item Enterprise support)
-    // Coleta todos os Price IDs e Product IDs da assinatura
-    const priceIds = subscription.items.data.map((item: any) => item.price.id);
-    const productIds = subscription.items.data.map((item: any) => item.price.product as string);
+    // 4. Detecção de Plano (Estratégia Híbrida)
+    let detectedTier = 'free';
     
-    // Busca no banco qual plano corresponde a ALGUM desses IDs
-    // Enterprise terá múltiplos itens, mas se um deles bater com os IDs cadastrados, encontramos o plano.
+    // A. Tenta casar IDs com o banco de dados (Método Seguro)
+    const priceIds = subscription.items.data.map((item: any) => item.price.id);
+    const productIds = subscription.items.data
+        .map((item: any) => (typeof item.price.product === 'object' ? item.price.product.id : item.price.product))
+        .filter(Boolean);
+    
     const { data: matchedPlan } = await supabaseAdmin
         .from('subscription_plans')
         .select('slug')
@@ -151,7 +154,45 @@ Deno.serve(async (req) => {
         .limit(1)
         .maybeSingle();
 
-    const detectedTier = matchedPlan ? matchedPlan.slug : 'free';
+    if (matchedPlan) {
+        detectedTier = matchedPlan.slug;
+    } 
+    else {
+        // B. Fallback: Verifica Metadados ou Nome do Produto (Para planos customizados/Legacy)
+        console.log(`[Check-Sub] ID não encontrado no banco. Tentando fallback por nome/meta...`);
+        
+        // Verificação 1: Metadados da Assinatura
+        if (subscription.metadata?.isEnterprise === 'true' || subscription.metadata?.customDentistLimit) {
+            detectedTier = 'enterprise';
+        }
+        // Verificação 2: Nome do Produto (Case Insensitive)
+        else {
+            const hasEnterpriseName = subscription.items.data.some((i: any) => {
+                const prodName = typeof i.price.product === 'object' ? i.price.product.name : '';
+                return prodName && prodName.toLowerCase().includes('enterprise');
+            });
+
+            const hasProName = subscription.items.data.some((i: any) => {
+                const prodName = typeof i.price.product === 'object' ? i.price.product.name : '';
+                return prodName && prodName.toLowerCase().includes('pro') && !prodName.toLowerCase().includes('product');
+            });
+
+            const hasStarterName = subscription.items.data.some((i: any) => {
+                const prodName = typeof i.price.product === 'object' ? i.price.product.name : '';
+                return prodName && prodName.toLowerCase().includes('starter');
+            });
+
+            if (hasEnterpriseName) detectedTier = 'enterprise';
+            else if (hasProName) detectedTier = 'pro';
+            else if (hasStarterName) detectedTier = 'starter';
+            
+            // Verificação 3: Se tem valor monetário > 0 e não identificou nada, assume Enterprise por segurança
+            else if (subscription.items.data.some((i: any) => (i.price.unit_amount || 0) > 0)) {
+                 console.log("[Check-Sub] Assinatura paga detectada sem match. Forçando Enterprise.");
+                 detectedTier = 'enterprise'; 
+            }
+        }
+    }
 
     // 5. Atualiza o banco se houver discrepância
     if (clinicData?.subscription_tier !== detectedTier) {
