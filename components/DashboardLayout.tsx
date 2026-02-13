@@ -24,12 +24,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Info,
-  CheckCircle,
-  Megaphone,
-  Bug,
-  Database,
-  CreditCard,
-  RefreshCw
+  CheckCircle
 } from 'lucide-react';
 import { UserProfile } from '../types';
 
@@ -54,11 +49,6 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
   const [loadingPermissions, setLoadingPermissions] = useState(true);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [announcement, setAnnouncement] = useState<any>(null);
-
-  // DEBUG MODAL STATE
-  const [debugData, setDebugData] = useState<any>(null);
-  const [showDebug, setShowDebug] = useState(false);
-  const [loadingDebug, setLoadingDebug] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -118,26 +108,33 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
       if (userProfile?.clinic_id) fetchCount(userProfile.clinic_id);
   };
 
-  const runDiagnostics = async () => {
-      setLoadingDebug(true);
-      try {
-          console.log("Iniciando diagnóstico...");
-          const { data, error } = await supabase.functions.invoke('check-subscription');
-          console.log("Resposta diagnóstico:", data, error);
-          
-          if (data && data.debug) {
-              setDebugData(data.debug);
-              setShowDebug(true);
-          } else {
-              alert("A função rodou mas não retornou dados de debug. Verifique o console.");
+  // CHECK DE ASSINATURA AUTOMÁTICO AO MONTAR
+  // Executa silenciosamente a Edge Function 'check-subscription'
+  useEffect(() => {
+      const syncSubscription = async () => {
+          try {
+              // Chama a função de diagnóstico/correção no backend
+              const { data } = await supabase.functions.invoke('check-subscription');
+              
+              // Se o backend informar que atualizou o banco (updated: true) 
+              // ou se o plano retornado for diferente do que temos em cache
+              if (data && data.updated === true) {
+                  console.log(`[AutoSync] Plano sincronizado com Stripe: ${data.tier}. Atualizando perfil...`);
+                  await refreshProfile();
+              }
+          } catch (e) {
+              // Falha silenciosa, não interrompe o uso do app
+              console.warn("Auto-sync de assinatura falhou (network/server error):", e);
           }
-      } catch (e: any) {
-          console.error("Erro diagnóstico:", e);
-          alert("Erro ao rodar diagnóstico: " + e.message);
-      } finally {
-          setLoadingDebug(false);
-      }
-  };
+      };
+      
+      // Pequeno delay para priorizar o carregamento visual inicial
+      const timer = setTimeout(() => {
+          syncSubscription();
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -147,9 +144,6 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
         const { data: { user } } = await supabase.auth.getUser();
         if (!mounted) return;
         if (!user) { navigate('/auth'); return; }
-
-        // Tenta rodar automaticamente na montagem
-        runDiagnostics();
 
         const { data: superAdminStatus } = await supabase.rpc('is_super_admin');
         if (mounted) setIsSuperAdmin(!!superAdminStatus);
@@ -307,97 +301,6 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
     <DashboardContext.Provider value={{ userProfile, refreshProfile, refreshNotifications }}>
         <div className="flex h-screen h-[100dvh] bg-gray-950 text-gray-100 overflow-hidden font-sans">
         
-        {/* DIAGNOSTIC MODAL */}
-        {showDebug && debugData && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-lg animate-fade-in">
-                <div className="bg-gray-900 w-full max-w-5xl h-[90vh] rounded-2xl border border-yellow-500/30 shadow-2xl flex flex-col overflow-hidden">
-                    <div className="p-4 border-b border-white/10 bg-yellow-900/10 flex justify-between items-center">
-                        <h2 className="text-xl font-bold text-yellow-400 flex items-center gap-2">
-                            <Bug size={24}/> Diagnóstico de Assinatura
-                        </h2>
-                        <button onClick={() => setShowDebug(false)} className="text-gray-400 hover:text-white"><X size={24}/></button>
-                    </div>
-                    <div className="flex-1 overflow-auto p-6 grid grid-cols-2 gap-6">
-                        
-                        {/* COLUNA 1: DADOS NO BANCO */}
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2 flex items-center gap-2">
-                                <Database size={18} className="text-blue-400"/> Dados no Banco (Supabase)
-                            </h3>
-                            {debugData.database_record ? (
-                                <div className="bg-blue-900/20 p-4 rounded-lg border border-blue-500/30 font-mono text-xs text-blue-200 space-y-2">
-                                    <div className="flex justify-between border-b border-white/10 pb-1">
-                                        <span className="text-gray-400">Customer ID:</span>
-                                        <span className="font-bold text-white">{debugData.database_record.stripe_customer_id}</span>
-                                    </div>
-                                    <div className="flex justify-between border-b border-white/10 pb-1">
-                                        <span className="text-gray-400">Subscription ID:</span>
-                                        <span className="font-bold text-white">{debugData.database_record.stripe_subscription_id}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-400">Plano Atual (Tier):</span>
-                                        <span className="font-bold text-green-400 uppercase">{debugData.database_record.current_tier}</span>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="text-red-400">Registro da clínica não encontrado no banco.</div>
-                            )}
-                        </div>
-
-                        {/* COLUNA 2: DADOS NO STRIPE */}
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2 flex items-center gap-2">
-                                <CreditCard size={18} className="text-green-400"/> Dados no Stripe (Ao Vivo)
-                            </h3>
-                            
-                            {debugData.stripe_check ? (
-                                debugData.stripe_check.error ? (
-                                    <div className="bg-red-900/20 p-4 rounded border border-red-500/30 text-red-300 text-xs">
-                                        Erro ao consultar Stripe: {debugData.stripe_check.error}
-                                    </div>
-                                ) : (
-                                    <div className="space-y-2">
-                                        <div className="text-xs text-gray-400 mb-2">
-                                            Consultando pelo Customer ID: <span className="text-white font-mono">{debugData.stripe_check.customer_id_used}</span>
-                                        </div>
-                                        
-                                        {debugData.stripe_check.subscriptions_found?.length > 0 ? (
-                                            debugData.stripe_check.subscriptions_found.map((sub: any, i: number) => (
-                                                <div key={i} className={`p-3 rounded border text-xs font-mono ${sub.status === 'active' || sub.status === 'trialing' ? 'bg-green-900/20 border-green-500/30 text-green-300' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>
-                                                    <div>ID: {sub.id}</div>
-                                                    <div>Status: <span className="uppercase font-bold">{sub.status}</span></div>
-                                                    <div>Produto: {sub.product_name}</div>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <div className="text-yellow-400 text-sm bg-yellow-900/20 p-3 rounded border border-yellow-500/30">
-                                                Nenhuma assinatura encontrada para este Customer ID.
-                                            </div>
-                                        )}
-                                        
-                                        <div className="mt-4 pt-2 border-t border-white/10">
-                                            <span className="text-xs text-gray-400 block mb-1">Ação do Sistema:</span>
-                                            <span className="text-xs font-bold bg-gray-700 px-2 py-1 rounded text-white">{debugData.action_taken || 'Nenhuma'}</span>
-                                        </div>
-                                    </div>
-                                )
-                            ) : (
-                                <div className="text-gray-500 italic">Aguardando consulta...</div>
-                            )}
-                        </div>
-                    </div>
-                    <div className="p-4 bg-gray-800 border-t border-white/10 text-center flex justify-center gap-4">
-                        <button onClick={runDiagnostics} disabled={loadingDebug} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 flex items-center gap-2">
-                            {loadingDebug ? <Bug className="animate-spin" size={16}/> : <RefreshCw size={16}/>} Rodar Novamente
-                        </button>
-                        <button onClick={() => setShowDebug(false)} className="bg-white text-gray-900 px-6 py-2 rounded-lg font-bold hover:bg-gray-200">
-                            Fechar
-                        </button>
-                    </div>
-                </div>
-            </div>
-        )}
-
         {/* Otimização Mobile: Efeitos ocultos (hidden md:block) */}
         <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 hidden md:block">
             <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/10 rounded-full blur-[120px]"></div>
@@ -462,7 +365,7 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
                                 userProfile?.role}
                             </span>
                             {userProfile?.clinics?.subscription_tier && (
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full inline-block uppercase font-bold border ${userProfile.clinics.subscription_tier === 'pro' ? 'bg-gradient-to-r from-yellow-600/20 to-yellow-800/20 text-yellow-200 border-yellow-500/30' : userProfile.clinics.subscription_tier === 'starter' ? 'bg-blue-900/30 text-blue-300 border-blue-500/20' : 'bg-gray-800 text-gray-400 border-gray-700'}`}>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full inline-block uppercase font-bold border ${userProfile.clinics.subscription_tier === 'pro' ? 'bg-gradient-to-r from-yellow-600/20 to-yellow-800/20 text-yellow-200 border-yellow-500/30' : userProfile.clinics.subscription_tier === 'starter' ? 'bg-blue-900/30 text-blue-300 border-blue-500/20' : userProfile.clinics.subscription_tier === 'enterprise' ? 'bg-purple-900/30 text-purple-300 border-purple-500/20' : 'bg-gray-800 text-gray-400 border-gray-700'}`}>
                                 {userProfile.clinics.subscription_tier}
                             </span>
                             )}
@@ -538,16 +441,6 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
                         <Logo className="w-6 h-6" /> 
                         <span>Denti<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Hub</span></span>
                     </span>
-                    {/* Botão de Debug Manual no Header (Desktop & Mobile) */}
-                    <button 
-                        onClick={runDiagnostics} 
-                        disabled={loadingDebug}
-                        className="ml-4 flex items-center gap-1 bg-red-900/30 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-900/50 transition"
-                    >
-                        <Bug size={14} className={loadingDebug ? "animate-spin" : ""} />
-                        <span className="hidden sm:inline">Diagnóstico</span>
-                        <span className="sm:hidden">Debug</span>
-                    </button>
                 </div>
                 <button onClick={() => setSidebarOpen(true)} className="md:hidden text-gray-400 hover:text-white">
                     <Menu size={24} />

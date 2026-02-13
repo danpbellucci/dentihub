@@ -9,19 +9,19 @@ declare const Deno: {
   serve(handler: (req: Request) => Promise<Response>): void;
 };
 
-Deno.serve(async (req) => {
-  const origin = req.headers.get('origin') ?? '';
-  const allowedOrigins = [
-    'http://localhost:5173', 
-    'https://dentihub.com.br', 
-    'https://www.dentihub.com.br',
-    'https://app.dentihub.com.br',
-    'https://aistudio.google.com'
-  ];
-  const corsOrigin = allowedOrigins.includes(origin) ? origin : 'https://dentihub.com.br';
+// Helper para hierarquia de planos
+const getTierWeight = (tier: string) => {
+    switch (tier) {
+        case 'enterprise': return 3;
+        case 'pro': return 2;
+        case 'starter': return 1;
+        default: return 0;
+    }
+};
 
+Deno.serve(async (req) => {
   const corsHeaders = {
-    "Access-Control-Allow-Origin": corsOrigin,
+    "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   };
 
@@ -33,154 +33,260 @@ Deno.serve(async (req) => {
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
 
     if (!stripeKey || !supabaseUrl || !supabaseServiceKey) {
-        throw new Error("Configuração de servidor incompleta (Chaves ausentes).");
+        throw new Error("Configuração de servidor incompleta.");
     }
 
-    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey ?? "", {
-        global: { headers: { Authorization: req.headers.get("Authorization")! } }
-    });
+    // Cliente Admin para ignorar RLS e buscar dados globais da clínica
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    // 1. Identificar o usuário logado
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("Token ausente");
+    
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(authHeader.replace("Bearer ", ""));
     if (userError || !user || !user.email) {
         throw new Error("Usuário não autenticado.");
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // 1. BUSCA DADOS DIRETAMENTE DA TABELA CLINICS
-    const { data: clinicData, error: dbError } = await supabaseAdmin
-        .from('clinics')
-        .select('subscription_tier, stripe_customer_id, stripe_subscription_id, is_manual_override')
+    // 2. Descobrir a Clínica e o Admin mais antigo (Billing Email)
+    // Busca o perfil do usuário para saber a clínica
+    const { data: userProfile } = await supabaseAdmin
+        .from('user_profiles')
+        .select('clinic_id')
         .eq('id', user.id)
         .single();
 
-    // Objeto Debug Estruturado
-    let debugInfo: any = {
-        userId: user.id,
-        userEmail: user.email,
-        database_record: {
-            found: !!clinicData,
-            stripe_customer_id: clinicData?.stripe_customer_id || 'NULL',
-            stripe_subscription_id: clinicData?.stripe_subscription_id || 'NULL',
-            current_tier: clinicData?.subscription_tier || 'N/A',
-            error: dbError?.message || null
-        },
-        stripe_check: null,
-        action_taken: 'none'
-    };
+    if (!userProfile?.clinic_id) {
+        throw new Error("Usuário não vinculado a uma clínica.");
+    }
+
+    const clinicId = userProfile.clinic_id;
+
+    // Busca o e-mail do administrador mais antigo dessa clínica (Billing Contact)
+    const { data: billingAdmin } = await supabaseAdmin
+        .from('user_profiles')
+        .select('email')
+        .eq('clinic_id', clinicId)
+        .eq('role', 'administrator')
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .single();
+
+    const targetEmail = billingAdmin?.email || user.email; // Fallback para o usuário atual se falhar
+
+    // Busca dados atuais da clínica para comparação
+    const { data: clinicData } = await supabaseAdmin
+        .from('clinics')
+        .select('subscription_tier, stripe_customer_id, stripe_subscription_id, is_manual_override')
+        .eq('id', clinicId)
+        .single();
 
     const stripe = new Stripe(stripeKey, { 
       apiVersion: "2022-11-15",
       httpClient: Stripe.createFetchHttpClient(),
     });
 
-    let activeSubscription = null;
-    let foundStripeSubscriptions: any[] = [];
+    // FIX: Estrutura inicial do debug
+    let debugInfo: any = {
+        targetEmail,
+        clinicId,
+        database_record: {
+            found: !!clinicData,
+            stripe_customer_id: clinicData?.stripe_customer_id || 'NULL',
+            stripe_subscription_id: clinicData?.stripe_subscription_id || 'NULL',
+            current_tier: clinicData?.subscription_tier || 'N/A'
+        },
+        stripe_customers_found: 0,
+        subscriptions_found: [],
+        winner_tier: 'free',
+        product_lookups: 0
+    };
 
-    // 2. SE TIVER CUSTOMER ID NO BANCO, CONSULTA O STRIPE USANDO ELE
-    if (clinicData?.stripe_customer_id) {
-        try {
-            const subs = await stripe.subscriptions.list({
-                customer: clinicData.stripe_customer_id,
-                status: 'all', // Pega tudo para diagnosticar (active, trialing, canceled, past_due)
-                expand: ['data.items.data.price.product'],
-                limit: 3
-            });
+    // 3. Buscar Customers no Stripe pelo E-mail
+    const customers = await stripe.customers.list({ 
+        email: targetEmail, 
+        limit: 10 
+    });
 
-            foundStripeSubscriptions = subs.data.map((s: any) => ({
-                id: s.id,
-                status: s.status,
-                product_name: s.items?.data?.[0]?.price?.product?.name || 'Unknown'
-            }));
+    debugInfo.stripe_customers_found = customers.data.length;
 
-            // Tenta encontrar uma ativa ou em trial
-            activeSubscription = subs.data.find((s: any) => s.status === 'active' || s.status === 'trialing');
+    let allSubscriptions: any[] = [];
 
-            debugInfo.stripe_check = {
-                queried_by: 'database_customer_id',
-                customer_id_used: clinicData.stripe_customer_id,
-                subscriptions_found: foundStripeSubscriptions,
-                active_subscription_id: activeSubscription?.id || 'NONE'
-            };
+    // Varre todos os customers encontrados para esse email
+    for (const customer of customers.data) {
+        // Reduzida a profundidade de expansão para evitar erro (max 4 levels)
+        const subs = await stripe.subscriptions.list({
+            customer: customer.id,
+            status: 'active', // Apenas ativas ou trialing
+            expand: ['data.items.data.price'],
+            limit: 100
+        });
+        
+        const allSubs = await stripe.subscriptions.list({
+            customer: customer.id,
+            status: 'all',
+            expand: ['data.items.data.price'],
+            limit: 10
+        });
 
-        } catch (stripeErr: any) {
-            debugInfo.stripe_check = { error: stripeErr.message };
-        }
-    } else {
-        // Fallback: Se não tem ID no banco, procura por email apenas para informar no debug
-        const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-        debugInfo.stripe_check = {
-            queried_by: 'email_fallback',
-            message: "ID não encontrado no banco. Buscando por email...",
-            customers_found_by_email: customers.data.map((c: any) => c.id)
-        };
+        const activeOrTrialing = allSubs.data.filter((s: any) => s.status === 'active' || s.status === 'trialing');
+        
+        // Merge evitando duplicatas
+        const existingIds = new Set(subs.data.map((s: any) => s.id));
+        const extras = activeOrTrialing.filter((s: any) => !existingIds.has(s.id));
+        
+        allSubscriptions = [...allSubscriptions, ...subs.data, ...extras];
     }
 
-    // 3. DETERMINAÇÃO DO PLANO E ATUALIZAÇÃO
-    let detectedTier = 'free';
+    // 4. Determinar o "Winning Tier" (Hierarquia)
+    let winnerSub: any = null;
+    let winnerTier = 'free';
+    let maxWeight = 0;
+
+    // Busca planos do banco para fazer o match de IDs
+    const { data: dbPlans } = await supabaseAdmin.from('subscription_plans').select('*');
     
-    // Se achamos uma assinatura ativa no Stripe para o Customer ID do banco
-    if (activeSubscription) {
-        // Busca planos para fazer o match
-        const { data: allPlans } = await supabaseAdmin.from('subscription_plans').select('*');
+    // Cache para evitar requisições repetidas ao Stripe para o mesmo produto
+    const productCache: Record<string, any> = {};
+
+    for (const sub of allSubscriptions) {
+        let detectedTier = 'free';
+        const priceId = sub.items.data[0]?.price?.id;
         
-        const subPriceIds = activeSubscription.items.data.map((item: any) => item.price.id);
-        const subProductIds = activeSubscription.items.data.map((item: any) => item.price.product?.id || item.price.product).filter(Boolean);
-
-        if (allPlans) {
-            const matchedPlan = allPlans.find((plan: any) => {
-                if (plan.stripe_price_id && subPriceIds.includes(plan.stripe_price_id)) return true;
-                if (plan.stripe_product_id && subProductIds.includes(plan.stripe_product_id)) return true;
-                if (plan.stripe_dentist_price_id && subPriceIds.includes(plan.stripe_dentist_price_id)) return true;
-                if (plan.stripe_ai_price_id && subPriceIds.includes(plan.stripe_ai_price_id)) return true;
-                return false;
-            });
-            if (matchedPlan) detectedTier = matchedPlan.slug;
+        let productId = sub.items.data[0]?.price?.product;
+        if (typeof productId === 'object' && productId !== null) {
+             productId = productId.id;
         }
 
-        // Fallback Enterprise
+        // Match com Banco de Dados
+        if (dbPlans) {
+            const matched = dbPlans.find((p: any) => 
+                p.stripe_price_id === priceId || 
+                (productId && p.stripe_product_id === productId) ||
+                p.stripe_dentist_price_id === priceId
+            );
+            if (matched) detectedTier = matched.slug;
+        }
+
+        // Fallback por Metadata ou Nome (Enterprise)
         if (detectedTier === 'free') {
-            if (activeSubscription.metadata?.isEnterprise === 'true' || 
-                activeSubscription.items.data.some((i: any) => i.price.product?.name?.toLowerCase().includes('enterprise'))) {
+            // 1. Verifica Metadata na Assinatura
+            if (sub.metadata?.isEnterprise === 'true') {
                 detectedTier = 'enterprise';
+            } 
+            // 2. Se não achou e tem productId, busca o produto no Stripe
+            else if (productId && (sub.status === 'active' || sub.status === 'trialing')) {
+                let productName = '';
+                
+                if (productCache[productId]) {
+                    productName = productCache[productId].name;
+                } else {
+                    try {
+                        const product = await stripe.products.retrieve(productId);
+                        productCache[productId] = product;
+                        productName = product.name;
+                        debugInfo.product_lookups++;
+                    } catch (e) {
+                        console.error("Erro ao buscar produto:", productId);
+                    }
+                }
+
+                if (productName && productName.toLowerCase().includes('enterprise')) {
+                    detectedTier = 'enterprise';
+                }
             }
         }
 
-        debugInfo.tier_detection = {
-            resolved_tier: detectedTier,
-            matched_prices: subPriceIds
-        };
+        const weight = getTierWeight(detectedTier);
+        
+        debugInfo.subscriptions_found.push({
+            id: sub.id,
+            status: sub.status,
+            detected_tier: detectedTier,
+            weight,
+            price_id: priceId
+        });
 
-        // 4. ATUALIZAÇÃO DE SINCRONIA SE NECESSÁRIO
-        // Se o ID da assinatura no banco for diferente do ativo no Stripe, atualiza.
-        if (clinicData.stripe_subscription_id !== activeSubscription.id || clinicData.subscription_tier !== detectedTier) {
-            if (!clinicData.is_manual_override) {
-                await supabaseAdmin.from('clinics').update({ 
-                    subscription_tier: detectedTier,
-                    stripe_subscription_id: activeSubscription.id
-                }).eq('id', user.id);
-                debugInfo.action_taken = 'updated_database_to_match_stripe';
-            } else {
-                debugInfo.action_taken = 'skipped_override_active';
+        // Lógica de Vencedor
+        if (weight > maxWeight) {
+            maxWeight = weight;
+            winnerTier = detectedTier;
+            winnerSub = sub;
+        } else if (weight === maxWeight && weight > 0) {
+            // Desempate: Assinatura mais recente
+            if (!winnerSub || sub.created > winnerSub.created) {
+                winnerSub = sub;
+                winnerTier = detectedTier;
             }
+        }
+    }
+
+    debugInfo.winner_tier = winnerTier;
+    debugInfo.winner_sub_id = winnerSub?.id || null;
+
+    // 5. Atualizar Banco de Dados
+    let updated = false;
+
+    const needsUpdate = 
+        clinicData.subscription_tier !== winnerTier || 
+        (winnerSub && clinicData.stripe_subscription_id !== winnerSub.id);
+
+    if (needsUpdate) {
+        if (!clinicData.is_manual_override) {
+            const updatePayload: any = {
+                subscription_tier: winnerTier,
+                stripe_subscription_id: winnerSub ? winnerSub.id : null,
+                stripe_customer_id: winnerSub ? winnerSub.customer : (customers.data[0]?.id || clinicData.stripe_customer_id)
+            };
+
+            if (winnerTier === 'enterprise' && winnerSub) {
+                if (winnerSub.metadata?.customDentistLimit) updatePayload.custom_dentist_limit = Number(winnerSub.metadata.customDentistLimit);
+                if (winnerSub.metadata?.customAiDailyLimit) updatePayload.custom_ai_daily_limit = Number(winnerSub.metadata.customAiDailyLimit);
+            } else if (winnerTier !== 'enterprise') {
+                updatePayload.custom_dentist_limit = null;
+                updatePayload.custom_ai_daily_limit = null;
+            }
+
+            // CRITICAL FIX: Capturar erro e verificar se o update realmente ocorreu
+            const { error: updateError } = await supabaseAdmin.from('clinics').update(updatePayload).eq('id', clinicId);
+            
+            if (updateError) {
+                console.error("Erro no update:", updateError);
+                debugInfo.action = `Error Updating DB: ${updateError.message}`;
+            } else {
+                // VERIFICAÇÃO PÓS-UPDATE (Leitura Real)
+                const { data: verifiedData } = await supabaseAdmin
+                    .from('clinics')
+                    .select('subscription_tier, stripe_subscription_id')
+                    .eq('id', clinicId)
+                    .single();
+                
+                if (verifiedData?.subscription_tier === winnerTier) {
+                    updated = true;
+                    debugInfo.action = "Database Updated & Verified";
+                    
+                    // Atualiza o display object APENAS se o banco realmente mudou
+                    debugInfo.database_record.current_tier = verifiedData.subscription_tier;
+                    debugInfo.database_record.stripe_subscription_id = verifiedData.stripe_subscription_id;
+                    debugInfo.database_record.note = '(Atualizado e Verificado)';
+                } else {
+                    debugInfo.action = "Update Executed but Value Mismatch (Check Triggers/RLS)";
+                    debugInfo.db_actual_value = verifiedData?.subscription_tier;
+                }
+            }
+
+        } else {
+            debugInfo.action = "Skipped (Manual Override Active)";
         }
     } else {
-        // Se não achou assinatura ativa para o customer ID do banco
-        if (clinicData?.subscription_tier !== 'free' && !clinicData?.is_manual_override) {
-             // Downgrade se não tiver override
-             // Comentado por segurança para não derrubar acesso em caso de erro de API, 
-             // mas em produção real deveria considerar downgrade.
-             // await supabaseAdmin.from('clinics').update({ subscription_tier: 'free' }).eq('id', user.id);
-             debugInfo.action_taken = 'subscription_not_found_but_kept_current_tier_safe';
-        }
+        debugInfo.action = "No Update Needed";
     }
 
     return new Response(JSON.stringify({ 
-        subscribed: !!activeSubscription, 
-        tier: detectedTier, 
+        updated,
+        tier: winnerTier,
         debug: debugInfo
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -190,10 +296,10 @@ Deno.serve(async (req) => {
   } catch (error: any) {
     return new Response(JSON.stringify({ 
         error: error.message,
-        debug: { message: "Erro fatal na função", errorStack: error.stack }
+        stack: error.stack
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
+      status: 200, 
     });
   }
 });
