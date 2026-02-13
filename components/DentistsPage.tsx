@@ -66,6 +66,7 @@ const DentistsPage: React.FC = () => {
 
   const [clinicId, setClinicId] = useState<string | null>(null);
   const [currentTier, setCurrentTier] = useState<string>('free');
+  const [customLimit, setCustomLimit] = useState<number | null>(null);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   
@@ -87,8 +88,12 @@ const DentistsPage: React.FC = () => {
     
     setClinicId(targetClinicId);
 
-    const { data: clinicData } = await supabase.from('clinics').select('subscription_tier').eq('id', targetClinicId).single();
-    if (clinicData) setCurrentTier(clinicData.subscription_tier || 'free');
+    // Fetch tier AND custom limits
+    const { data: clinicData } = await supabase.from('clinics').select('subscription_tier, custom_dentist_limit').eq('id', targetClinicId).single();
+    if (clinicData) {
+        setCurrentTier(clinicData.subscription_tier || 'free');
+        setCustomLimit(clinicData.custom_dentist_limit || null);
+    }
 
     fetchDentists(targetClinicId);
   };
@@ -145,10 +150,8 @@ const DentistsPage: React.FC = () => {
       setServices(loadedServices);
       setPlans(dentist.accepted_plans || []);
     } else {
-      let limit = Infinity;
-      if (currentTier === 'free') limit = 1;
-      if (currentTier === 'starter') limit = 3;
-      if (currentTier === 'pro') limit = 5;
+      // Use the database limit if available, otherwise assume very high
+      const limit = customLimit !== null && customLimit !== undefined ? customLimit : 9999;
 
       if (dentists.length >= limit) {
            setShowUpgradeModal(true);
@@ -328,10 +331,7 @@ const DentistsPage: React.FC = () => {
           const newEntriesCount = rows.length;
 
           // Verificar Limites do Plano
-          let limit = Infinity;
-          if (currentTier === 'free') limit = 1;
-          if (currentTier === 'starter') limit = 3;
-          if (currentTier === 'pro') limit = 5;
+          const limit = customLimit !== null && customLimit !== undefined ? customLimit : 9999;
 
           const { count: currentCount } = await supabase
               .from('dentists')
@@ -412,7 +412,7 @@ const DentistsPage: React.FC = () => {
 
   if (loading) return <div className="flex h-96 w-full items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
 
-  const dentistLimit = currentTier === 'free' ? 1 : currentTier === 'starter' ? 3 : 5;
+  const dentistLimitDisplay = customLimit !== null && customLimit !== undefined ? customLimit : '∞';
 
   return (
     <div>
@@ -425,7 +425,7 @@ const DentistsPage: React.FC = () => {
                 <h1 className="text-2xl font-bold text-white flex items-center gap-2">
                     Dentistas
                     <span className="text-sm font-normal bg-gray-800 text-gray-300 px-2 py-0.5 rounded border border-white/10">
-                        {dentists.length} / {dentistLimit}
+                        {dentists.length} / {dentistLimitDisplay}
                     </span>
                 </h1>
             </div>
@@ -531,7 +531,7 @@ const DentistsPage: React.FC = () => {
                 </div>
                 <h3 className="text-xl font-bold text-white mb-2">Limite do Plano Atingido</h3>
                 <p className="text-gray-400 mb-6">
-                    Você atingiu o limite de {dentistLimit} dentistas do seu plano atual. Faça um upgrade para continuar crescendo.
+                    Você atingiu o limite de {dentistLimitDisplay} dentistas do seu plano atual. Faça um upgrade para continuar crescendo.
                 </p>
                 <div className="flex flex-col gap-3">
                     <button 
@@ -639,7 +639,7 @@ const DentistsPage: React.FC = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                
+                {/* ... (Form Content - Mantido igual) ... */}
                 {/* 1. DADOS PESSOAIS */}
                 <div className="space-y-4 mb-6">
                     <h3 className="font-bold text-gray-300 border-b border-white/10 pb-2 flex items-center text-sm uppercase tracking-wide"><User size={16} className="mr-2 text-primary"/> Dados Pessoais</h3>

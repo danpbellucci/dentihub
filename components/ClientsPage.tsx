@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import { Client, Dentist } from '../types';
@@ -6,7 +7,7 @@ import {
   Users, Search, Plus, Edit2, Trash2, Phone, Mail, FileText, 
   CheckCircle, Loader2, Upload, Download, X, ClipboardList, 
   FolderOpen, Printer, Send, Save, Image as ImageIcon, AlertTriangle, PenTool,
-  Activity, Ban, Hammer, Shield, Box
+  Activity, Ban, Hammer, Shield, Box, Lock, Zap
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { jsPDF } from "jspdf";
@@ -15,6 +16,7 @@ import Toast, { ToastType } from './Toast';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import DentalArch, { ToothCondition } from './DentalArch';
+import { useNavigate } from 'react-router-dom';
 
 // Mapeamento de condições para rótulos legíveis
 const CONDITIONS_MAP: Record<string, { label: string, color: string, icon: any }> = {
@@ -60,6 +62,7 @@ const ClientsPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -78,6 +81,7 @@ const ClientsPage: React.FC = () => {
   // Import
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importResult, setImportResult] = useState<{ show: boolean; successCount: number; errorCount: number; errors: string[] }>({ show: false, successCount: 0, errorCount: 0, errors: [] });
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (userProfile?.clinic_id) {
@@ -153,20 +157,13 @@ const ClientsPage: React.FC = () => {
       setPatientRecords(data || []);
 
       // Lógica para reconstruir o Odontograma Atual
-      // Precisamos processar do mais antigo para o mais novo para montar o estado atual
       if (data) {
           const history = [...data].reverse(); // Inverte para cronológico (Antigo -> Novo)
           const currentMouthState: Record<string, ToothCondition[]> = {};
           
           history.forEach(record => {
               if (record.tooth_data) {
-                  // O tooth_data salva o estado dos dentes modificados naquele atendimento
-                  // Mesclamos com o estado atual. 
-                  // Se um dente tiver uma nova condição registrada, ela substitui ou soma?
-                  // Assumindo que o registro salva o estado ATUAL do dente naquele momento.
                   Object.entries(record.tooth_data).forEach(([toothId, conditions]) => {
-                      // Se conditions for vazio ou healthy, limpamos
-                      // Caso contrário, atualizamos o dente com as novas condições
                       if (Array.isArray(conditions)) {
                           currentMouthState[toothId] = conditions as ToothCondition[];
                       }
@@ -423,6 +420,16 @@ const ClientsPage: React.FC = () => {
         clinical_notes: client.clinical_notes || ''
       });
     } else {
+      // Check limits before opening new client modal
+      // Logic: if custom_clients_limit is present, use it. Otherwise assume infinite.
+      const currentCount = clients.length;
+      const limit = userProfile?.clinics?.custom_clients_limit;
+      
+      if (limit !== null && limit !== undefined && currentCount >= limit) {
+           setShowUpgradeModal(true);
+           return;
+      }
+      
       setEditingClient(null);
       setFormData({ name: '', email: '', whatsapp: '', cpf: '', address: '', birth_date: '', clinical_notes: '' });
     }
@@ -495,6 +502,16 @@ const ClientsPage: React.FC = () => {
   const handleFileUploadImport = (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!e.target.files || e.target.files.length === 0) return;
       if (!userProfile?.clinic_id) return;
+      
+      // Check limits before processing file
+      const currentCount = clients.length;
+      const limit = userProfile?.clinics?.custom_clients_limit;
+
+      if (limit !== null && limit !== undefined && currentCount >= limit) {
+           setShowUpgradeModal(true);
+           return;
+      }
+
       const file = e.target.files[0];
       const reader = new FileReader();
       reader.onload = async (evt) => {
@@ -503,9 +520,18 @@ const ClientsPage: React.FC = () => {
           const wsname = wb.SheetNames[0];
           const ws = wb.Sheets[wsname];
           const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+          
           if (data.length <= 1) { setToast({ message: "Arquivo vazio ou inválido.", type: 'warning' }); return; }
-          setLoading(true);
+          
           const rows = data.slice(1).filter(r => r[0]); 
+          
+          // Check if import will exceed limit
+          if (limit !== null && limit !== undefined && (currentCount + rows.length) > limit) {
+              setToast({ message: `Importação cancelada. Você excederia o limite de ${limit} pacientes.`, type: 'error' });
+              return;
+          }
+
+          setLoading(true);
           let successCount = 0;
           let errors: string[] = [];
           for (let i = 0; i < rows.length; i++) {
@@ -528,13 +554,15 @@ const ClientsPage: React.FC = () => {
 
   const filteredClients = clients.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()) || (c.cpf && c.cpf.includes(searchTerm)));
 
+  const clientLimit = userProfile?.clinics?.custom_clients_limit !== undefined && userProfile?.clinics?.custom_clients_limit !== null ? userProfile.clinics.custom_clients_limit : '∞';
+
   return (
     <div>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
         <h1 className="text-2xl font-bold text-white flex items-center gap-3">
             <Users className="text-primary" /> Pacientes
-            <span className="text-sm font-normal bg-gray-800 text-gray-400 px-2.5 py-0.5 rounded-lg border border-white/10">{clients.length} <span className="text-gray-600">/</span> {userProfile?.clinics?.subscription_tier === 'pro' ? '∞' : userProfile?.clinics?.subscription_tier === 'starter' ? '100' : '30'}</span>
+            <span className="text-sm font-normal bg-gray-800 text-gray-400 px-2.5 py-0.5 rounded-lg border border-white/10">{clients.length} <span className="text-gray-600">/</span> {clientLimit}</span>
         </h1>
         <div className="flex gap-2 w-full sm:w-auto">
             <button onClick={handleDownloadTemplate} className="hidden sm:flex items-center justify-center px-4 py-2 bg-gray-900 border border-white/10 text-gray-300 rounded hover:bg-gray-800 transition shadow-sm font-bold text-sm"><Download size={16} className="mr-2" /> Modelo</button>
@@ -619,6 +647,35 @@ const ClientsPage: React.FC = () => {
               <Users size={48} className="mx-auto mb-2 opacity-20"/>
               <p>Nenhum paciente encontrado.</p>
           </div>
+      )}
+
+      {/* UPGRADE MODAL */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+            <div className="bg-gray-900 border border-white/10 p-6 rounded-xl shadow-2xl w-full max-w-sm text-center">
+                <div className="bg-yellow-500/20 p-4 rounded-full inline-block mb-4 border border-yellow-500/30">
+                    <Lock className="text-yellow-500" size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">Limite do Plano Atingido</h3>
+                <p className="text-gray-400 mb-6">
+                    Você atingiu o limite de {clientLimit} pacientes do seu plano atual. Faça um upgrade para continuar crescendo.
+                </p>
+                <div className="flex flex-col gap-3">
+                    <button 
+                        onClick={() => navigate('/dashboard/settings', { state: { openBilling: true } })}
+                        className="w-full py-3 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg font-bold hover:from-yellow-500 hover:to-orange-500 transition shadow-lg flex items-center justify-center gap-2"
+                    >
+                        <Zap size={18} fill="currentColor" /> Fazer Upgrade
+                    </button>
+                    <button 
+                        onClick={() => setShowUpgradeModal(false)}
+                        className="text-gray-500 hover:text-white text-sm font-medium transition"
+                    >
+                        Agora não
+                    </button>
+                </div>
+            </div>
+        </div>
       )}
 
       {/* --- PRONTUÁRIO MODAL --- */}

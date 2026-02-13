@@ -40,6 +40,9 @@ export interface UserProfile {
   clinics?: {
     name: string;
     subscription_tier: string;
+    custom_dentist_limit?: number;
+    custom_ai_daily_limit?: number;
+    custom_clients_limit?: number;
   };
 }
 

@@ -100,7 +100,20 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
   const refreshProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data: profileById } = await supabase.from('user_profiles').select('*, clinics(name, subscription_tier)').eq('id', user.id).maybeSingle();
+      
+      // Tenta query completa
+      let { data: profileById, error } = await supabase.from('user_profiles')
+        .select('*, clinics(name, subscription_tier, custom_dentist_limit, custom_ai_daily_limit, custom_clients_limit)')
+        .eq('id', user.id).maybeSingle();
+
+      // Se falhar (ex: coluna nova não existe), tenta fallback
+      if (error) {
+          const { data: profileFallback } = await supabase.from('user_profiles')
+            .select('*, clinics(name, subscription_tier)')
+            .eq('id', user.id).maybeSingle();
+          if (profileFallback) profileById = profileFallback;
+      }
+
       if (profileById) setUserProfile(profileById as unknown as UserProfile);
   };
 
@@ -149,19 +162,42 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
         if (mounted) setIsSuperAdmin(!!superAdminStatus);
 
         let profileData: UserProfile | null = null;
-        const { data: profileById, error: fetchError } = await supabase.from('user_profiles').select('*, clinics(name, subscription_tier)').eq('id', user.id).maybeSingle();
+        
+        // 1. TENTATIVA PRINCIPAL (Query Completa)
+        let { data: profileById, error: fetchError } = await supabase.from('user_profiles')
+            .select('*, clinics(name, subscription_tier, custom_dentist_limit, custom_ai_daily_limit, custom_clients_limit)')
+            .eq('id', user.id).maybeSingle();
 
-        if (fetchError && fetchError.code === '42P17') {
-            setDbError("Erro de configuração no Banco de Dados. Contate o suporte.");
-            return;
+        // 2. FALLBACK DE RECUPERAÇÃO
+        // Se houver erro na busca principal (ex: coluna não existe no DB), tentamos a query básica
+        if (fetchError) {
+            console.warn("Erro ao buscar perfil completo, tentando fallback...", fetchError.message);
+            
+            const { data: profileFallback, error: fallbackError } = await supabase.from('user_profiles')
+                .select('*, clinics(name, subscription_tier)')
+                .eq('id', user.id).maybeSingle();
+            
+            if (fallbackError) {
+                // Se o fallback também falhar, verificamos erros críticos
+                if (fallbackError.code === '42P17') {
+                    setDbError("Erro de configuração no Banco de Dados (Recursão). Contate o suporte.");
+                    return;
+                }
+                console.error("Erro fatal ao carregar perfil:", fallbackError);
+            } else {
+                // Recuperado com sucesso (modo compatibilidade)
+                profileData = profileFallback as unknown as UserProfile;
+            }
+        } else {
+            profileData = profileById as unknown as UserProfile;
         }
 
-        if (profileById) {
-            profileData = profileById as unknown as UserProfile;
-        } else if (user.email) {
+        // Lógica de Vínculo por Email (Caso não tenha ID ainda)
+        if (!profileData && user.email) {
             const { data: pendingProfile } = await supabase.from('user_profiles').select('id').eq('email', user.email).maybeSingle();
             if (pendingProfile) {
                 await supabase.from('user_profiles').update({ id: user.id }).eq('email', user.email);
+                // Tenta buscar novamente após vínculo
                 const { data: linked } = await supabase.from('user_profiles').select('*, clinics(name, subscription_tier)').eq('id', user.id).single();
                 if (linked) profileData = linked as unknown as UserProfile;
             }

@@ -31,7 +31,9 @@ const SmartRecordPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [clinicId, setClinicId] = useState<string | null>(null);
   
-  const [tier, setTier] = useState<'free' | 'starter' | 'pro'>('free');
+  const [tier, setTier] = useState<'free' | 'starter' | 'pro' | 'enterprise'>('free');
+  const [customAiLimit, setCustomAiLimit] = useState<number | null>(null);
+  const [customDentistLimit, setCustomDentistLimit] = useState<number | null>(null);
   const [canRecord, setCanRecord] = useState(true);
   const [limitMessage, setLimitMessage] = useState('');
   const [maxTime, setMaxTime] = useState(600); // Default 10 min
@@ -89,9 +91,14 @@ const SmartRecordPage: React.FC = () => {
   };
 
   const checkUsageLimits = async (targetId: string, dentistId: string) => {
-    const { data: clinic } = await supabase.from('clinics').select('subscription_tier').eq('id', targetId).single();
+    const { data: clinic } = await supabase.from('clinics').select('subscription_tier, custom_ai_daily_limit, custom_dentist_limit').eq('id', targetId).single();
     const currentTier = clinic?.subscription_tier || 'free';
-    setTier(currentTier);
+    const limitDb = clinic?.custom_ai_daily_limit;
+    const dentistsDb = clinic?.custom_dentist_limit;
+    
+    setTier(currentTier as any);
+    setCustomAiLimit(limitDb || null);
+    setCustomDentistLimit(dentistsDb || null);
     
     // Configuração de Tempo Máximo
     if (currentTier === 'free') {
@@ -108,8 +115,8 @@ const SmartRecordPage: React.FC = () => {
         if (count >= 3) { setCanRecord(false); setLimitMessage("Limite de 3 usos do plano Gratuito atingido."); } 
         else { setCanRecord(true); setLimitMessage(`Restam ${3 - count} usos no plano Gratuito.`); }
     } 
-    else if (currentTier === 'starter') {
-        // Limite Diário POR DENTISTA (5 usos)
+    else if (currentTier === 'starter' || currentTier === 'pro' || currentTier === 'enterprise') {
+        // Limite Diário POR DENTISTA
         if (!dentistId) {
             setCanRecord(true); // Permite selecionar, mas valida no startRecording se não tiver dentista
             setLimitMessage("Selecione um dentista para verificar cotas.");
@@ -124,27 +131,21 @@ const SmartRecordPage: React.FC = () => {
             .gte('created_at', today); 
         
         count = dailyCount || 0;
-        if (count >= 5) { setCanRecord(false); setLimitMessage("Limite diário de 5 usos para este dentista atingido."); } 
-        else { setCanRecord(true); setLimitMessage(`Uso diário (Dentista): ${count}/5.`); }
-    } 
-    else if (currentTier === 'pro') {
-        // Limite Diário POR DENTISTA (10 usos)
-        if (!dentistId) {
-            setCanRecord(true); 
-            setLimitMessage("Selecione um dentista para verificar cotas.");
-            return;
-        }
-        const today = new Date().toISOString().split('T')[0];
-        const { count: dailyCount } = await supabase
-            .from('clinical_records')
-            .select('*', { count: 'exact', head: true })
-            .eq('clinic_id', targetId)
-            .eq('dentist_id', dentistId)
-            .gte('created_at', today); 
         
-        count = dailyCount || 0;
-        if (count >= 10) { setCanRecord(false); setLimitMessage("Limite diário de 10 usos para este dentista atingido."); }
-        else { setCanRecord(true); setLimitMessage(`Uso diário (Dentista): ${count}/10.`); }
+        // CALCULO DO LIMITE
+        let limit = 0;
+        if (currentTier === 'enterprise') {
+            // Regra Enterprise: Total IA / Total Dentistas
+            const totalAi = limitDb || 0;
+            const totalDentists = dentistsDb || 1;
+            limit = Math.floor(totalAi / totalDentists);
+        } else {
+            // Regra Padrão (Starter/Pro): Valor direto do custom_ai_daily_limit (que veio do plano)
+            limit = limitDb || 5; 
+        }
+
+        if (count >= limit) { setCanRecord(false); setLimitMessage(`Limite diário de ${limit} usos para este dentista atingido.`); } 
+        else { setCanRecord(true); setLimitMessage(`Uso diário (Dentista): ${count}/${limit}.`); }
     }
   };
 
@@ -289,7 +290,9 @@ const SmartRecordPage: React.FC = () => {
         <div className="flex">
           <div className="flex-shrink-0">{canRecord ? <Info size={20} className="text-blue-400" /> : <Lock size={20} className="text-red-400" />}</div>
           <div className="ml-3">
-            <p className={`text-sm font-bold ${canRecord ? 'text-blue-300' : 'text-red-300'}`}>Plano {tier === 'free' ? 'Gratuito' : tier === 'starter' ? 'Starter' : 'Pro'}</p>
+            <p className={`text-sm font-bold ${canRecord ? 'text-blue-300' : 'text-red-300'}`}>
+                Plano {tier === 'free' ? 'Gratuito' : tier === 'starter' ? 'Starter' : tier === 'pro' ? 'Pro' : 'Enterprise'}
+            </p>
             <p className={`text-sm ${canRecord ? 'text-blue-400' : 'text-red-400'}`}>{limitMessage} Duração máx: {Math.floor(maxTime/60)} minutos.</p>
           </div>
         </div>
