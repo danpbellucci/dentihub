@@ -29,9 +29,9 @@ const HeroSection: React.FC = () => {
             do Futuro</span> para Dentistas
           </h1>
           
-          <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-400 mb-12 leading-relaxed">
-            Abandone o papel e os sistemas do passado. Experimente a <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 font-bold">gestão com inteligência artificial</span>, 
-            agendamento online e mensageria automática em uma interface que você vai amar usar.
+          <p className="mt-4 max-w-3xl mx-auto text-xl text-gray-400 mb-12 leading-relaxed">
+            <span className="block text-white font-bold mb-3 text-2xl drop-shadow-md">CRM, ERP & IA em uma única ferramenta.</span>
+            Abandone o papel e sistemas do passado. Experimente a <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 font-bold">gestão inteligente</span> com agendamento online, prontuário com IA e mensageria automática em uma interface que você vai amar usar.
           </p>
           
           <div className="flex flex-col sm:flex-row justify-center gap-4 mb-20">
