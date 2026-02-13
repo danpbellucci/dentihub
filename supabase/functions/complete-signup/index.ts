@@ -129,9 +129,20 @@ Deno.serve(async (req) => {
         const { data: existingSlug } = await supabaseAdmin.from('clinics').select('id').eq('slug', slug).maybeSingle();
         if (existingSlug) slug = `${slug}-${Math.floor(Math.random()*1000)}`;
 
-        // Gera código único para a nova clínica (com retry simples)
+        // Gera código único para a nova clínica
         let newReferralCode = generateReferralCode();
-        // (Em produção ideal, faria um loop check, mas probabilidade de colisão com 6 chars é baixa para MVP)
+
+        // --- BUSCA LIMITES DO PLANO FREE ---
+        const { data: freePlan } = await supabaseAdmin
+            .from('subscription_plans')
+            .select('max_dentists, max_patients, max_ai_usage')
+            .eq('slug', 'free')
+            .maybeSingle();
+
+        // Define defaults caso não encontre o plano no banco (fallback de segurança)
+        const defaultDentistLimit = freePlan?.max_dentists ?? 1;
+        const defaultClientsLimit = freePlan?.max_patients ?? 30;
+        const defaultAiLimit = freePlan?.max_ai_usage ?? 3;
 
         const { error: clinicError } = await supabaseAdmin
             .from('clinics')
@@ -141,7 +152,11 @@ Deno.serve(async (req) => {
                 slug: slug, 
                 subscription_tier: 'free',
                 referral_code: newReferralCode,
-                referred_by: referredByClinicId // Usa o ID validado anteriormente
+                referred_by: referredByClinicId,
+                // Insere os limites explícitos para o plano Free
+                custom_dentist_limit: defaultDentistLimit,
+                custom_clients_limit: defaultClientsLimit,
+                custom_ai_daily_limit: defaultAiLimit
             });
 
         if (clinicError) {

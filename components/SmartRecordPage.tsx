@@ -359,7 +359,7 @@ const SmartRecordPage: React.FC = () => {
      // Adiciona resumo textual do odontograma se houver alterações
      if (Object.keys(toothConditions).length > 0) {
          const odontogramText = Object.entries(toothConditions).map(([toothId, conditions]) => {
-             const labels = conditions.map(c => CONDITIONS_MAP[c]?.label || c).join(', ');
+             const labels = (conditions as ToothCondition[]).map(c => CONDITIONS_MAP[c]?.label || c).join(', ');
              return `Dente #${toothId}: ${labels}`;
          }).join('\n');
          fullDescription += `\n\n[ODONTOGRAMA IA]\n${odontogramText}`;

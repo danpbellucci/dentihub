@@ -448,8 +448,25 @@ const ClientsPage: React.FC = () => {
     e.preventDefault();
     if (!userProfile?.clinic_id) return;
     
-    if (formData.cpf && !validateCPF(formData.cpf)) {
+    // Validação: Campos Obrigatórios
+    if (!formData.birth_date) {
+        setToast({ message: "A Data de Nascimento é obrigatória.", type: 'error' });
+        return;
+    }
+
+    if (!formData.cpf) {
+        setToast({ message: "O CPF é obrigatório.", type: 'error' });
+        return;
+    }
+
+    if (!validateCPF(formData.cpf)) {
         setToast({ message: "CPF inválido.", type: 'error' });
+        return;
+    }
+
+    // Validação: Pelo menos um contato
+    if (!formData.whatsapp && !formData.email) {
+        setToast({ message: "Preencha pelo menos um contato (WhatsApp ou E-mail).", type: 'warning' });
         return;
     }
 
@@ -794,8 +811,8 @@ const ClientsPage: React.FC = () => {
                   <form onSubmit={handleSave} className="space-y-4">
                       <div><label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Nome Completo *</label><input required className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white outline-none focus:border-primary" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
                       <div className="grid grid-cols-2 gap-4">
-                          <div><label className="block text-xs font-bold text-gray-400 mb-1 uppercase">CPF</label><input className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white outline-none focus:border-primary" value={formData.cpf} onChange={e => { let v = e.target.value.replace(/\D/g, ''); if (v.length > 11) v = v.slice(0, 11); v = v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2'); setFormData({...formData, cpf: v}); }} maxLength={14}/></div>
-                          <div><label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Data Nasc.</label><input type="date" className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white outline-none focus:border-primary" value={formData.birth_date} onChange={e => setFormData({...formData, birth_date: e.target.value})} /></div>
+                          <div><label className="block text-xs font-bold text-gray-400 mb-1 uppercase">CPF *</label><input required className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white outline-none focus:border-primary" value={formData.cpf} onChange={e => { let v = e.target.value.replace(/\D/g, ''); if (v.length > 11) v = v.slice(0, 11); v = v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2'); setFormData({...formData, cpf: v}); }} maxLength={14}/></div>
+                          <div><label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Data Nasc. *</label><input required type="date" className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white outline-none focus:border-primary" value={formData.birth_date} onChange={e => setFormData({...formData, birth_date: e.target.value})} /></div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                           <div><label className="block text-xs font-bold text-gray-400 mb-1 uppercase">WhatsApp</label><input className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white outline-none focus:border-primary" value={formData.whatsapp} onChange={e => setFormData({...formData, whatsapp: e.target.value})} /></div>
