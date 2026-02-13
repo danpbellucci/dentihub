@@ -90,27 +90,39 @@ Deno.serve(async (req) => {
     
     // Soma total de todos os itens (importante para Enterprise que tem múltiplos itens)
     let totalAmount = 0;
-    const priceIds: string[] = [];
-    const productIds: string[] = [];
+    const subPriceIds: string[] = [];
+    const subProductIds: string[] = [];
     
     sub.items.data.forEach((item: any) => {
         totalAmount += (item.price.unit_amount || 0) * (item.quantity || 1);
-        priceIds.push(item.price.id);
-        if (item.price.product) productIds.push(item.price.product as string);
+        subPriceIds.push(item.price.id);
+        if (item.price.product) subProductIds.push(item.price.product as string);
     });
 
     // Pega dados do primeiro item para metadados básicos
     const firstPrice = sub.items.data[0].price;
 
-    // Busca nome do plano no banco usando todos os IDs encontrados
-    const { data: planData } = await supabaseAdmin
-        .from('subscription_plans')
-        .select('name')
-        .or(`stripe_price_id.in.(${priceIds.join(',')}),stripe_product_id.in.(${productIds.join(',')}),stripe_dentist_price_id.in.(${priceIds.join(',')}),stripe_ai_price_id.in.(${priceIds.join(',')})`)
-        .limit(1)
-        .maybeSingle();
+    // Busca TODOS os planos do banco
+    const { data: allPlans } = await supabaseAdmin.from('subscription_plans').select('name, stripe_price_id, stripe_product_id, stripe_dentist_price_id, stripe_ai_price_id');
 
-    const planName = planData?.name || `Plano Personalizado`;
+    let matchedPlan = null;
+    if (allPlans) {
+        matchedPlan = allPlans.find((plan: any) => {
+            if (plan.stripe_price_id && subPriceIds.includes(plan.stripe_price_id)) return true;
+            if (plan.stripe_product_id && subProductIds.includes(plan.stripe_product_id)) return true;
+            if (plan.stripe_dentist_price_id && subPriceIds.includes(plan.stripe_dentist_price_id)) return true;
+            if (plan.stripe_ai_price_id && subPriceIds.includes(plan.stripe_ai_price_id)) return true;
+            return false;
+        });
+    }
+
+    // Fallback name logic if no exact match found but we know it's enterprise from metadata
+    let planName = matchedPlan?.name;
+    if (!planName) {
+        if (sub.metadata?.isEnterprise === 'true') planName = 'Enterprise';
+        else if (sub.items.data.some((i: any) => i.price.product.name?.toLowerCase().includes('enterprise'))) planName = 'Enterprise';
+        else planName = 'Plano Personalizado';
+    }
 
     const details = {
         hasSubscription: true,

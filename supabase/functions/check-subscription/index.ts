@@ -50,173 +50,165 @@ Deno.serve(async (req) => {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Obter dados da clínica
     const { data: clinicData } = await supabaseAdmin
         .from('clinics')
         .select('subscription_tier, bonus_expires_at, is_manual_override')
         .eq('id', user.id)
         .single();
 
-    // 0. VERIFICAÇÃO DE OVERRIDE MANUAL (PRIORIDADE MÁXIMA)
-    if (clinicData?.is_manual_override) {
-        return new Response(JSON.stringify({ 
-            subscribed: true, 
-            tier: clinicData.subscription_tier, 
-            source: 'admin_override'
-        }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 200,
-        });
-    }
-
-    // 1. Verificar Bônus de Indicação
-    if (clinicData?.bonus_expires_at) {
-        const bonusDate = new Date(clinicData.bonus_expires_at);
-        if (bonusDate > new Date()) {
-            return new Response(JSON.stringify({ 
-                subscribed: true, 
-                tier: clinicData.subscription_tier, 
-                source: 'referral_bonus',
-                expires_at: clinicData.bonus_expires_at
-            }), {
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-                status: 200,
-            });
-        }
-    }
-
     const stripe = new Stripe(stripeKey, { 
       apiVersion: "2022-11-15",
       httpClient: Stripe.createFetchHttpClient(),
     });
     
-    // 2. Busca Clientes no Stripe
+    // Objeto Debug Global
+    let debugInfo: any = {
+        userId: user.id,
+        userEmail: user.email,
+        steps: []
+    };
+
+    debugInfo.steps.push("Iniciando busca no Stripe");
+
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     
     if (customers.data.length === 0) {
-      if (clinicData?.subscription_tier !== 'free') {
-          await supabaseAdmin.from('clinics').update({ subscription_tier: 'free' }).eq('id', user.id);
-      }
-      return new Response(JSON.stringify({ subscribed: false, tier: 'free' }), {
+      return new Response(JSON.stringify({ 
+          subscribed: false, 
+          tier: 'free', 
+          debug: { ...debugInfo, message: "Cliente não encontrado no Stripe" } 
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
     }
 
     const customerId = customers.data[0].id;
+    debugInfo.customerId = customerId;
+    debugInfo.steps.push("Cliente encontrado: " + customerId);
     
-    // 3. Busca Assinaturas Ativas
+    // Busca Assinaturas
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
       status: "active",
       limit: 1,
-      // IMPORTANTE: Expandir produto para ler o nome caso o ID não bata
       expand: ['data.items.data.price.product']
     });
 
-    if (subscriptions.data.length === 0) {
-        // Verifica se tem trialing (período de teste)
+    let subscription = null;
+    if (subscriptions.data.length > 0) {
+        subscription = subscriptions.data[0];
+        debugInfo.steps.push("Assinatura ATIVA encontrada");
+    } else {
         const trials = await stripe.subscriptions.list({
             customer: customerId,
             status: "trialing",
             limit: 1,
             expand: ['data.items.data.price.product']
         });
-
-        if (trials.data.length === 0) {
-            if (clinicData?.subscription_tier !== 'free') {
-                await supabaseAdmin.from('clinics').update({ subscription_tier: 'free' }).eq('id', user.id);
-            }
-            return new Response(JSON.stringify({ subscribed: false, tier: 'free' }), {
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-                status: 200,
-            });
+        if (trials.data.length > 0) {
+            subscription = trials.data[0];
+            debugInfo.steps.push("Assinatura TRIAL encontrada");
         }
-        // Se encontrou trial, usa ele
-        subscriptions.data = trials.data;
     }
 
-    const subscription = subscriptions.data[0];
+    // Busca Planos do Banco
+    const { data: allPlans } = await supabaseAdmin.from('subscription_plans').select('*');
+    debugInfo.database_plans = allPlans?.map((p: any) => ({
+        name: p.name,
+        slug: p.slug,
+        stripe_price_id: p.stripe_price_id,
+        stripe_product_id: p.stripe_product_id,
+        stripe_dentist_price_id: p.stripe_dentist_price_id,
+        stripe_ai_price_id: p.stripe_ai_price_id
+    }));
+
+    if (!subscription) {
+        return new Response(JSON.stringify({ 
+            subscribed: false, 
+            tier: 'free',
+            debug: { ...debugInfo, message: "Nenhuma assinatura ativa encontrada" }
+        }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+        });
+    }
     
-    // 4. Detecção de Plano (Estratégia Híbrida)
-    let detectedTier = 'free';
-    
-    // A. Tenta casar IDs com o banco de dados (Método Seguro)
-    const priceIds = subscription.items.data.map((item: any) => item.price.id);
-    const productIds = subscription.items.data
+    // Dados da Assinatura do Usuário
+    debugInfo.user_stripe_items = subscription.items.data.map((item: any) => ({
+        price_id: item.price.id,
+        product_id: typeof item.price.product === 'object' ? item.price.product.id : item.price.product,
+        product_name: typeof item.price.product === 'object' ? item.price.product.name : 'N/A',
+        amount: item.price.unit_amount
+    }));
+
+    // Lógica de Detecção
+    const subPriceIds = subscription.items.data.map((item: any) => item.price.id);
+    const subProductIds = subscription.items.data
         .map((item: any) => (typeof item.price.product === 'object' ? item.price.product.id : item.price.product))
         .filter(Boolean);
-    
-    const { data: matchedPlan } = await supabaseAdmin
-        .from('subscription_plans')
-        .select('slug')
-        .or(`stripe_price_id.in.(${priceIds.join(',')}),stripe_product_id.in.(${productIds.join(',')}),stripe_dentist_price_id.in.(${priceIds.join(',')}),stripe_ai_price_id.in.(${priceIds.join(',')})`)
-        .limit(1)
-        .maybeSingle();
 
-    if (matchedPlan) {
-        detectedTier = matchedPlan.slug;
-    } 
-    else {
-        // B. Fallback: Verifica Metadados ou Nome do Produto (Para planos customizados/Legacy)
-        console.log(`[Check-Sub] ID não encontrado no banco. Tentando fallback por nome/meta...`);
-        
-        // Verificação 1: Metadados da Assinatura
-        if (subscription.metadata?.isEnterprise === 'true' || subscription.metadata?.customDentistLimit) {
-            detectedTier = 'enterprise';
-        }
-        // Verificação 2: Nome do Produto (Case Insensitive)
-        else {
-            const hasEnterpriseName = subscription.items.data.some((i: any) => {
-                const prodName = typeof i.price.product === 'object' ? i.price.product.name : '';
-                return prodName && prodName.toLowerCase().includes('enterprise');
-            });
+    let detectedTier = 'free';
+    let matchReason = 'none';
 
-            const hasProName = subscription.items.data.some((i: any) => {
-                const prodName = typeof i.price.product === 'object' ? i.price.product.name : '';
-                return prodName && prodName.toLowerCase().includes('pro') && !prodName.toLowerCase().includes('product');
-            });
+    if (allPlans) {
+        const matchedPlan = allPlans.find((plan: any) => {
+            if (plan.stripe_price_id && subPriceIds.includes(plan.stripe_price_id)) { matchReason = 'price_id'; return true; }
+            if (plan.stripe_product_id && subProductIds.includes(plan.stripe_product_id)) { matchReason = 'product_id'; return true; }
+            if (plan.stripe_dentist_price_id && subPriceIds.includes(plan.stripe_dentist_price_id)) { matchReason = 'dentist_price_id'; return true; }
+            if (plan.stripe_ai_price_id && subPriceIds.includes(plan.stripe_ai_price_id)) { matchReason = 'ai_price_id'; return true; }
+            return false;
+        });
 
-            const hasStarterName = subscription.items.data.some((i: any) => {
-                const prodName = typeof i.price.product === 'object' ? i.price.product.name : '';
-                return prodName && prodName.toLowerCase().includes('starter');
-            });
-
-            if (hasEnterpriseName) detectedTier = 'enterprise';
-            else if (hasProName) detectedTier = 'pro';
-            else if (hasStarterName) detectedTier = 'starter';
-            
-            // Verificação 3: Se tem valor monetário > 0 e não identificou nada, assume Enterprise por segurança
-            else if (subscription.items.data.some((i: any) => (i.price.unit_amount || 0) > 0)) {
-                 console.log("[Check-Sub] Assinatura paga detectada sem match. Forçando Enterprise.");
-                 detectedTier = 'enterprise'; 
-            }
+        if (matchedPlan) {
+            detectedTier = matchedPlan.slug;
+            debugInfo.steps.push("Match encontrado no banco: " + detectedTier);
+        } else {
+            debugInfo.steps.push("Nenhum match exato no banco");
         }
     }
 
-    // 5. Atualiza o banco se houver discrepância
+    if (detectedTier === 'free') {
+        // Fallback
+        if (subscription.metadata?.isEnterprise === 'true') { detectedTier = 'enterprise'; matchReason = 'metadata'; }
+        else if (subscription.items.data.some((i: any) => i.price.product.name?.toLowerCase().includes('enterprise'))) { detectedTier = 'enterprise'; matchReason = 'name_contains'; }
+        else if (subscription.items.data.some((i: any) => (i.price.unit_amount || 0) > 0)) { detectedTier = 'enterprise'; matchReason = 'paid_fallback'; }
+        
+        if (matchReason !== 'none') debugInfo.steps.push("Fallback aplicado: " + matchReason);
+    }
+
+    debugInfo.match_result = {
+        detected_tier: detectedTier,
+        match_method: matchReason
+    };
+
+    // Atualiza banco se necessário
     if (clinicData?.subscription_tier !== detectedTier) {
-        console.log(`[Check-Sub] Updating tier for user ${user.id}: ${clinicData?.subscription_tier} -> ${detectedTier}`);
         await supabaseAdmin.from('clinics').update({ 
             subscription_tier: detectedTier,
             stripe_customer_id: customerId,
-            stripe_subscription_id: subscription.id,
-            // Atualiza limites customizados se disponíveis nos metadados
-            custom_dentist_limit: subscription.metadata?.customDentistLimit ? Number(subscription.metadata.customDentistLimit) : null,
-            custom_ai_daily_limit: subscription.metadata?.customAiDailyLimit ? Number(subscription.metadata.customAiDailyLimit) : null
+            stripe_subscription_id: subscription.id
         }).eq('id', user.id);
+        debugInfo.steps.push("Banco de dados atualizado");
     }
 
-    return new Response(JSON.stringify({ subscribed: true, tier: detectedTier, updated: true }), {
+    return new Response(JSON.stringify({ 
+        subscribed: true, 
+        tier: detectedTier, 
+        updated: true,
+        debug: debugInfo
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
 
   } catch (error: any) {
-    console.error("Check-sub Error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ 
+        error: error.message,
+        debug: { message: "Erro fatal na função", errorStack: error.stack }
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200, // Retorna 200 com erro para não quebrar o frontend
+      status: 200, // Retorna 200 mesmo com erro para o frontend ler o debug
     });
   }
 });

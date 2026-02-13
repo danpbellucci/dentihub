@@ -25,7 +25,8 @@ import {
   ChevronRight,
   Info,
   CheckCircle,
-  Megaphone
+  Megaphone,
+  Bug
 } from 'lucide-react';
 import { UserProfile } from '../types';
 
@@ -50,6 +51,11 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
   const [loadingPermissions, setLoadingPermissions] = useState(true);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [announcement, setAnnouncement] = useState<any>(null);
+
+  // DEBUG MODAL STATE
+  const [debugData, setDebugData] = useState<any>(null);
+  const [showDebug, setShowDebug] = useState(false);
+  const [loadingDebug, setLoadingDebug] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -109,6 +115,27 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
       if (userProfile?.clinic_id) fetchCount(userProfile.clinic_id);
   };
 
+  const runDiagnostics = async () => {
+      setLoadingDebug(true);
+      try {
+          console.log("Iniciando diagnóstico...");
+          const { data, error } = await supabase.functions.invoke('check-subscription');
+          console.log("Resposta diagnóstico:", data, error);
+          
+          if (data && data.debug) {
+              setDebugData(data.debug);
+              setShowDebug(true);
+          } else {
+              alert("A função rodou mas não retornou dados de debug. Verifique o console.");
+          }
+      } catch (e: any) {
+          console.error("Erro diagnóstico:", e);
+          alert("Erro ao rodar diagnóstico: " + e.message);
+      } finally {
+          setLoadingDebug(false);
+      }
+  };
+
   useEffect(() => {
     let mounted = true;
 
@@ -117,6 +144,9 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
         const { data: { user } } = await supabase.auth.getUser();
         if (!mounted) return;
         if (!user) { navigate('/auth'); return; }
+
+        // Tenta rodar automaticamente na montagem
+        runDiagnostics();
 
         const { data: superAdminStatus } = await supabase.rpc('is_super_admin');
         if (mounted) setIsSuperAdmin(!!superAdminStatus);
@@ -274,6 +304,63 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
     <DashboardContext.Provider value={{ userProfile, refreshProfile, refreshNotifications }}>
         <div className="flex h-screen h-[100dvh] bg-gray-950 text-gray-100 overflow-hidden font-sans">
         
+        {/* DIAGNOSTIC MODAL */}
+        {showDebug && debugData && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-lg animate-fade-in">
+                <div className="bg-gray-900 w-full max-w-5xl h-[90vh] rounded-2xl border border-yellow-500/30 shadow-2xl flex flex-col overflow-hidden">
+                    <div className="p-4 border-b border-white/10 bg-yellow-900/10 flex justify-between items-center">
+                        <h2 className="text-xl font-bold text-yellow-400 flex items-center gap-2">
+                            <Bug size={24}/> Diagnóstico de Assinatura
+                        </h2>
+                        <button onClick={() => setShowDebug(false)} className="text-gray-400 hover:text-white"><X size={24}/></button>
+                    </div>
+                    <div className="flex-1 overflow-auto p-6 grid grid-cols-2 gap-6">
+                        {/* COLUNA 1: ASSINATURA STRIPE */}
+                        <div className="space-y-4">
+                            <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2">O que o Stripe retornou:</h3>
+                            {debugData.user_stripe_items && debugData.user_stripe_items.length > 0 ? (
+                                debugData.user_stripe_items.map((item: any, i: number) => (
+                                    <div key={i} className="bg-black/50 p-4 rounded-lg border border-blue-500/30 font-mono text-xs">
+                                        <div className="mb-2"><span className="text-blue-400">Nome Produto:</span> {item.product_name}</div>
+                                        <div className="mb-2"><span className="text-green-400">Product ID:</span> {item.product_id}</div>
+                                        <div className="mb-2"><span className="text-purple-400">Price ID:</span> {item.price_id}</div>
+                                        <div><span className="text-yellow-400">Valor (cents):</span> {item.amount}</div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-red-400 font-bold">Nenhuma assinatura ativa encontrada no Stripe.</div>
+                            )}
+                            
+                            <div className="mt-6 bg-gray-800 p-4 rounded-lg">
+                                <h4 className="font-bold text-white mb-2">Resultado da Detecção:</h4>
+                                <pre className="text-xs text-gray-300 overflow-auto">{JSON.stringify(debugData.match_result, null, 2)}</pre>
+                            </div>
+                        </div>
+
+                        {/* COLUNA 2: PLANOS NO BANCO */}
+                        <div className="space-y-4">
+                            <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2">Planos Cadastrados (DB):</h3>
+                            {debugData.database_plans && debugData.database_plans.map((plan: any, i: number) => (
+                                <div key={i} className="bg-gray-800/50 p-4 rounded-lg border border-white/10 font-mono text-xs">
+                                    <div className="text-sm font-bold text-white mb-2 uppercase">{plan.name} ({plan.slug})</div>
+                                    <div className="grid grid-cols-1 gap-1 text-gray-400">
+                                        <div>Stripe Product: <span className="text-white">{plan.stripe_product_id || '---'}</span></div>
+                                        <div>Stripe Price: <span className="text-white">{plan.stripe_price_id || '---'}</span></div>
+                                        <div>Dentist Price: <span className="text-white">{plan.stripe_dentist_price_id || '---'}</span></div>
+                                        <div>AI Price: <span className="text-white">{plan.stripe_ai_price_id || '---'}</span></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="p-4 bg-gray-800 border-t border-white/10 text-center">
+                        <p className="text-sm text-gray-400 mb-2">Envie um print desta tela para o suporte.</p>
+                        <button onClick={() => setShowDebug(false)} className="bg-white text-gray-900 px-6 py-2 rounded-lg font-bold hover:bg-gray-200">Fechar Diagnóstico</button>
+                    </div>
+                </div>
+            </div>
+        )}
+
         {/* Otimização Mobile: Efeitos ocultos (hidden md:block) */}
         <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 hidden md:block">
             <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/10 rounded-full blur-[120px]"></div>
@@ -408,12 +495,24 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
                 </div>
             )}
 
-            <div className="md:hidden bg-gray-900 border-b border-white/5 p-4 flex items-center justify-between">
+            <div className="bg-gray-900 border-b border-white/5 p-4 flex items-center justify-between">
                 <div className="flex items-center text-white font-bold gap-2">
-                    <Logo className="w-6 h-6" /> 
-                    <span>Denti<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Hub</span></span>
+                    <span className="md:hidden flex items-center gap-2">
+                        <Logo className="w-6 h-6" /> 
+                        <span>Denti<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Hub</span></span>
+                    </span>
+                    {/* Botão de Debug Manual no Header (Desktop & Mobile) */}
+                    <button 
+                        onClick={runDiagnostics} 
+                        disabled={loadingDebug}
+                        className="ml-4 flex items-center gap-1 bg-red-900/30 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-900/50 transition"
+                    >
+                        <Bug size={14} className={loadingDebug ? "animate-spin" : ""} />
+                        <span className="hidden sm:inline">Diagnóstico</span>
+                        <span className="sm:hidden">Debug</span>
+                    </button>
                 </div>
-                <button onClick={() => setSidebarOpen(true)} className="text-gray-400 hover:text-white">
+                <button onClick={() => setSidebarOpen(true)} className="md:hidden text-gray-400 hover:text-white">
                     <Menu size={24} />
                 </button>
             </div>
