@@ -26,7 +26,10 @@ import {
   Info,
   CheckCircle,
   Megaphone,
-  Bug
+  Bug,
+  Database,
+  CreditCard,
+  RefreshCw
 } from 'lucide-react';
 import { UserProfile } from '../types';
 
@@ -315,47 +318,81 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
                         <button onClick={() => setShowDebug(false)} className="text-gray-400 hover:text-white"><X size={24}/></button>
                     </div>
                     <div className="flex-1 overflow-auto p-6 grid grid-cols-2 gap-6">
-                        {/* COLUNA 1: ASSINATURA STRIPE */}
+                        
+                        {/* COLUNA 1: DADOS NO BANCO */}
                         <div className="space-y-4">
-                            <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2">O que o Stripe retornou:</h3>
-                            {debugData.user_stripe_items && debugData.user_stripe_items.length > 0 ? (
-                                debugData.user_stripe_items.map((item: any, i: number) => (
-                                    <div key={i} className="bg-black/50 p-4 rounded-lg border border-blue-500/30 font-mono text-xs">
-                                        <div className="mb-2"><span className="text-blue-400">Nome Produto:</span> {item.product_name}</div>
-                                        <div className="mb-2"><span className="text-green-400">Product ID:</span> {item.product_id}</div>
-                                        <div className="mb-2"><span className="text-purple-400">Price ID:</span> {item.price_id}</div>
-                                        <div><span className="text-yellow-400">Valor (cents):</span> {item.amount}</div>
+                            <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2 flex items-center gap-2">
+                                <Database size={18} className="text-blue-400"/> Dados no Banco (Supabase)
+                            </h3>
+                            {debugData.database_record ? (
+                                <div className="bg-blue-900/20 p-4 rounded-lg border border-blue-500/30 font-mono text-xs text-blue-200 space-y-2">
+                                    <div className="flex justify-between border-b border-white/10 pb-1">
+                                        <span className="text-gray-400">Customer ID:</span>
+                                        <span className="font-bold text-white">{debugData.database_record.stripe_customer_id}</span>
                                     </div>
-                                ))
-                            ) : (
-                                <div className="text-red-400 font-bold">Nenhuma assinatura ativa encontrada no Stripe.</div>
-                            )}
-                            
-                            <div className="mt-6 bg-gray-800 p-4 rounded-lg">
-                                <h4 className="font-bold text-white mb-2">Resultado da Detecção:</h4>
-                                <pre className="text-xs text-gray-300 overflow-auto">{JSON.stringify(debugData.match_result, null, 2)}</pre>
-                            </div>
-                        </div>
-
-                        {/* COLUNA 2: PLANOS NO BANCO */}
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2">Planos Cadastrados (DB):</h3>
-                            {debugData.database_plans && debugData.database_plans.map((plan: any, i: number) => (
-                                <div key={i} className="bg-gray-800/50 p-4 rounded-lg border border-white/10 font-mono text-xs">
-                                    <div className="text-sm font-bold text-white mb-2 uppercase">{plan.name} ({plan.slug})</div>
-                                    <div className="grid grid-cols-1 gap-1 text-gray-400">
-                                        <div>Stripe Product: <span className="text-white">{plan.stripe_product_id || '---'}</span></div>
-                                        <div>Stripe Price: <span className="text-white">{plan.stripe_price_id || '---'}</span></div>
-                                        <div>Dentist Price: <span className="text-white">{plan.stripe_dentist_price_id || '---'}</span></div>
-                                        <div>AI Price: <span className="text-white">{plan.stripe_ai_price_id || '---'}</span></div>
+                                    <div className="flex justify-between border-b border-white/10 pb-1">
+                                        <span className="text-gray-400">Subscription ID:</span>
+                                        <span className="font-bold text-white">{debugData.database_record.stripe_subscription_id}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Plano Atual (Tier):</span>
+                                        <span className="font-bold text-green-400 uppercase">{debugData.database_record.current_tier}</span>
                                     </div>
                                 </div>
-                            ))}
+                            ) : (
+                                <div className="text-red-400">Registro da clínica não encontrado no banco.</div>
+                            )}
+                        </div>
+
+                        {/* COLUNA 2: DADOS NO STRIPE */}
+                        <div className="space-y-4">
+                            <h3 className="text-lg font-bold text-white border-b border-white/10 pb-2 flex items-center gap-2">
+                                <CreditCard size={18} className="text-green-400"/> Dados no Stripe (Ao Vivo)
+                            </h3>
+                            
+                            {debugData.stripe_check ? (
+                                debugData.stripe_check.error ? (
+                                    <div className="bg-red-900/20 p-4 rounded border border-red-500/30 text-red-300 text-xs">
+                                        Erro ao consultar Stripe: {debugData.stripe_check.error}
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        <div className="text-xs text-gray-400 mb-2">
+                                            Consultando pelo Customer ID: <span className="text-white font-mono">{debugData.stripe_check.customer_id_used}</span>
+                                        </div>
+                                        
+                                        {debugData.stripe_check.subscriptions_found?.length > 0 ? (
+                                            debugData.stripe_check.subscriptions_found.map((sub: any, i: number) => (
+                                                <div key={i} className={`p-3 rounded border text-xs font-mono ${sub.status === 'active' || sub.status === 'trialing' ? 'bg-green-900/20 border-green-500/30 text-green-300' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>
+                                                    <div>ID: {sub.id}</div>
+                                                    <div>Status: <span className="uppercase font-bold">{sub.status}</span></div>
+                                                    <div>Produto: {sub.product_name}</div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="text-yellow-400 text-sm bg-yellow-900/20 p-3 rounded border border-yellow-500/30">
+                                                Nenhuma assinatura encontrada para este Customer ID.
+                                            </div>
+                                        )}
+                                        
+                                        <div className="mt-4 pt-2 border-t border-white/10">
+                                            <span className="text-xs text-gray-400 block mb-1">Ação do Sistema:</span>
+                                            <span className="text-xs font-bold bg-gray-700 px-2 py-1 rounded text-white">{debugData.action_taken || 'Nenhuma'}</span>
+                                        </div>
+                                    </div>
+                                )
+                            ) : (
+                                <div className="text-gray-500 italic">Aguardando consulta...</div>
+                            )}
                         </div>
                     </div>
-                    <div className="p-4 bg-gray-800 border-t border-white/10 text-center">
-                        <p className="text-sm text-gray-400 mb-2">Envie um print desta tela para o suporte.</p>
-                        <button onClick={() => setShowDebug(false)} className="bg-white text-gray-900 px-6 py-2 rounded-lg font-bold hover:bg-gray-200">Fechar Diagnóstico</button>
+                    <div className="p-4 bg-gray-800 border-t border-white/10 text-center flex justify-center gap-4">
+                        <button onClick={runDiagnostics} disabled={loadingDebug} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 flex items-center gap-2">
+                            {loadingDebug ? <Bug className="animate-spin" size={16}/> : <RefreshCw size={16}/>} Rodar Novamente
+                        </button>
+                        <button onClick={() => setShowDebug(false)} className="bg-white text-gray-900 px-6 py-2 rounded-lg font-bold hover:bg-gray-200">
+                            Fechar
+                        </button>
                     </div>
                 </div>
             </div>
