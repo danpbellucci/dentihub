@@ -134,7 +134,6 @@ const AuthPage: React.FC = () => {
   };
 
   const handleForgot = async () => {
-      // Chama a Edge Function para enviar e-mail personalizado com remetente contato@dentihub.com.br
       const { data, error } = await supabase.functions.invoke('send-password-reset', {
           body: { email }
       });
@@ -149,7 +148,6 @@ const AuthPage: React.FC = () => {
       if (!name.trim()) throw new Error("Por favor, informe seu nome ou da clínica.");
       if (!isValidEmail(email)) throw new Error("Por favor, insira um e-mail válido.");
       
-      // Validação de Senha Segura
       if (password.length < 8) throw new Error("A senha deve ter pelo menos 8 caracteres.");
       if (!/[A-Z]/.test(password)) throw new Error("A senha deve conter pelo menos uma letra maiúscula.");
       if (!/[0-9]/.test(password)) throw new Error("A senha deve conter pelo menos um número.");
@@ -162,7 +160,7 @@ const AuthPage: React.FC = () => {
           body: { 
               email, 
               name,
-              referralCode: referralCode.trim() // Agora validado no passo de envio do código
+              referralCode: referralCode.trim() 
           }
       });
 
@@ -186,14 +184,14 @@ const AuthPage: React.FC = () => {
           }
       });
 
-      if (error) throw new Error(error.message || "Erro de comunicação.");
+      if (error) throw new Error("Erro de comunicação.");
       if (data && data.error) throw new Error(data.error);
 
       // --- GOOGLE ADS CONVERSION TRACKING ---
       if (typeof window !== 'undefined' && (window as any).gtag) {
           try {
               (window as any).gtag('event', 'conversion', {
-                  'send_to': 'AW-17939139169/SEU_LABEL_AQUI', // <--- SUBSTITUA PELO RÓTULO GERADO NO GOOGLE ADS
+                  'send_to': 'AW-17939139169/geB5CKLHzPQbEOGUhupC',
                   'value': 1.0,
                   'currency': 'BRL'
               });
@@ -241,7 +239,6 @@ const AuthPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans text-gray-100 overflow-hidden relative">
       
-      {/* BACKGROUND GLOWS - Otimizado: Oculto no mobile para evitar travamentos de GPU */}
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0 hidden md:block">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/10 rounded-full blur-[100px] will-change-transform"></div>
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/10 rounded-full blur-[100px] will-change-transform"></div>
@@ -280,7 +277,6 @@ const AuthPage: React.FC = () => {
 
           <form className="space-y-6" onSubmit={handleSubmit}>
             
-            {/* Fluxo de Verificação (Código) */}
             {view === 'signup' && isVerifying ? (
                 <div>
                     <label className="block text-sm font-medium text-gray-300 text-center mb-4">
@@ -309,7 +305,6 @@ const AuthPage: React.FC = () => {
                     </div>
                 </div>
             ) : (
-                // Fluxo Padrão
                 <>
                     {view === 'signup' && (
                         <div>
@@ -518,7 +513,6 @@ const AuthPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal de Termos de Uso (Dark Mode) */}
       {showTermsModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-80 p-4 backdrop-blur-sm animate-fade-in">
             <div className="bg-gray-900 rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col border border-white/10">

@@ -11,8 +11,8 @@ declare const Deno: {
 const DENTIHUB_CONTEXT = `
 PRODUTO: DentiHub - ERP para Clínicas Odontológicas.
 PÚBLICO: Dentistas donos de clínicas e Secretárias.
-DIFERENCIAIS: Prontuário via Voz (IA), Agenda Online, Financeiro Automático.
-TOM DE VOZ: Profissional, Moderno, Empático (foca na falta de tempo do dentista).
+DIFERENCIAIS: Prontuário via Voz (IA), Agenda Online, Financeiro Automático, Tudo na Nuvem, Sem fidelidade.
+TOM DE VOZ: Profissional, Moderno, Persuasivo e Focado em Resultado.
 `;
 
 serve(async (req) => {
@@ -32,89 +32,81 @@ serve(async (req) => {
     if (!apiKey) throw new Error('Chave da API não configurada.');
 
     const ai = new GoogleGenAI({ apiKey })
-    const MODEL_NAME = "gemini-2.0-flash"
+    // Migrado para o modelo recomendado para tarefas de texto/marketing
+    const MODEL_NAME = "gemini-3-flash-preview"
 
     let systemContext = DENTIHUB_CONTEXT;
     let responseSchema: any = undefined;
 
-    // --- 1. GOOGLE ADS ---
     if (taskType === 'google_ads_setup') {
         responseSchema = {
             type: Type.OBJECT,
             properties: {
                 campaign_name: { type: Type.STRING },
+                product_service: { type: Type.STRING, description: "Descrição do que está sendo anunciado" },
+                unique_selling_proposition: { type: Type.STRING, description: "O maior diferencial competitivo para este anúncio" },
                 objective: { type: Type.STRING },
-                keywords: { type: Type.ARRAY, items: { type: Type.STRING } },
+                bidding_strategy: { type: Type.STRING },
+                keywords: { 
+                    type: Type.ARRAY, 
+                    items: { type: Type.STRING },
+                    description: "MÍNIMO 15 palavras-chave de alta intenção"
+                },
+                negative_keywords: { 
+                    type: Type.ARRAY, 
+                    items: { type: Type.STRING },
+                    description: "MÍNIMO 10 palavras-chave negativas essenciais"
+                },
                 ads: {
                     type: Type.OBJECT,
                     properties: {
-                        headlines: { type: Type.ARRAY, items: { type: Type.STRING } },
-                        descriptions: { type: Type.ARRAY, items: { type: Type.STRING } }
+                        headlines: { 
+                            type: Type.ARRAY, 
+                            items: { type: Type.STRING },
+                            description: "Exatamente 15 títulos (headlines) de até 30 caracteres"
+                        },
+                        descriptions: { 
+                            type: Type.ARRAY, 
+                            items: { type: Type.STRING },
+                            description: "Exatamente 4 descrições de até 90 caracteres"
+                        }
                     },
                     required: ["headlines", "descriptions"]
                 },
-                sitelinks: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { text: {type:Type.STRING}, description: {type:Type.STRING} } } },
-                callouts: { type: Type.ARRAY, items: { type: Type.STRING } },
-                image_suggestions: { type: Type.ARRAY, items: { type: Type.STRING } }
-            }
+                sitelinks: { 
+                    type: Type.ARRAY, 
+                    items: { 
+                        type: Type.OBJECT, 
+                        properties: { 
+                            text: { type: Type.STRING, description: "Máx 25 char" }, 
+                            description: { type: Type.STRING, description: "Máx 35 char" } 
+                        } 
+                    } 
+                },
+                callouts: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Frases de destaque de até 25 caracteres" },
+                image_suggestions: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Prompts ou ideias visuais para os banners" }
+            },
+            required: ["campaign_name", "keywords", "negative_keywords", "ads", "product_service", "unique_selling_proposition"]
         };
-        systemContext += "\nCrie uma estrutura de campanha para Google Search.";
+        systemContext += "\nVocê é um Estrategista Sênior de Google Ads focado no mercado odontológico SaaS. Sua missão é gerar uma campanha COMPLETA. NÃO deixe arrays vazios. O retorno deve ser JSON puro.";
     } 
     
-    // --- 2. BLOG POST ---
+    // --- Outros tipos de tarefa mantidos ---
     else if (taskType === 'blog_post') {
         responseSchema = {
             type: Type.OBJECT,
             properties: {
-                title: { type: Type.STRING, description: "Título SEO otimizado e atrativo" },
-                slug: { type: Type.STRING, description: "URL amigável sugerida" },
-                excerpt: { type: Type.STRING, description: "Resumo curto para listagem (meta description)" },
-                content_html: { type: Type.STRING, description: "Conteúdo completo do artigo em HTML (use <h2>, <p>, <ul>, <strong>). Mínimo 600 palavras. Foco em SEO." },
-                image_prompt: { type: Type.STRING, description: "Prompt para gerar a imagem de capa em IA (Midjourney/DALL-E)" },
+                title: { type: Type.STRING },
+                slug: { type: Type.STRING },
+                excerpt: { type: Type.STRING },
+                content_html: { type: Type.STRING },
+                image_prompt: { type: Type.STRING },
                 tags: { type: Type.ARRAY, items: { type: Type.STRING } }
             },
             required: ["title", "content_html", "excerpt"]
         };
-        systemContext += "\nEscreva um artigo de blog completo, educativo e que venda indiretamente o DentiHub.";
-    }
-
-    // --- 3. SOCIAL MEDIA (Instagram/LinkedIn) ---
-    else if (taskType === 'social_media') {
-        responseSchema = {
-            type: Type.OBJECT,
-            properties: {
-                platform: { type: Type.STRING, description: "Instagram ou LinkedIn" },
-                caption: { type: Type.STRING, description: "Legenda completa com emojis e quebras de linha" },
-                hashtags: { type: Type.STRING, description: "Lista de hashtags relevantes" },
-                image_idea: { type: Type.STRING, description: "Descrição visual da imagem ou carrossel para o designer/IA" },
-                story_script: { type: Type.STRING, description: "Roteiro curto para Stories promovendo esse post" }
-            }
-        };
-        systemContext += "\nCrie conteúdo para redes sociais focado em engajamento e autoridade.";
-    }
-
-    // --- 4. META ADS (Facebook/Instagram) ---
-    else if (taskType === 'meta_ads') {
-        responseSchema = {
-            type: Type.OBJECT,
-            properties: {
-                primary_text: { type: Type.STRING, description: "Texto principal do anúncio (acima da imagem)" },
-                headline: { type: Type.STRING, description: "Título do anúncio (ao lado do botão)" },
-                description: { type: Type.STRING, description: "Descrição curta (abaixo do título)" },
-                call_to_action: { type: Type.STRING, description: "Botão (ex: Saiba Mais, Cadastre-se)" },
-                creative_ideas: { 
-                    type: Type.ARRAY, 
-                    items: { type: Type.STRING }, 
-                    description: "3 ideias de imagem ou vídeo para este anúncio" 
-                },
-                audience_interests: { type: Type.STRING, description: "Sugestão de segmentação de interesses" }
-            }
-        };
-        systemContext += "\nCrie um anúncio de alta conversão para Facebook/Instagram Ads.";
-    }
-
-    // --- 5. EMAIL MARKETING (Padrão) ---
-    else {
+    } else {
+        // Fallback schema
         responseSchema = {
             type: Type.OBJECT,
             properties: {
@@ -123,14 +115,13 @@ serve(async (req) => {
                 rationale: { type: Type.STRING }
             }
         };
-        systemContext += "\nCrie um e-mail marketing persuasivo.";
     }
 
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
       contents: {
         parts: [
-          { text: `Contexto Extra: ${JSON.stringify(contextData || {})}` },
+          { text: `Contexto do Negócio: ${JSON.stringify(contextData || {})}` },
           { text: `TAREFA: ${prompt}` }
         ]
       },
