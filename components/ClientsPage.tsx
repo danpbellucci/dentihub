@@ -374,9 +374,16 @@ const ClientsPage: React.FC = () => {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!e.target.files || e.target.files.length === 0 || !actionModal.client) return;
+      
+      // Validação de Segurança do Cliente
+      if (!userProfile?.clinic_id) {
+          setToast({ message: "Erro de sessão. Recarregue a página.", type: 'error' });
+          return;
+      }
+
       setProcessing(true);
       const file = e.target.files[0];
-      const filePath = `${userProfile?.clinic_id}/${actionModal.client.id}/${Date.now()}_${file.name}`;
+      const filePath = `${userProfile.clinic_id}/${actionModal.client.id}/${Date.now()}_${file.name}`;
       
       try {
           const { error } = await supabase.storage.from('patient-files').upload(filePath, file);
@@ -384,6 +391,7 @@ const ClientsPage: React.FC = () => {
           setToast({ message: "Arquivo enviado!", type: 'success' });
           fetchFiles(actionModal.client.id);
       } catch (err: any) {
+          console.error(err);
           setToast({ message: "Erro no upload: " + err.message, type: 'error' });
       } finally {
           setProcessing(false);

@@ -44,6 +44,10 @@ const PlansSection: React.FC = () => {
     navigate('/auth', { state: { view } });
   };
 
+  const formatMoney = (val: number) => {
+    return val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
   return (
     <section className="py-24 relative z-10" id="plans">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -62,6 +66,10 @@ const PlansSection: React.FC = () => {
                         const priceAiBlock = plan.price_per_ai_block || 15;
                         const aiBlockSize = plan.ai_block_size || 5;
 
+                        const baseCost = entDentists * priceDentist;
+                        const aiCost = Math.ceil(entAiUsage / aiBlockSize) * priceAiBlock * entDentists;
+                        const totalCost = baseCost + aiCost;
+
                         return (
                             <div key={plan.id} className="border border-purple-500/30 bg-gradient-to-b from-purple-900/20 to-gray-900 rounded-xl p-6 flex flex-col relative overflow-hidden ring-1 ring-purple-500/50">
                                 <div className="absolute top-0 right-0 p-2"><Crown size={20} className="text-purple-400"/></div>
@@ -77,7 +85,7 @@ const PlansSection: React.FC = () => {
                                             onChange={(e) => setEntDentists(parseInt(e.target.value))}
                                             className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
                                         />
-                                        <div className="text-right text-xs text-purple-300 font-bold">R$ {entDentists * priceDentist},00</div>
+                                        <div className="text-right text-xs text-purple-300 font-bold">R$ {formatMoney(baseCost)}</div>
                                     </div>
                                     
                                     <div>
@@ -90,14 +98,14 @@ const PlansSection: React.FC = () => {
                                             {[5, 10, 15, 20, 25, 30, 50].map(v => <option key={v} value={v}>{v} usos</option>)}
                                         </select>
                                         <div className="text-right text-xs text-purple-300 font-bold mt-1">
-                                            + R$ {Math.ceil(entAiUsage / aiBlockSize) * priceAiBlock * entDentists},00
+                                            + R$ {formatMoney(aiCost)}
                                         </div>
                                     </div>
 
                                     <div className="bg-purple-900/30 p-3 rounded border border-purple-500/30 mt-2">
                                         <div className="flex justify-between items-center text-sm font-bold text-white">
                                             <span>Total:</span>
-                                            <span>R$ {(entDentists * priceDentist) + (Math.ceil(entAiUsage / aiBlockSize) * priceAiBlock * entDentists)},00</span>
+                                            <span>R$ {formatMoney(totalCost)}</span>
                                         </div>
                                         <span className="text-[10px] text-purple-300 block text-right">/mês</span>
                                     </div>
@@ -142,9 +150,9 @@ const PlansSection: React.FC = () => {
 
                     return (
                         <div key={plan.id} className={cardClass}>
-                            {plan.is_popular && <div className="absolute top-0 right-0 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg">MAIS POPULAR</div>}
+                            {plan.is_popular && <div className="absolute top-0 right-0 bg-primary text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg">MAIS POPULAR</div>}
                             <h3 className={`text-lg font-bold ${titleColor}`}>{icon} {plan.name}</h3>
-                            <p className="text-4xl font-black mt-4 mb-6 text-white">R$ {plan.price_monthly} <span className="text-base font-normal text-gray-500">/mês</span></p>
+                            <p className="text-4xl font-black mt-4 mb-6 text-white">R$ {formatMoney(plan.price_monthly)} <span className="text-base font-normal text-gray-500">/mês</span></p>
                             <ul className="space-y-4 mb-8 flex-1">
                                 {plan.features.map((feat: any, i: number) => (
                                     <li key={i} className="flex items-center text-gray-300">

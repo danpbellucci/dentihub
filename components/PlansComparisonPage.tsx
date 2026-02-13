@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Logo } from './Logo';
@@ -148,7 +147,7 @@ const PlansComparisonPage: React.FC = () => {
                             {/* Free Header */}
                             <th className="p-6 bg-gray-900/80 border-b border-white/10 text-center min-w-[180px]">
                                 <h3 className="text-xl font-bold text-white mb-1">Gratuito</h3>
-                                <p className="text-2xl font-black text-gray-400">R$ 0<span className="text-xs font-normal">/mês</span></p>
+                                <p className="text-2xl font-black text-gray-400">R$ 0,00<span className="text-xs font-normal">/mês</span></p>
                                 <button onClick={() => goToAuth('signup')} className="mt-4 w-full py-2 rounded-lg border border-white/20 text-white text-sm font-bold hover:bg-white/5 transition">Criar Conta</button>
                             </th>
 
@@ -156,7 +155,7 @@ const PlansComparisonPage: React.FC = () => {
                             <th className="p-6 bg-blue-900/10 border-b border-blue-500/20 text-center min-w-[180px] relative">
                                 <div className="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
                                 <h3 className="text-xl font-bold text-blue-400 mb-1">Starter</h3>
-                                <p className="text-2xl font-black text-white">R$ 100<span className="text-xs font-normal text-gray-400">/mês</span></p>
+                                <p className="text-2xl font-black text-white">R$ 100,00<span className="text-xs font-normal text-gray-400">/mês</span></p>
                                 <button onClick={() => goToAuth('signup')} className="mt-4 w-full py-2 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-500 transition shadow-lg shadow-blue-900/20">Assinar</button>
                             </th>
 
@@ -165,7 +164,7 @@ const PlansComparisonPage: React.FC = () => {
                                 <div className="absolute top-0 left-0 w-full h-1 bg-yellow-500"></div>
                                 <div className="absolute top-3 right-3 text-yellow-500"><Star size={16} fill="currentColor"/></div>
                                 <h3 className="text-xl font-bold text-yellow-400 mb-1">Pro</h3>
-                                <p className="text-2xl font-black text-white">R$ 300<span className="text-xs font-normal text-gray-400">/mês</span></p>
+                                <p className="text-2xl font-black text-white">R$ 300,00<span className="text-xs font-normal text-gray-400">/mês</span></p>
                                 <button onClick={() => goToAuth('signup')} className="mt-4 w-full py-2 rounded-lg bg-yellow-500 text-black text-sm font-bold hover:bg-yellow-400 transition shadow-lg shadow-yellow-900/20">Assinar</button>
                             </th>
 
