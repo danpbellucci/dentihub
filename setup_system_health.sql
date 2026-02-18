@@ -38,7 +38,14 @@ BEGIN
         (SELECT created_at FROM appointments ORDER BY created_at DESC LIMIT 1) as last_appointment_at,
         (SELECT created_at FROM clients ORDER BY created_at DESC LIMIT 1) as last_patient_at,
         (SELECT created_at FROM clinical_records ORDER BY created_at DESC LIMIT 1) as last_record_at,
-        (SELECT created_at FROM auth.sessions ORDER BY created_at DESC LIMIT 1) as last_login_at, -- Requer permissão sobre auth ou view
+        (
+            SELECT s.created_at 
+            FROM auth.sessions s
+            JOIN auth.users u ON s.user_id = u.id
+            WHERE u.email NOT IN (SELECT email FROM public.super_admins)
+            ORDER BY s.created_at DESC 
+            LIMIT 1
+        ) as last_login_at,
         
         -- 2. Erros nas Edge Functions (Hoje)
         (SELECT count(*) FROM edge_function_logs WHERE status != 'success' AND created_at > CURRENT_DATE)::BIGINT as errors_today,
