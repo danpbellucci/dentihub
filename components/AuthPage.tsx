@@ -245,7 +245,7 @@ const AuthPage: React.FC = () => {
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-        <div className="flex justify-center cursor-pointer mb-6" onClick={() => navigate('/')}>
+        <div className="flex justify-center cursor-pointer mb-6" onClick={(e) => { e.preventDefault(); navigate('/'); }}>
           <div className="bg-gradient-to-tr from-blue-600 to-purple-600 p-3 rounded-2xl shadow-lg shadow-purple-500/20">
             <Logo className="w-10 h-10" />
           </div>
@@ -275,7 +275,7 @@ const AuthPage: React.FC = () => {
             </div>
           )}
 
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <div className="space-y-6">
             
             {view === 'signup' && isVerifying ? (
                 <div>
@@ -289,19 +289,31 @@ const AuthPage: React.FC = () => {
                             required
                             value={verificationCode}
                             onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(e as any); }}
                             className="block w-48 text-center text-2xl tracking-widest bg-gray-800 border-gray-700 text-white rounded-xl shadow-sm focus:ring-primary focus:border-primary py-3 border outline-none placeholder-gray-600"
                             placeholder="000000"
                             autoFocus
                         />
                     </div>
                     <div className="text-center mt-4">
-                        <button 
-                            type="button" 
-                            onClick={() => setIsVerifying(false)}
-                            className="text-xs text-gray-400 hover:text-primary underline"
+                        <span 
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setIsVerifying(false);
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    setIsVerifying(false);
+                                }
+                            }}
+                            className="text-xs text-gray-400 hover:text-primary underline cursor-pointer outline-none"
                         >
                             Corrigir e-mail ou reenviar
-                        </button>
+                        </span>
                     </div>
                 </div>
             ) : (
@@ -318,6 +330,7 @@ const AuthPage: React.FC = () => {
                                     required
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(e as any); }}
                                     className="block w-full pl-10 bg-gray-800 border border-gray-700 text-white rounded-lg py-2.5 placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition"
                                     placeholder="Ex: Dr. Silva"
                                 />
@@ -340,6 +353,7 @@ const AuthPage: React.FC = () => {
                         disabled={isMisconfigured}
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(e as any); }}
                         className="block w-full pl-10 bg-gray-800 border border-gray-700 text-white rounded-lg py-2.5 placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition disabled:opacity-50"
                         placeholder="admin@clinica.com"
                         />
@@ -365,6 +379,7 @@ const AuthPage: React.FC = () => {
                             minLength={view === 'signup' ? 8 : 6}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(e as any); }}
                             className="block w-full pl-10 bg-gray-800 border border-gray-700 text-white rounded-lg py-2.5 placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition disabled:opacity-50"
                             placeholder={view === 'signup' ? '8+ chars, Maiúscula, Núm, Especial' : '••••••••'}
                         />
@@ -452,7 +467,8 @@ const AuthPage: React.FC = () => {
 
             <div>
               <button
-                type="submit"
+                type="button"
+                onClick={handleSubmit}
                 disabled={loading || isMisconfigured}
                 className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-lg shadow-blue-900/20 text-sm font-bold text-white bg-primary hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:-translate-y-0.5"
               >
@@ -462,7 +478,7 @@ const AuthPage: React.FC = () => {
                  'Enviar Link'}
               </button>
             </div>
-          </form>
+          </div>
 
           {message && (
             <div className={`mt-4 text-sm text-center font-medium p-3 rounded-lg border ${message.includes('enviado') || message.includes('criada') ? 'bg-green-900/20 border-green-800 text-green-400' : 'bg-red-900/20 border-red-800 text-red-400'}`}>
@@ -493,7 +509,8 @@ const AuthPage: React.FC = () => {
                  </button>
               ) : (
                 <button
-                  onClick={() => { 
+                  onClick={(e) => { 
+                      e.preventDefault();
                       setView(view === 'login' ? 'signup' : 'login'); 
                       setMessage(''); 
                       setConfirmPassword(''); 
