@@ -346,14 +346,14 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
         {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm md:hidden" onClick={() => setSidebarOpen(false)}></div>}
 
         <div 
-            className={`fixed inset-y-0 left-0 z-50 bg-gray-900/95 backdrop-blur-xl border-r border-white/5 shadow-2xl transform transition-all duration-300 ease-in-out 
+            className={`fixed inset-y-0 left-0 z-50 bg-gray-900/95 backdrop-blur-xl border-r border-white/5 shadow-2xl transform transition-all duration-300 ease-in-out flex flex-col
             ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
             md:relative md:translate-x-0 ${isNarrow ? 'md:w-20' : 'md:w-64'}
             `}
             onMouseEnter={() => isCollapsed && setIsHovered(true)}
             onMouseLeave={() => isCollapsed && setIsHovered(false)}
         >
-            <div className={`flex items-center p-4 border-b border-white/5 ${isNarrow ? 'justify-center' : 'justify-between'}`}>
+            <div className={`flex items-center p-4 border-b border-white/5 shrink-0 ${isNarrow ? 'justify-center' : 'justify-between'}`}>
                 <div className={`flex flex-col w-full ${isNarrow ? 'items-center' : ''}`}>
                     <div className="flex items-center space-x-2 text-white font-bold text-xl mb-1 cursor-pointer" onClick={() => navigate('/dashboard')}>
                         <div className="bg-gradient-to-tr from-blue-600 to-purple-600 p-1.5 rounded-lg shadow-lg shadow-purple-500/20 shrink-0">
@@ -388,7 +388,7 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
                 </button>
             </div>
 
-            <div className={`px-4 py-4 bg-gray-900/50 border-b border-white/5 ${isNarrow ? 'flex flex-col items-center' : ''}`}>
+            <div className={`px-4 py-4 bg-gray-900/50 border-b border-white/5 shrink-0 ${isNarrow ? 'flex flex-col items-center' : ''}`}>
                 {!isNarrow ? (
                     <>
                         <p className="text-xs text-gray-500 uppercase font-bold mb-1">Logado como</p>
@@ -414,7 +414,7 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
                 )}
             </div>
 
-            <nav className="mt-4 px-3 space-y-1 pb-20 overflow-y-auto max-h-[calc(100vh-180px)] custom-scrollbar">
+            <nav className="mt-4 px-3 space-y-1 pb-4 overflow-y-auto flex-1 custom-scrollbar">
             {visibleNavItems.map((item) => (
                 <NavLink key={item.to} to={item.to} end={item.end} onClick={() => setSidebarOpen(false)}
                 className={({ isActive }) => `group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 relative overflow-hidden ${
@@ -446,7 +446,7 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
             )}
             </nav>
 
-            <div className="absolute bottom-0 w-full border-t border-white/5 bg-gray-900/95 p-4 backdrop-blur-sm">
+            <div className="border-t border-white/5 bg-gray-900/95 p-4 backdrop-blur-sm shrink-0">
             <button 
                 onClick={handleLogout} 
                 className={`flex items-center w-full px-3 py-2 text-sm font-medium text-gray-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors ${isNarrow ? 'justify-center' : ''}`}
