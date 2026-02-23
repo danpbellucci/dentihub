@@ -1,25 +1,58 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   LayoutDashboard, Calendar, Users, UserCheck, Mic, MessageSquare, DollarSign, Box, 
   BellRing, BookOpen, Settings, Smartphone, Tablet, Monitor, Clock, Menu, X, Lock,
   CheckCircle, ArrowUpCircle, ArrowDownCircle, Search, MoreVertical, Plus, Filter,
   ChevronLeft, ChevronRight, LogOut, Trash2, Edit2, Download, Upload, ShieldCheck,
-  CreditCard, FileText, FolderOpen, Send, HelpCircle, AlertTriangle, Check
+  CreditCard, FileText, FolderOpen, Send, HelpCircle, AlertTriangle, Check, FileDown,
+  Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Logo } from '../Logo';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 const InteractiveMockup: React.FC = () => {
   const navigate = useNavigate();
+  const mockupRef = useRef<HTMLDivElement>(null);
   const [activeMockup, setActiveMockup] = useState('Visão Geral');
   const [device, setDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
   const [mockupMobileMenuOpen, setMockupMobileMenuOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
         setDevice('mobile');
     }
   }, []);
+
+  const exportToPDF = async () => {
+    if (!mockupRef.current) return;
+    
+    setExporting(true);
+    try {
+      const canvas = await html2canvas(mockupRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#030712', // gray-950
+        logging: false
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+        unit: 'px',
+        format: [canvas.width, canvas.height]
+      });
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      pdf.save(`DentiHub-Mockup-${activeMockup}-${device}.pdf`);
+    } catch (error) {
+      console.error('Erro ao exportar PDF:', error);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const goToAuth = () => {
     navigate('/auth', { state: { view: 'signup' } });
@@ -85,14 +118,27 @@ const InteractiveMockup: React.FC = () => {
     <div className="relative mx-auto px-4 sm:px-6 lg:px-8 animate-fade-in-up delay-200 flex flex-col items-center">
         
         {/* Device Switcher */}
-        <div className="flex items-center justify-center gap-4 mb-8 p-1.5 bg-gray-900/80 backdrop-blur rounded-full border border-white/10 shadow-xl w-fit">
-            <button onClick={() => setDevice('mobile')} className={`p-2 rounded-full transition ${device === 'mobile' ? 'bg-gray-800 text-white shadow-inner' : 'text-gray-500 hover:text-gray-300'}`}><Smartphone size={18} /></button>
-            <button onClick={() => setDevice('tablet')} className={`p-2 rounded-full transition ${device === 'tablet' ? 'bg-gray-800 text-white shadow-inner' : 'text-gray-500 hover:text-gray-300'}`}><Tablet size={18} /></button>
-            <button onClick={() => setDevice('desktop')} className={`p-2 rounded-full transition ${device === 'desktop' ? 'bg-gray-800 text-white shadow-inner' : 'text-gray-500 hover:text-gray-300'}`}><Monitor size={18} /></button>
+        <div className="flex flex-wrap items-center justify-center gap-4 mb-8">
+            <div className="flex items-center gap-4 p-1.5 bg-gray-900/80 backdrop-blur rounded-full border border-white/10 shadow-xl w-fit">
+                <button onClick={() => setDevice('mobile')} className={`p-2 rounded-full transition ${device === 'mobile' ? 'bg-gray-800 text-white shadow-inner' : 'text-gray-500 hover:text-gray-300'}`}><Smartphone size={18} /></button>
+                <button onClick={() => setDevice('tablet')} className={`p-2 rounded-full transition ${device === 'tablet' ? 'bg-gray-800 text-white shadow-inner' : 'text-gray-500 hover:text-gray-300'}`}><Tablet size={18} /></button>
+                <button onClick={() => setDevice('desktop')} className={`p-2 rounded-full transition ${device === 'desktop' ? 'bg-gray-800 text-white shadow-inner' : 'text-gray-500 hover:text-gray-300'}`}><Monitor size={18} /></button>
+            </div>
+
+            <button 
+                onClick={exportToPDF}
+                disabled={exporting}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-full border border-white/10 transition-all font-medium text-sm disabled:opacity-50"
+            >
+                {exporting ? <Loader2 className="animate-spin" size={16} /> : <FileDown size={16} />}
+                {exporting ? 'Gerando PDF...' : 'Exportar Mockup (PDF)'}
+            </button>
         </div>
 
         {/* The Frame */}
-        <div className={`transition-all duration-700 ease-in-out relative bg-gray-950 shadow-2xl overflow-hidden group border border-white/10
+        <div 
+            ref={mockupRef}
+            className={`transition-all duration-700 ease-in-out relative bg-gray-950 shadow-2xl overflow-hidden group border border-white/10
                 ${device === 'desktop' ? 'w-full max-w-6xl rounded-xl h-[700px] hover:shadow-[0_0_50px_rgba(124,58,237,0.2)]' : ''}
                 ${device === 'tablet' ? 'w-[500px] h-[700px] rounded-[2rem] border-[8px] border-gray-800 ring-1 ring-white/10' : ''}
                 ${device === 'mobile' ? 'w-[320px] h-[650px] rounded-[3rem] border-[8px] border-gray-800 ring-1 ring-white/10' : ''}
