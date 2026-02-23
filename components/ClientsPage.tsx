@@ -29,6 +29,33 @@ const CONDITIONS_MAP: Record<string, { label: string, color: string, icon: any }
     missing: { label: 'Extraído/Ausente', color: 'bg-slate-600 text-white', icon: Ban },
 };
 
+// Helper to mask date DD/MM/AAAA
+const maskDate = (value: string) => {
+    let v = value.replace(/\D/g, '');
+    if (v.length > 8) v = v.slice(0, 8);
+    if (v.length <= 2) return v;
+    if (v.length <= 4) return v.replace(/(\d{2})(\d)/, '$1/$2');
+    return v.replace(/(\d{2})(\d{2})(\d)/, '$1/$2/$3');
+};
+
+// Helper to convert DD/MM/AAAA to YYYY-MM-DD
+const dateToIso = (dateStr: string) => {
+    if (!dateStr || !dateStr.includes('/')) return dateStr;
+    const parts = dateStr.split('/');
+    if (parts.length !== 3) return dateStr;
+    const [day, month, year] = parts;
+    return `${year}-${month}-${day}`;
+};
+
+// Helper to convert YYYY-MM-DD to DD/MM/AAAA
+const isoToDate = (isoStr: string) => {
+    if (!isoStr || !isoStr.includes('-')) return isoStr;
+    const parts = isoStr.split('-');
+    if (parts.length !== 3) return isoStr;
+    const [year, month, day] = parts;
+    return `${day}/${month}/${year}`;
+};
+
 const ClientsPage: React.FC = () => {
   const { userProfile } = useDashboard() || {};
   const [clients, setClients] = useState<Client[]>([]);
@@ -424,7 +451,7 @@ const ClientsPage: React.FC = () => {
         whatsapp: client.whatsapp || '',
         cpf: client.cpf || '',
         address: client.address || '',
-        birth_date: client.birth_date || '',
+        birth_date: client.birth_date ? isoToDate(client.birth_date) : '',
         clinical_notes: client.clinical_notes || ''
       });
     } else {
@@ -454,6 +481,11 @@ const ClientsPage: React.FC = () => {
         return;
     }
 
+    if (formData.birth_date.length < 10) {
+        setToast({ message: "Data de Nascimento incompleta (DD/MM/AAAA).", type: 'error' });
+        return;
+    }
+
     if (!formData.cpf) {
         setToast({ message: "O CPF é obrigatório.", type: 'error' });
         return;
@@ -479,7 +511,7 @@ const ClientsPage: React.FC = () => {
             whatsapp: formData.whatsapp || null,
             cpf: formData.cpf || null,
             address: formData.address || null,
-            birth_date: formData.birth_date || null,
+            birth_date: formData.birth_date ? dateToIso(formData.birth_date) : null,
             clinical_notes: formData.clinical_notes || null
         };
 
@@ -812,7 +844,7 @@ const ClientsPage: React.FC = () => {
                       <div><label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Nome Completo *</label><input required className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white outline-none focus:border-primary" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
                       <div className="grid grid-cols-2 gap-4">
                           <div><label className="block text-xs font-bold text-gray-400 mb-1 uppercase">CPF *</label><input required className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white outline-none focus:border-primary" value={formData.cpf} onChange={e => { let v = e.target.value.replace(/\D/g, ''); if (v.length > 11) v = v.slice(0, 11); v = v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2'); setFormData({...formData, cpf: v}); }} maxLength={14}/></div>
-                          <div><label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Data Nasc. *</label><input required type="date" className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white outline-none focus:border-primary" value={formData.birth_date} onChange={e => setFormData({...formData, birth_date: e.target.value})} /></div>
+                          <div><label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Data Nasc. *</label><input required type="text" placeholder="DD/MM/AAAA" maxLength={10} className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white outline-none focus:border-primary" value={formData.birth_date} onChange={e => setFormData({...formData, birth_date: maskDate(e.target.value)})} /></div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                           <div><label className="block text-xs font-bold text-gray-400 mb-1 uppercase">WhatsApp</label><input className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white outline-none focus:border-primary" value={formData.whatsapp} onChange={e => setFormData({...formData, whatsapp: e.target.value})} /></div>

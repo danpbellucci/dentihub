@@ -120,8 +120,8 @@ const DentalArch: React.FC<DentalArchProps> = ({ toothConditions, onToothClick, 
                                 <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
                                     {conditions.map((cond, index) => (
                                         <React.Fragment key={index}>
-                                            <stop offset={`${index * step}%`} stopColor={CONDITION_COLORS[cond]} />
-                                            <stop offset={`${(index + 1) * step}%`} stopColor={CONDITION_COLORS[cond]} />
+                                            <stop offset={`${index * step}%`} stopColor={CONDITION_COLORS[cond as ToothCondition]} />
+                                            <stop offset={`${(index + 1) * step}%`} stopColor={CONDITION_COLORS[cond as ToothCondition]} />
                                         </React.Fragment>
                                     ))}
                                 </linearGradient>
@@ -141,7 +141,7 @@ const DentalArch: React.FC<DentalArchProps> = ({ toothConditions, onToothClick, 
 
                 } else {
                     // Single Color
-                    fillProp = CONDITION_COLORS[conditions[0]];
+                    fillProp = CONDITION_COLORS[conditions[0] as ToothCondition];
                     const singleCond = conditions[0];
                     const isDark = singleCond === 'missing' || singleCond === 'carie' || singleCond === 'implant';
 

@@ -10,6 +10,24 @@ import { ptBR } from 'date-fns/locale';
 import { validateCPF } from '../utils/validators';
 import Toast, { ToastType } from './Toast';
 
+// Helper to mask date DD/MM/AAAA
+const maskDate = (value: string) => {
+    let v = value.replace(/\D/g, '');
+    if (v.length > 8) v = v.slice(0, 8);
+    if (v.length <= 2) return v;
+    if (v.length <= 4) return v.replace(/(\d{2})(\d)/, '$1/$2');
+    return v.replace(/(\d{2})(\d{2})(\d)/, '$1/$2/$3');
+};
+
+// Helper to convert DD/MM/AAAA to YYYY-MM-DD
+const dateToIso = (dateStr: string) => {
+    if (!dateStr || !dateStr.includes('/')) return dateStr;
+    const parts = dateStr.split('/');
+    if (parts.length !== 3) return dateStr;
+    const [day, month, year] = parts;
+    return `${year}-${month}-${day}`;
+};
+
 const PublicBookingPage: React.FC = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -170,7 +188,7 @@ const PublicBookingPage: React.FC = () => {
                 patient_phone: patientForm.phone,
                 patient_email: patientForm.email || null, 
                 patient_cpf: patientForm.cpf,
-                patient_birth_date: patientForm.birthDate || null,
+                patient_birth_date: patientForm.birthDate ? dateToIso(patientForm.birthDate) : null,
                 patient_address: patientForm.address || null,
                 service_name: selectedService ? selectedService.name : 'Consulta Geral',
                 requested_time: requestDate.toISOString()
@@ -392,7 +410,10 @@ const PublicBookingPage: React.FC = () => {
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Principais Procedimentos:</p>
                                     <div className="flex flex-wrap gap-1">
-                                        {d.services.slice(0,3).map((s, idx) => <span key={idx} className="text-[10px] bg-gray-800 text-gray-300 border border-white/5 px-2 py-1 rounded">{s.name}</span>)}
+                                        {d.services.slice(0,3).map((s, idx) => {
+                                            const sName = typeof s === 'string' ? s : s.name;
+                                            return <span key={idx} className="text-[10px] bg-gray-800 text-gray-300 border border-white/5 px-2 py-1 rounded">{sName}</span>
+                                        })}
                                         {d.services.length > 3 && <span className="text-[10px] text-gray-500 py-1 px-1">+{d.services.length - 3}</span>}
                                     </div>
                                 </div>
@@ -412,7 +433,7 @@ const PublicBookingPage: React.FC = () => {
                     <p className="font-bold text-gray-300 mb-4 text-sm">Profissional: <span className="text-white ml-1">{selectedDentist?.name}</span></p>
                     <div className="space-y-3">
                         {selectedDentist?.services && selectedDentist.services.length > 0 ? (
-                            selectedDentist.services.map((service, idx) => (
+                            (selectedDentist.services as any[]).map((service, idx) => (
                                 <button key={idx} onClick={() => { setSelectedService(service); setStep(3); }} className="w-full flex justify-between items-center p-4 border border-white/5 rounded-lg hover:border-primary/50 hover:bg-gray-800/50 transition group">
                                     <div className="text-left">
                                         <div className="font-bold text-white group-hover:text-primary transition-colors">{service.name}</div>
@@ -523,7 +544,7 @@ const PublicBookingPage: React.FC = () => {
                              </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Data de Nascimento (Opcional)</label>
-                                <input type="date" className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none transition" value={patientForm.birthDate} onChange={e => setPatientForm({...patientForm, birthDate: e.target.value})}/>
+                                <input type="text" placeholder="DD/MM/AAAA" maxLength={10} className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none transition" value={patientForm.birthDate} onChange={e => setPatientForm({...patientForm, birthDate: maskDate(e.target.value)})}/>
                             </div>
                         </div>
                         

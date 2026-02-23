@@ -18,7 +18,18 @@ const HeroSection: React.FC = () => {
 
   return (
     <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        {/* Background Image */}
+        <div className="absolute inset-0 z-0 opacity-50 pointer-events-none">
+            <img 
+                src="https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&q=80&w=1920&h=1080" 
+                alt="Dentista usando DentiHub" 
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-gray-950 via-gray-950/40 to-gray-950"></div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
           
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 shadow-lg backdrop-blur-sm text-purple-300 font-medium text-sm mb-8 animate-fade-in-up hover:bg-white/10 transition cursor-default">
             <SparklesIcon /> <span className="text-gray-200">Novo:</span> Prontuário com IA Generativa
@@ -30,7 +41,7 @@ const HeroSection: React.FC = () => {
           </h1>
           
           <p className="mt-4 max-w-3xl mx-auto text-xl text-gray-400 mb-12 leading-relaxed">
-            <span className="block text-white font-bold mb-3 text-2xl drop-shadow-md">CRM, ERP & IA em uma única ferramenta.</span>
+            <span className="block text-white font-bold mb-3 text-2xl drop-shadow-md">Gestão administrativa e relacionamento com pacientes em uma única ferramenta.</span>
             Abandone o papel e sistemas do passado. Experimente a <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 font-bold">gestão inteligente</span> com agendamento online, prontuário com IA e mensageria automática em uma interface que você vai amar usar.
           </p>
           
