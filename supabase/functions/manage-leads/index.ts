@@ -146,8 +146,11 @@ Deno.serve(async (req) => {
                 <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
                     <p>Olá,</p>
                     <p>Sabia que você pode usar os planos <strong>Starter</strong> e <strong>Pro</strong> do DentiHub sem pagar nada?</p>
-                    <p>Ao criar sua conta, você recebe um código de indicação exclusivo.</p>
-                    <p>Cada colega dentista que você indicar e que se cadastrar na plataforma garante a você <strong>30 dias de acesso premium gratuito</strong>.</p>
+                    <p>Ao criar sua conta, você recebe um código de indicação exclusivo para ganhar recompensas:</p>
+                    <ul>
+                        <li>✅ <strong>30 dias de Plano Starter:</strong> Quando seu indicado atingir 30 pacientes cadastrados.</li>
+                        <li>✅ <strong>30 dias de Plano Pro:</strong> Quando seu indicado contratar qualquer plano pago.</li>
+                    </ul>
                     <p>Crie sua conta agora para pegar seu código e começar a indicar:</p>
                     <div style="text-align: center; margin: 30px 0;">
                         <a href="https://dentihub.com.br/#/auth?view=signup" style="background-color: #0f172a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">

@@ -39,6 +39,7 @@ export interface UserProfile {
   clinic_id: string;
   clinics?: {
     name: string;
+    slug: string;
     subscription_tier: string;
     custom_dentist_limit?: number;
     custom_ai_daily_limit?: number;

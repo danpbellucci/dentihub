@@ -4,7 +4,7 @@ import { supabase } from '../services/supabase';
 import { 
   Users, Calendar, DollarSign, Activity, Filter, 
   Clock, ArrowUpCircle, ArrowDownCircle, TrendingUp, TrendingDown,
-  ArrowRight, Building, UserPlus, CheckCircle
+  ArrowRight, Building, UserPlus, CheckCircle, Copy, ExternalLink, Settings, UserCheck
 } from 'lucide-react';
 import { useDashboard } from './DashboardLayout';
 import { Dentist, Appointment } from '../types';
@@ -40,7 +40,8 @@ const DashboardHome: React.FC = () => {
 
   // Onboarding States
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [onboardingStep, setOnboardingStep] = useState<1 | 2>(1);
+  const [onboardingStep, setOnboardingStep] = useState<1 | 2 | 3>(1);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (userProfile?.clinic_id) {
@@ -79,11 +80,19 @@ const DashboardHome: React.FC = () => {
   const handleOnboardingSuccess = async () => {
       if (onboardingStep === 1) {
           setOnboardingStep(2);
+      } else if (onboardingStep === 2) {
+          setOnboardingStep(3);
       } else {
           setShowOnboarding(false);
           if (refreshProfile) await refreshProfile();
           if (userProfile?.clinic_id) fetchData(userProfile.clinic_id);
       }
+  };
+
+  const copyToClipboard = (text: string) => {
+      navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
   };
 
   const fetchData = async (clinicId: string) => {
@@ -225,14 +234,19 @@ const DashboardHome: React.FC = () => {
                       <div className="flex justify-center mb-4">
                           <div className={`h-3 w-3 rounded-full mx-1 ${onboardingStep >= 1 ? 'bg-primary' : 'bg-gray-700'}`}></div>
                           <div className={`h-3 w-3 rounded-full mx-1 ${onboardingStep >= 2 ? 'bg-primary' : 'bg-gray-700'}`}></div>
+                          <div className={`h-3 w-3 rounded-full mx-1 ${onboardingStep >= 3 ? 'bg-primary' : 'bg-gray-700'}`}></div>
                       </div>
                       <h2 className="text-2xl font-black text-white mb-2">
-                          {onboardingStep === 1 ? 'Bem-vindo ao DentiHub! 🎉' : 'Cadastre o Dentista 🦷'}
+                          {onboardingStep === 1 ? 'Bem-vindo ao DentiHub! 🎉' : 
+                           onboardingStep === 2 ? 'Cadastre o Dentista 🦷' : 
+                           'Tudo Pronto! 🚀'}
                       </h2>
                       <p className="text-gray-400">
                           {onboardingStep === 1 
                               ? 'Vamos configurar os dados da sua clínica para começar.' 
-                              : 'Agora, cadastre o perfil do profissional principal (você).'}
+                              : onboardingStep === 2 
+                                ? 'Agora, cadastre o perfil do profissional principal (você).'
+                                : 'Sua clínica já está configurada e pronta para uso.'}
                       </p>
                   </div>
 
@@ -241,7 +255,7 @@ const DashboardHome: React.FC = () => {
                           <ClinicOnboardingForm 
                               clinicId={userProfile.clinic_id} 
                               onSuccess={handleOnboardingSuccess}
-                              onCancel={() => setShowOnboarding(false)} // Permite pular se necessário, mas idealmente não deveria
+                              onCancel={() => setShowOnboarding(false)} 
                           />
                       )}
                       
@@ -251,6 +265,71 @@ const DashboardHome: React.FC = () => {
                               onSuccess={handleOnboardingSuccess}
                               onCancel={() => setShowOnboarding(false)}
                           />
+                      )}
+
+                      {onboardingStep === 3 && (
+                          <div className="space-y-6 animate-fade-in">
+                              <div className="bg-gray-800/50 border border-white/5 rounded-xl p-6 space-y-4">
+                                  <div className="flex items-start gap-4">
+                                      <div className="bg-blue-500/20 p-2 rounded-lg text-blue-400 shrink-0">
+                                          <UserCheck size={20} />
+                                      </div>
+                                      <div>
+                                          <h4 className="font-bold text-white text-sm">Novos Dentistas</h4>
+                                          <p className="text-xs text-gray-400 mt-1">Você pode inserir novos profissionais na página de <strong>Dentistas</strong>.</p>
+                                      </div>
+                                  </div>
+
+                                  <div className="flex items-start gap-4">
+                                      <div className="bg-purple-500/20 p-2 rounded-lg text-purple-400 shrink-0">
+                                          <Settings size={20} />
+                                      </div>
+                                      <div>
+                                          <h4 className="font-bold text-white text-sm">Configurações da Clínica</h4>
+                                          <p className="text-xs text-gray-400 mt-1">Edite informações, horários e logo na página de <strong>Configurações</strong>.</p>
+                                      </div>
+                                  </div>
+
+                                  <div className="flex items-start gap-4">
+                                      <div className="bg-green-500/20 p-2 rounded-lg text-green-400 shrink-0">
+                                          <Users size={20} />
+                                      </div>
+                                      <div>
+                                          <h4 className="font-bold text-white text-sm">Cadastro de Pacientes</h4>
+                                          <p className="text-xs text-gray-400 mt-1">Comece a cadastrar seus pacientes na página de <strong>Pacientes</strong>.</p>
+                                      </div>
+                                  </div>
+                              </div>
+
+                              <div className="bg-primary/10 border border-primary/20 rounded-xl p-6 space-y-4">
+                                  <h4 className="font-bold text-primary text-sm flex items-center gap-2">
+                                      <ExternalLink size={18} /> Link Público de Agendamento
+                                  </h4>
+                                  <p className="text-xs text-gray-400">Compartilhe este link com seus pacientes para que eles agendem consultas online:</p>
+                                  
+                                  <div className="flex items-center gap-2 bg-gray-900 p-2 rounded-lg border border-white/10">
+                                      <code className="text-xs text-blue-400 flex-1 truncate">
+                                          {`https://dentihub.com.br/#/${userProfile.clinics?.slug}`}
+                                      </code>
+                                      <button 
+                                          onClick={() => copyToClipboard(`https://dentihub.com.br/#/${userProfile.clinics?.slug}`)}
+                                          className="p-2 hover:bg-white/5 rounded-md transition-colors text-gray-400 hover:text-white"
+                                          title="Copiar Link"
+                                      >
+                                          {copied ? <CheckCircle size={16} className="text-green-500" /> : <Copy size={16} />}
+                                      </button>
+                                  </div>
+                              </div>
+
+                              <div className="pt-4">
+                                  <button 
+                                      onClick={handleOnboardingSuccess}
+                                      className="w-full bg-primary text-white py-3 rounded-xl font-bold hover:bg-sky-600 transition-all shadow-lg shadow-blue-500/20"
+                                  >
+                                      Começar a Usar o DentiHub
+                                  </button>
+                              </div>
+                          </div>
                       )}
                   </div>
               </div>

@@ -103,13 +103,13 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
       
       // Tenta query completa
       let { data: profileById, error } = await supabase.from('user_profiles')
-        .select('*, clinics(name, subscription_tier, custom_dentist_limit, custom_ai_daily_limit, custom_clients_limit)')
+        .select('*, clinics(name, slug, subscription_tier, custom_dentist_limit, custom_ai_daily_limit, custom_clients_limit)')
         .eq('id', user.id).maybeSingle();
 
       // Se falhar (ex: coluna nova não existe), tenta fallback
       if (error) {
           const { data: profileFallback } = await supabase.from('user_profiles')
-            .select('*, clinics(name, subscription_tier)')
+            .select('*, clinics(name, slug, subscription_tier)')
             .eq('id', user.id).maybeSingle();
           if (profileFallback) profileById = profileFallback;
       }
@@ -165,7 +165,7 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
         
         // 1. TENTATIVA PRINCIPAL (Query Completa)
         let { data: profileById, error: fetchError } = await supabase.from('user_profiles')
-            .select('*, clinics(name, subscription_tier, custom_dentist_limit, custom_ai_daily_limit, custom_clients_limit)')
+            .select('*, clinics(name, slug, subscription_tier, custom_dentist_limit, custom_ai_daily_limit, custom_clients_limit)')
             .eq('id', user.id).maybeSingle();
 
         // 2. FALLBACK DE RECUPERAÇÃO
@@ -174,7 +174,7 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
             console.warn("Erro ao buscar perfil completo, tentando fallback...", fetchError.message);
             
             const { data: profileFallback, error: fallbackError } = await supabase.from('user_profiles')
-                .select('*, clinics(name, subscription_tier)')
+                .select('*, clinics(name, slug, subscription_tier)')
                 .eq('id', user.id).maybeSingle();
             
             if (fallbackError) {
@@ -198,7 +198,7 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
             if (pendingProfile) {
                 await supabase.from('user_profiles').update({ id: user.id }).eq('email', user.email);
                 // Tenta buscar novamente após vínculo
-                const { data: linked } = await supabase.from('user_profiles').select('*, clinics(name, subscription_tier)').eq('id', user.id).single();
+                const { data: linked } = await supabase.from('user_profiles').select('*, clinics(name, slug, subscription_tier)').eq('id', user.id).single();
                 if (linked) profileData = linked as unknown as UserProfile;
             }
         }
@@ -414,7 +414,7 @@ const DashboardLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
                 )}
             </div>
 
-            <nav className="mt-4 px-3 space-y-1 pb-4 overflow-y-auto flex-1 custom-scrollbar">
+            <nav className="flex-1 mt-4 px-3 space-y-1 pb-4 overflow-y-auto custom-scrollbar">
             {visibleNavItems.map((item) => (
                 <NavLink key={item.to} to={item.to} end={item.end} onClick={() => setSidebarOpen(false)}
                 className={({ isActive }) => `group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 relative overflow-hidden ${

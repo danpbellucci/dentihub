@@ -95,7 +95,11 @@ const CAMPAIGNS = {
         getContent: (name: string) => `
             <p>Olá, <strong>${name}</strong>!</p>
             <p>Sabia que você pode usar os planos <strong>Starter</strong> e <strong>Pro</strong> do DentiHub sem pagar nada?</p>
-            <p>Com nosso programa de indicações, você ganha <strong>30 dias de acesso premium</strong> para cada colega dentista que começar a usar o sistema por sua recomendação.</p>
+            <p>Com nosso programa de indicações, você ganha recompensas reais:</p>
+            <ul>
+                <li>✅ <strong>30 dias de Plano Starter:</strong> Quando seu indicado atingir 30 pacientes cadastrados.</li>
+                <li>✅ <strong>30 dias de Plano Pro:</strong> Quando seu indicado contratar qualquer plano pago.</li>
+            </ul>
             <p>Ajude outros profissionais a modernizarem suas clínicas e seja recompensado por isso!</p>
             <p>Pegue seu link exclusivo e comece a indicar agora mesmo:</p>
         `,
