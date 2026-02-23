@@ -27,10 +27,19 @@ const PlansSection: React.FC = () => {
         
         if (error) throw error;
         
-        const formatted = (data || []).map((p: any) => ({
-            ...p,
-            features: typeof p.features === 'string' ? JSON.parse(p.features) : (p.features || [])
-        }));
+        const formatted = (data || []).map((p: any) => {
+            let features = [];
+            try {
+                features = typeof p.features === 'string' ? JSON.parse(p.features) : (p.features || []);
+            } catch (e) {
+                console.error("Erro ao parsear features do plano:", p.slug, e);
+                features = Array.isArray(p.features) ? p.features : [];
+            }
+            return {
+                ...p,
+                features
+            };
+        });
         
         setPlans(formatted);
     } catch (err) {
@@ -45,7 +54,12 @@ const PlansSection: React.FC = () => {
   };
 
   const formatMoney = (val: number) => {
-    return val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    try {
+        return val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    } catch (e) {
+        // Fallback para navegadores que não suportam toLocaleString ou o locale pt-BR
+        return val.toFixed(2).replace('.', ',');
+    }
   };
 
   return (
@@ -58,7 +72,7 @@ const PlansSection: React.FC = () => {
 
           {loadingPlans ? (
               <div className="flex justify-center py-12"><Loader2 className="animate-spin text-white h-10 w-10"/></div>
-          ) : (
+          ) : plans.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
                 {plans.map((plan) => {
                     if (plan.is_enterprise) {
@@ -167,6 +181,16 @@ const PlansSection: React.FC = () => {
                         </div>
                     );
                 })}
+              </div>
+          ) : (
+              <div className="text-center py-12 bg-gray-900/50 rounded-2xl border border-white/5 max-w-2xl mx-auto">
+                  <p className="text-gray-400 mb-4">Não foi possível carregar os planos no momento.</p>
+                  <button 
+                    onClick={() => { setLoadingPlans(true); fetchPlans(); }}
+                    className="text-primary hover:text-sky-400 font-bold flex items-center gap-2 mx-auto"
+                  >
+                      Tentar novamente
+                  </button>
               </div>
           )}
         </div>

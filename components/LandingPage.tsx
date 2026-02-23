@@ -29,20 +29,24 @@ const LandingPage: React.FC = () => {
     window.addEventListener('resize', handleResize);
 
     // 2. Lead Popup Observer
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (entry.isIntersecting && !localStorage.getItem('denti_lead_popup_shown')) {
-          setShowLeadModal(true);
-          localStorage.setItem('denti_lead_popup_shown', 'true');
-        }
-      },
-      { threshold: 0.1 }
-    );
-
+    let observer: IntersectionObserver | null = null;
     const plansEndElement = document.getElementById('plans-end-trigger');
-    if (plansEndElement) {
-      observer.observe(plansEndElement);
+
+    if (typeof IntersectionObserver !== 'undefined') {
+        observer = new IntersectionObserver(
+          (entries) => {
+            const entry = entries[0];
+            if (entry.isIntersecting && !localStorage.getItem('denti_lead_popup_shown')) {
+              setShowLeadModal(true);
+              localStorage.setItem('denti_lead_popup_shown', 'true');
+            }
+          },
+          { threshold: 0.1 }
+        );
+
+        if (plansEndElement) {
+          observer.observe(plansEndElement);
+        }
     }
 
     // 3. Handle Email Unsubscribe from URL
@@ -56,7 +60,7 @@ const LandingPage: React.FC = () => {
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      if (plansEndElement) observer.unobserve(plansEndElement);
+      if (observer && plansEndElement) observer.unobserve(plansEndElement);
     };
   }, [location]);
 
