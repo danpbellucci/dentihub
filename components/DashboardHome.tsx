@@ -95,6 +95,14 @@ const DashboardHome: React.FC = () => {
       setTimeout(() => setCopied(false), 2000);
   };
 
+  const formatMoney = (val: number) => {
+    try {
+      return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    } catch (e) {
+      return `R$ ${val.toFixed(2).replace('.', ',')}`;
+    }
+  };
+
   const fetchData = async (clinicId: string) => {
     setLoading(true);
     try {
@@ -394,7 +402,7 @@ const DashboardHome: React.FC = () => {
             <div>
               <p className="text-xs text-gray-400 font-bold uppercase tracking-wide">Saldo (Mês)</p>
               <h3 className={`text-3xl font-black mt-1 ${metrics.balanceMonth >= 0 ? 'text-white' : 'text-red-400'}`}>
-                {loading ? '...' : metrics.balanceMonth.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                {loading ? '...' : formatMoney(metrics.balanceMonth)}
               </h3>
             </div>
           </div>
@@ -474,13 +482,13 @@ const DashboardHome: React.FC = () => {
                     <div className="p-3 bg-green-900/10 rounded-lg border border-green-500/20">
                         <p className="text-[10px] text-green-400 font-bold uppercase tracking-wider">Realizado</p>
                         <p className="text-lg font-black text-white truncate">
-                            {loading ? '...' : metrics.incomeWeek.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            {loading ? '...' : formatMoney(metrics.incomeWeek)}
                         </p>
                     </div>
                     <div className="p-3 bg-gray-800/30 rounded-lg border border-white/5">
                         <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">A Receber</p>
                         <p className="text-lg font-black text-gray-300 truncate">
-                            {loading ? '...' : metrics.incomeNext.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            {loading ? '...' : formatMoney(metrics.incomeNext)}
                         </p>
                     </div>
                 </div>
@@ -499,13 +507,13 @@ const DashboardHome: React.FC = () => {
                     <div className="p-3 bg-red-900/10 rounded-lg border border-red-500/20">
                         <p className="text-[10px] text-red-400 font-bold uppercase tracking-wider">Pago</p>
                         <p className="text-lg font-black text-white truncate">
-                            {loading ? '...' : metrics.expenseWeek.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            {loading ? '...' : formatMoney(metrics.expenseWeek)}
                         </p>
                     </div>
                     <div className="p-3 bg-gray-800/30 rounded-lg border border-white/5">
                         <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">A Pagar</p>
                         <p className="text-lg font-black text-gray-300 truncate">
-                            {loading ? '...' : metrics.expenseNext.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            {loading ? '...' : formatMoney(metrics.expenseNext)}
                         </p>
                     </div>
                 </div>

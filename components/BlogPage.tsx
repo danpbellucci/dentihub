@@ -109,7 +109,23 @@ const BlogPage: React.FC = () => {
                             >
                                 <div className="h-48 bg-gray-800 overflow-hidden relative">
                                     {post.image_url ? (
-                                        <img src={post.image_url} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                        <>
+                                            <img 
+                                                src={post.image_url} 
+                                                alt={post.title} 
+                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                                                referrerPolicy="no-referrer"
+                                                onError={(e) => {
+                                                    const target = e.target as HTMLImageElement;
+                                                    target.style.display = 'none';
+                                                    const fallback = target.nextElementSibling;
+                                                    if (fallback) fallback.classList.remove('hidden');
+                                                }}
+                                            />
+                                            <div className="fallback-icon hidden w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                                                <Logo className="w-16 h-16 opacity-10" />
+                                            </div>
+                                        </>
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                                             <Logo className="w-16 h-16 opacity-10" />
@@ -143,8 +159,8 @@ const BlogPage: React.FC = () => {
 
             {/* Post Modal Overlay */}
             {selectedPost && (
-                <div className="fixed inset-0 z-[100] flex justify-center bg-black/90 backdrop-blur-sm overflow-y-auto custom-scrollbar p-4 sm:p-8 animate-fade-in">
-                    <div className="bg-gray-950 w-full max-w-3xl rounded-2xl border border-white/10 shadow-2xl relative flex flex-col overflow-hidden min-h-[50vh]">
+                <div className="fixed inset-0 z-[100] flex justify-center items-start bg-black/90 backdrop-blur-sm overflow-y-auto custom-scrollbar p-4 sm:p-8 animate-fade-in">
+                    <div className="bg-gray-950 w-full max-w-3xl rounded-2xl border border-white/10 shadow-2xl relative flex flex-col my-8">
                         <button 
                             onClick={() => setSelectedPost(null)} 
                             className="absolute top-4 right-4 z-20 p-2 bg-black/50 text-white rounded-full hover:bg-white hover:text-black transition backdrop-blur-md"
@@ -152,9 +168,25 @@ const BlogPage: React.FC = () => {
                             <X size={24} />
                         </button>
 
-                        <div className="h-64 sm:h-80 w-full relative shrink-0">
+                        <div className="h-64 sm:h-80 w-full relative shrink-0 overflow-hidden rounded-t-2xl">
                             {selectedPost.image_url ? (
-                                <img src={selectedPost.image_url} className="w-full h-full object-cover" alt={selectedPost.title} />
+                                <>
+                                    <img 
+                                        src={selectedPost.image_url} 
+                                        className="w-full h-full object-cover" 
+                                        alt={selectedPost.title} 
+                                        referrerPolicy="no-referrer"
+                                        onError={(e) => {
+                                            const target = e.target as HTMLImageElement;
+                                            target.style.display = 'none';
+                                            const fallback = target.nextElementSibling;
+                                            if (fallback) fallback.classList.remove('hidden');
+                                        }}
+                                    />
+                                    <div className="fallback-icon hidden w-full h-full bg-gradient-to-r from-blue-900 to-purple-900 flex items-center justify-center">
+                                        <Logo className="w-24 h-24 opacity-20 text-white" />
+                                    </div>
+                                </>
                             ) : (
                                 <div className="w-full h-full bg-gradient-to-r from-blue-900 to-purple-900 flex items-center justify-center">
                                     <Logo className="w-24 h-24 opacity-20 text-white" />
