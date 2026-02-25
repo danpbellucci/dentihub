@@ -375,7 +375,7 @@ Deno.serve(async (req) => {
          // Usa templates fixos - IGNORA reqHtmlContent
          const subject = type === 'recall' 
             ? `Como está o seu sorriso? 🦷 - ${clinicName}`
-            : `Bem-vindo(a) à ${clinicName}!`;
+            : `Bem-vindo(a) ao DentiHub! 🚀`;
             
          const htmlContent = type === 'recall' 
             ? `
@@ -408,9 +408,58 @@ Deno.serve(async (req) => {
                 </div>
             </div>`
             : `
-            <div style="font-family: Helvetica, Arial, sans-serif; color: #333; padding: 20px;">
-                <h1 style="color: #0ea5e9;">Bem-vindo!</h1>
-                <p>Seu cadastro na <strong>${clinicName}</strong> foi realizado com sucesso.</p>
+            <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background-color: #ffffff;">
+                <div style="background-color: #0ea5e9; padding: 40px 20px; text-align: center;">
+                    <h1 style="color: white; margin: 0; font-size: 28px; font-weight: bold;">Bem-vindo(a) ao DentiHub! 🦷</h1>
+                    <p style="color: #e0f2fe; margin-top: 10px; font-size: 16px;">Sua jornada para uma gestão brilhante começa aqui.</p>
+                </div>
+                <div style="padding: 40px 30px; line-height: 1.6;">
+                    <p style="font-size: 16px;">Olá <strong>${recipients[0]?.name || 'Doutor(a)'}</strong>,</p>
+                    <p>Ficamos muito felizes em ter você conosco! Para ajudar você a começar com o pé direito, preparamos este guia rápido com as principais funções do sistema:</p>
+                    
+                    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; margin: 30px 0; border-radius: 8px;">
+                        <h3 style="margin-top: 0; color: #0ea5e9; font-size: 18px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">🚀 Guia de Início Rápido</h3>
+                        
+                        <div style="margin-top: 15px;">
+                            <p style="margin: 0 0 5px 0;"><strong>1. Cadastrar Equipe e Funcionários:</strong></p>
+                            <p style="margin: 0 0 15px 0; font-size: 14px; color: #64748b;">Vá em <strong>Configurações > Equipe</strong>. Clique em "Convidar Membro", insira o e-mail e defina o perfil (Administrador ou Recepcionista). Eles receberão um convite para criar o acesso.</p>
+                        </div>
+
+                        <div style="margin-top: 15px;">
+                            <p style="margin: 0 0 5px 0;"><strong>2. Editar Perfil de Funcionário:</strong></p>
+                            <p style="margin: 0 0 15px 0; font-size: 14px; color: #64748b;">Ainda em <strong>Configurações > Equipe</strong>, você verá a lista de membros. Clique no ícone de edição (lápis) ao lado do nome para alterar o cargo ou as permissões de acesso.</p>
+                        </div>
+
+                        <div style="margin-top: 15px;">
+                            <p style="margin: 0 0 5px 0;"><strong>3. Incluir um Dentista:</strong></p>
+                            <p style="margin: 0 0 15px 0; font-size: 14px; color: #64748b;">Acesse a aba <strong>Dentistas</strong> no menu lateral. Clique em "Adicionar Dentista", preencha os dados e escolha uma cor para a agenda. Isso é essencial para organizar os horários de atendimento.</p>
+                        </div>
+
+                        <div style="margin-top: 15px;">
+                            <p style="margin: 0 0 5px 0;"><strong>4. Cadastrar um Paciente:</strong></p>
+                            <p style="margin: 0 0 15px 0; font-size: 14px; color: #64748b;">No menu lateral, clique em <strong>Pacientes</strong> e depois no botão "Novo Paciente". Preencha os dados básicos e o CPF para garantir um histórico clínico organizado e seguro.</p>
+                        </div>
+
+                        <div style="margin-top: 15px;">
+                            <p style="margin: 0 0 5px 0;"><strong>5. Fazer um Agendamento:</strong></p>
+                            <p style="margin: 0 0 15px 0; font-size: 14px; color: #64748b;">Vá em <strong>Agenda</strong>, escolha o dia e clique no horário desejado. Selecione o paciente, o dentista e o procedimento. Pronto! O paciente receberá um lembrete automático.</p>
+                        </div>
+                    </div>
+
+                    <p>Tudo isso e muito mais está detalhado no nosso Guia Prático interativo dentro do sistema.</p>
+
+                    <div style="text-align: center; margin: 40px 0;">
+                        <a href="https://dentihub.com.br/#/dashboard/guide" target="_blank" style="background-color: #0ea5e9; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.3);">
+                            Acessar Guia Completo
+                        </a>
+                    </div>
+                    
+                    <p style="font-size: 14px; color: #64748b; text-align: center;">Dúvidas? Responda a este e-mail ou use o botão de ajuda no sistema.</p>
+                </div>
+                <div style="background-color: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0;">
+                    <p style="margin: 0;">Equipe DentiHub - Gestão Inteligente para Dentistas</p>
+                    <p style="margin: 5px 0;">contato@dentihub.com.br</p>
+                </div>
             </div>`;
 
          for (const r of recipients) {

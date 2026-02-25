@@ -210,6 +210,25 @@ const GuidePage: React.FC = () => {
         </div>
       </div>
 
+      {/* Vídeo Tutorial Principal */}
+      <div className="mb-10 bg-gray-900/40 rounded-2xl border border-white/5 overflow-hidden shadow-xl">
+        <div className="p-4 border-b border-white/5 bg-gray-900/50 flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+          <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Vídeo Tutorial Completo</span>
+        </div>
+        <div className="aspect-video w-full">
+          <iframe 
+            width="100%" 
+            height="100%" 
+            src="https://www.youtube.com/embed/UgMxxxstrA8" 
+            title="DentiHub Tutorial Completo" 
+            frameBorder="0" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+            allowFullScreen
+          ></iframe>
+        </div>
+      </div>
+
       <div className="space-y-2">
         {guides.map((guide, index) => <GuideSection key={index} {...guide} />)}
       </div>

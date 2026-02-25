@@ -172,6 +172,23 @@ Deno.serve(async (req) => {
     // 4. Limpeza
     await supabaseAdmin.from('verification_codes').delete().eq('email', email);
 
+    // 5. Enviar E-mail de Boas-vindas (Novo)
+    try {
+        await supabaseAdmin.functions.invoke('send-emails', {
+            body: { 
+                type: 'welcome', 
+                recipients: [{ email, name }],
+                clinicName: 'DentiHub'
+            },
+            headers: {
+                'Authorization': `Bearer ${serviceRoleKey}`
+            }
+        });
+    } catch (emailErr) {
+        console.error("Erro ao enviar e-mail de boas-vindas:", emailErr);
+        // Não trava o cadastro se o e-mail falhar
+    }
+
     // LOG DE USO
     await supabaseAdmin.from('edge_function_logs').insert({
         function_name: 'complete-signup',

@@ -195,6 +195,22 @@ const LearnMorePage: React.FC = () => {
                 </p>
             </div>
           </div>
+
+          {/* Vídeo Tutorial Section */}
+          <div className="mt-16 animate-fade-in-up delay-400">
+            <h2 className="text-2xl font-bold text-white mb-6">Veja o DentiHub em Ação</h2>
+            <div className="aspect-video w-full max-w-4xl mx-auto rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
+              <iframe 
+                width="100%" 
+                height="100%" 
+                src="https://www.youtube.com/embed/UgMxxxstrA8" 
+                title="DentiHub Tutorial" 
+                frameBorder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                allowFullScreen
+              ></iframe>
+            </div>
+          </div>
         </div>
       </div>
 

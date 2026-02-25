@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase, SUPABASE_URL } from '../services/supabase';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Logo } from './Logo';
-import { Smile, Lock, Mail, ArrowLeft, AlertTriangle, User, KeyRound, X, FileText, Tag } from 'lucide-react';
+import { Smile, Lock, Mail, ArrowLeft, AlertTriangle, User, KeyRound, X, FileText, Tag, Eye, EyeOff } from 'lucide-react';
 
 const TERMS_OF_USE_TEXT = `TERMOS DE USO – DENTIHUB
 
@@ -97,6 +97,8 @@ const AuthPage: React.FC = () => {
   // Signup Specific
   const [name, setName] = useState(''); 
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [referralCode, setReferralCode] = useState('');
@@ -373,16 +375,23 @@ const AuthPage: React.FC = () => {
                         </div>
                         <input
                             id="password"
-                            type="password"
+                            type={showPassword ? "text" : "password"}
                             required
                             disabled={isMisconfigured}
                             minLength={view === 'signup' ? 8 : 6}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(e as any); }}
-                            className="block w-full pl-10 bg-gray-800 border border-gray-700 text-white rounded-lg py-2.5 placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition disabled:opacity-50"
+                            className="block w-full pl-10 pr-10 bg-gray-800 border border-gray-700 text-white rounded-lg py-2.5 placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition disabled:opacity-50"
                             placeholder={view === 'signup' ? '8+ chars, Maiúscula, Núm, Especial' : '••••••••'}
                         />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-300 transition-colors"
+                        >
+                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
                         </div>
                         {view === 'login' && (
                             <div className="flex justify-end mt-2">
@@ -408,14 +417,21 @@ const AuthPage: React.FC = () => {
                                 <KeyRound className="h-5 w-5 text-gray-500" />
                             </div>
                             <input
-                                type="password"
+                                type={showConfirmPassword ? "text" : "password"}
                                 required
                                 minLength={8}
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
-                                className="block w-full pl-10 bg-gray-800 border border-gray-700 text-white rounded-lg py-2.5 placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition"
+                                className="block w-full pl-10 pr-10 bg-gray-800 border border-gray-700 text-white rounded-lg py-2.5 placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition"
                                 placeholder="Repita a senha"
                             />
+                            <button
+                                type="button"
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-300 transition-colors"
+                            >
+                                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
                             </div>
                         </div>
 

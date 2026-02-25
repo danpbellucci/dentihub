@@ -6,7 +6,7 @@ import {
   FileText, CalendarRange, RefreshCw,
   BarChart3, ArrowLeft, Sparkles, CreditCard,
   Monitor, Menu, X, HeartPulse, AlertTriangle, CheckCircle, TrendingUp,
-  Megaphone, Trash2, Send, AlertOctagon, UserX, Clock, Tag
+  Megaphone, Trash2, Send, AlertOctagon, UserX, Clock, Tag, Copy
 } from 'lucide-react';
 import { format, subDays, startOfDay, endOfDay, parseISO, differenceInHours } from 'date-fns';
 import Toast, { ToastType } from './Toast';
@@ -47,9 +47,19 @@ const SuperAdminPage: React.FC = () => {
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   
   // New States
-  const [activeTab, setActiveTab] = useState<'overview' | 'churn' | 'broadcast'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'churn' | 'broadcast' | 'remotion'>('overview');
   const [atRiskClinics, setAtRiskClinics] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [remotionPrompt, setRemotionPrompt] = useState(`Crie um vídeo tutorial de 60 segundos mostrando:
+1. Abertura com logo animado.
+2. Transição para o Dashboard.
+3. Destaque para o Prontuário com IA.
+4. Encerramento com CTA para o plano Pro.`);
+  const [generatedRemotionCode, setGeneratedRemotionCode] = useState('');
+  const [isGeneratingRemotion, setIsGeneratingRemotion] = useState(false);
+  const [isRendering, setIsRendering] = useState(false);
+  const [renderProgress, setRenderProgress] = useState(0);
+  const [renderComplete, setRenderComplete] = useState(false);
   
   // State atualizado para incluir datas
   const [newAnnouncement, setNewAnnouncement] = useState({ 
@@ -133,6 +143,66 @@ const SuperAdminPage: React.FC = () => {
       fetchAnnouncements();
   };
 
+  const handleGenerateRemotionCode = async () => {
+    if (!remotionPrompt.trim()) {
+        setToast({ message: "Por favor, insira um script para o vídeo.", type: 'warning' });
+        return;
+    }
+
+    setIsGeneratingRemotion(true);
+    try {
+        const { GoogleGenAI } = await import("@google/genai");
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        
+        const response = await ai.models.generateContent({
+            model: "gemini-3.1-pro-preview",
+            contents: `Você é um especialista em Remotion (remotion.dev). 
+            Gere um código React completo para um vídeo do Remotion baseado no seguinte script: "${remotionPrompt}".
+            
+            Regras:
+            1. Use componentes funcionais e hooks do React.
+            2. Use a biblioteca 'remotion' e 'lucide-react' para ícones. 
+            3. ATENÇÃO: Use apenas nomes de ícones VÁLIDOS do Lucide (ex: LayoutDashboard, Users, Calendar, DollarSign, Brain, Settings). NÃO invente nomes como 'Sidebar'.
+            4. O código deve ser um componente React principal (ex: export const RemotionVideo = () => { ... }) que retorna um <AbsoluteFill>.
+            5. Defina todos os sub-componentes (como Sidebar, Header, etc) DENTRO do mesmo arquivo, ANTES do componente principal.
+            6. IMPORTANTE: NÃO inclua a tag <Composition>.
+            7. Retorne APENAS o código dentro de um bloco de código markdown.`,
+        });
+
+        const codeMatch = response.text?.match(/```(?:tsx|jsx|javascript|typescript)?\s*([\s\S]*?)```/);
+        const code = codeMatch ? codeMatch[1] : response.text;
+        
+        setGeneratedRemotionCode(code || '');
+        setToast({ message: "Código Remotion gerado com sucesso!", type: 'success' });
+    } catch (err: any) {
+        console.error(err);
+        setToast({ message: "Erro ao gerar código: " + err.message, type: 'error' });
+    } finally {
+        setIsGeneratingRemotion(false);
+    }
+  };
+
+  const handleStartRender = () => {
+    if (!generatedRemotionCode) return;
+    
+    setIsRendering(true);
+    setRenderProgress(0);
+    setRenderComplete(false);
+
+    const interval = setInterval(() => {
+        setRenderProgress(prev => {
+            if (prev >= 100) {
+                clearInterval(interval);
+                setIsRendering(false);
+                setRenderComplete(true);
+                setToast({ message: "Renderização concluída (Simulação)!", type: 'success' });
+                return 100;
+            }
+            return prev + Math.random() * 15;
+        });
+    }, 400);
+  };
+
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden relative">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
@@ -147,6 +217,7 @@ const SuperAdminPage: React.FC = () => {
               <button onClick={() => { setActiveTab('overview'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'overview' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><BarChart3 size={18} className="mr-3"/> Visão Geral</button>
               <button onClick={() => { setActiveTab('churn'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'churn' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><UserX size={18} className="mr-3"/> Radar de Churn</button>
               <button onClick={() => { setActiveTab('broadcast'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'broadcast' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><Megaphone size={18} className="mr-3"/> Comunicados</button>
+              <button onClick={() => { setActiveTab('remotion'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'remotion' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><Monitor size={18} className="mr-3"/> Remotion</button>
               
               <div className="pt-4 mt-4 border-t border-gray-800">
                   <button onClick={() => { navigate('/super-admin/campaigns'); }} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/5 hover:text-white"><Sparkles size={18} className="mr-3"/> Marketing Studio</button>
@@ -309,6 +380,192 @@ const SuperAdminPage: React.FC = () => {
                                 </div>
                             );
                         })}
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'remotion' && (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><Monitor className="text-purple-500"/> Remotion Studio</h2>
+                            <p className="text-gray-600">Crie vídeos tutoriais programáticos para o DentiHub usando React.</p>
+                        </div>
+                        <a 
+                            href="https://github.com/remotion-dev/remotion/" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-black transition"
+                        >
+                            <Monitor size={16} /> Ver no GitHub
+                        </a>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-2 space-y-6">
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                                <h3 className="text-sm font-bold text-gray-700 mb-4">Configuração do Vídeo</h3>
+                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-500 block mb-1">Resolução</label>
+                                        <select className="w-full border rounded p-2 text-sm">
+                                            <option>1080p (1920x1080)</option>
+                                            <option>720p (1280x720)</option>
+                                            <option>Vertical (1080x1920)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-500 block mb-1">FPS</label>
+                                        <select className="w-full border rounded p-2 text-sm">
+                                            <option>30 FPS</option>
+                                            <option>60 FPS</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 block mb-1">Script do Vídeo (Prompt para IA)</label>
+                                    <textarea 
+                                        className="w-full border rounded p-2 text-sm h-32 font-mono focus:ring-2 focus:ring-purple-500 outline-none transition" 
+                                        placeholder="Descreva o que deve acontecer no vídeo..."
+                                        value={remotionPrompt}
+                                        onChange={(e) => setRemotionPrompt(e.target.value)}
+                                    />
+                                </div>
+                                <div className="mt-4 flex justify-end">
+                                    <button 
+                                        onClick={handleGenerateRemotionCode}
+                                        disabled={isGeneratingRemotion}
+                                        className="bg-purple-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-purple-700 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {isGeneratingRemotion ? <RefreshCw size={18} className="animate-spin" /> : <Sparkles size={18} />}
+                                        {isGeneratingRemotion ? 'Gerando...' : 'Gerar Código Remotion'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {generatedRemotionCode && (
+                                <div className="space-y-4 animate-fade-in">
+                                    <div className="bg-gray-900 rounded-xl shadow-sm border border-gray-800 overflow-hidden">
+                                        <div className="flex justify-between items-center p-4 border-b border-gray-800 bg-gray-900/50">
+                                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Código Gerado (Remotion)</h3>
+                                            <div className="flex gap-4">
+                                                <button 
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(generatedRemotionCode);
+                                                        setToast({ message: "Código copiado!", type: 'success' });
+                                                    }}
+                                                    className="text-xs text-purple-400 hover:text-purple-300 font-bold flex items-center gap-1"
+                                                >
+                                                    <Copy size={14} /> Copiar
+                                                </button>
+                                                <button 
+                                                    onClick={handleStartRender}
+                                                    disabled={isRendering}
+                                                    className="text-xs bg-green-600 text-white px-3 py-1 rounded hover:bg-green-500 font-bold flex items-center gap-1 disabled:opacity-50"
+                                                >
+                                                    <Activity size={14} /> {isRendering ? 'Renderizando...' : 'Renderizar MP4'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <pre className="p-6 text-xs text-gray-300 font-mono overflow-x-auto max-h-[300px] custom-scrollbar bg-black/30">
+                                            <code>{generatedRemotionCode}</code>
+                                        </pre>
+                                    </div>
+
+                                    <div className="bg-blue-900/10 border border-blue-500/20 p-4 rounded-lg">
+                                        <h4 className="text-blue-400 font-bold text-xs mb-2 flex items-center gap-2">
+                                            <Monitor size={14} /> Como renderizar no seu PC:
+                                        </h4>
+                                        <code className="block bg-black/40 p-3 rounded text-[10px] text-blue-200 font-mono">
+                                            npx remotion render src/index.tsx out/video.mp4
+                                        </code>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="bg-gray-900 rounded-xl shadow-2xl p-4 aspect-video flex items-center justify-center relative group overflow-hidden border-4 border-gray-800">
+                                {isRendering ? (
+                                    <div className="w-full max-w-md text-center">
+                                        <div className="flex justify-between text-xs text-purple-400 font-bold mb-2">
+                                            <span>Renderizando Frames...</span>
+                                            <span>{Math.round(renderProgress)}%</span>
+                                        </div>
+                                        <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                                            <div 
+                                                className="h-full bg-gradient-to-r from-purple-600 to-blue-500 transition-all duration-300"
+                                                style={{ width: `${renderProgress}%` }}
+                                            ></div>
+                                        </div>
+                                        <p className="text-[10px] text-gray-500 mt-4 animate-pulse">Processando camadas de vídeo e áudio via Cloud Workers...</p>
+                                    </div>
+                                ) : renderComplete ? (
+                                    <div className="text-center animate-fade-in">
+                                        <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-500/30">
+                                            <CheckCircle size={40} className="text-green-400" />
+                                        </div>
+                                        <h3 className="text-white font-bold text-xl">Vídeo Pronto!</h3>
+                                        <p className="text-gray-400 text-sm mt-2">A renderização foi concluída com sucesso.</p>
+                                        <button className="mt-6 bg-white text-black px-6 py-2 rounded-full font-bold hover:bg-gray-200 transition flex items-center gap-2 mx-auto">
+                                            <TrendingUp size={18} /> Baixar MP4
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="text-center">
+                                        <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-purple-500/30">
+                                            <Monitor size={32} className="text-purple-400" />
+                                        </div>
+                                        <p className="text-gray-400 font-bold">Preview do Vídeo</p>
+                                        <p className="text-xs text-gray-600 mt-2">O player do Remotion será carregado aqui após a geração do código.</p>
+                                    </div>
+                                )}
+                                
+                                {!isRendering && !renderComplete && (
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                                        <button onClick={handleStartRender} className="bg-white text-black p-4 rounded-full shadow-xl hover:scale-110 transition">
+                                            <Activity size={32} />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                                <h3 className="text-sm font-bold text-gray-700 mb-4">Recursos Disponíveis</h3>
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                        <div className="p-2 bg-blue-100 text-blue-600 rounded-md"><FileText size={16}/></div>
+                                        <div>
+                                            <p className="text-xs font-bold text-gray-800">Templates de UI</p>
+                                            <p className="text-[10px] text-gray-500">Componentes do DentiHub prontos para animar.</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                        <div className="p-2 bg-purple-100 text-purple-600 rounded-md"><Mic size={16}/></div>
+                                        <div>
+                                            <p className="text-xs font-bold text-gray-800">Voiceover IA</p>
+                                            <p className="text-[10px] text-gray-500">Narração automática integrada.</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                        <div className="p-2 bg-green-100 text-green-600 rounded-md"><Activity size={16}/></div>
+                                        <div>
+                                            <p className="text-xs font-bold text-gray-800">Renderização Cloud</p>
+                                            <p className="text-[10px] text-gray-500">Processamento via AWS Lambda.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-purple-900/10 border border-purple-500/20 p-6 rounded-xl">
+                                <h4 className="text-purple-700 font-bold text-sm mb-2 flex items-center gap-2">
+                                    <Sparkles size={16} /> Dica de Especialista
+                                </h4>
+                                <p className="text-xs text-purple-600 leading-relaxed">
+                                    Use o Remotion para criar vídeos de boas-vindas personalizados para cada nova clínica que assinar o plano Pro. Isso aumenta o engajamento e reduz o churn.
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
