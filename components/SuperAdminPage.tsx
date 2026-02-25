@@ -6,7 +6,7 @@ import {
   FileText, CalendarRange, RefreshCw,
   BarChart3, ArrowLeft, Sparkles, CreditCard,
   Monitor, Menu, X, HeartPulse, AlertTriangle, CheckCircle, TrendingUp,
-  Megaphone, Trash2, Send, AlertOctagon, UserX, Clock, Tag, Copy
+  Megaphone, Trash2, Send, AlertOctagon, UserX, Clock, Tag, Copy, Mail
 } from 'lucide-react';
 import { format, subDays, startOfDay, endOfDay, parseISO, differenceInHours } from 'date-fns';
 import Toast, { ToastType } from './Toast';
@@ -47,9 +47,14 @@ const SuperAdminPage: React.FC = () => {
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   
   // New States
-  const [activeTab, setActiveTab] = useState<'overview' | 'churn' | 'broadcast' | 'remotion'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'churn' | 'broadcast' | 'remotion' | 'marketing'>('overview');
   const [atRiskClinics, setAtRiskClinics] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState('welcome');
+  const [isSendingEmails, setIsSendingEmails] = useState(false);
+  const [searchUser, setSearchUser] = useState('');
   const [remotionPrompt, setRemotionPrompt] = useState(`Crie um vídeo tutorial de 60 segundos mostrando:
 1. Abertura com logo animado.
 2. Transição para o Dashboard.
@@ -81,6 +86,7 @@ const SuperAdminPage: React.FC = () => {
     if (activeTab === 'overview') fetchData();
     if (activeTab === 'churn') fetchChurnData();
     if (activeTab === 'broadcast') fetchAnnouncements();
+    if (activeTab === 'marketing') fetchUsers();
   }, [dateRange, activeTab]);
 
   const fetchData = async () => {
@@ -112,6 +118,52 @@ const SuperAdminPage: React.FC = () => {
   const fetchAnnouncements = async () => {
       const { data } = await supabase.from('system_announcements').select('*').order('created_at', { ascending: false });
       setAnnouncements(data || []);
+  };
+
+  const fetchUsers = async () => {
+      setLoading(true);
+      try {
+          const { data, error } = await supabase
+            .from('user_profiles')
+            .select('id, email, role, clinic_id, clinics(name)')
+            .order('email');
+          if (error) throw error;
+          setUsers(data || []);
+      } catch (err: any) {
+          setToast({ message: "Erro ao carregar usuários: " + err.message, type: 'error' });
+      } finally {
+          setLoading(false);
+      }
+  };
+
+  const handleSendBulkEmail = async () => {
+      if (selectedUsers.length === 0) {
+          setToast({ message: "Selecione pelo menos um usuário.", type: 'warning' });
+          return;
+      }
+
+      setIsSendingEmails(true);
+      try {
+          const recipients = users
+            .filter(u => selectedUsers.includes(u.id))
+            .map(u => ({ email: u.email, name: 'Doutor(a)' }));
+
+          const { data, error } = await supabase.functions.invoke('send-emails', {
+              body: {
+                  type: selectedTemplate,
+                  recipients,
+                  clinicName: 'DentiHub'
+              }
+          });
+
+          if (error) throw error;
+          setToast({ message: `E-mails enviados com sucesso para ${recipients.length} usuários!`, type: 'success' });
+          setSelectedUsers([]);
+      } catch (err: any) {
+          setToast({ message: "Erro ao enviar e-mails: " + err.message, type: 'error' });
+      } finally {
+          setIsSendingEmails(false);
+      }
   };
 
   const handlePostAnnouncement = async () => {
@@ -217,6 +269,7 @@ const SuperAdminPage: React.FC = () => {
               <button onClick={() => { setActiveTab('overview'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'overview' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><BarChart3 size={18} className="mr-3"/> Visão Geral</button>
               <button onClick={() => { setActiveTab('churn'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'churn' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><UserX size={18} className="mr-3"/> Radar de Churn</button>
               <button onClick={() => { setActiveTab('broadcast'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'broadcast' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><Megaphone size={18} className="mr-3"/> Comunicados</button>
+              <button onClick={() => { setActiveTab('marketing'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'marketing' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><Mail size={18} className="mr-3"/> E-mail Marketing</button>
               <button onClick={() => { setActiveTab('remotion'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'remotion' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><Monitor size={18} className="mr-3"/> Remotion</button>
               
               <div className="pt-4 mt-4 border-t border-gray-800">
@@ -384,186 +437,127 @@ const SuperAdminPage: React.FC = () => {
                 </div>
             )}
 
-            {activeTab === 'remotion' && (
+            {activeTab === 'marketing' && (
                 <div className="space-y-6">
                     <div className="flex justify-between items-center">
                         <div>
-                            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><Monitor className="text-purple-500"/> Remotion Studio</h2>
-                            <p className="text-gray-600">Crie vídeos tutoriais programáticos para o DentiHub usando React.</p>
+                            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><Mail className="text-blue-500"/> E-mail Marketing</h2>
+                            <p className="text-gray-600">Envie e-mails em massa para os usuários da plataforma.</p>
                         </div>
-                        <a 
-                            href="https://github.com/remotion-dev/remotion/" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-black transition"
-                        >
-                            <Monitor size={16} /> Ver no GitHub
-                        </a>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div className="lg:col-span-2 space-y-6">
+                        <div className="lg:col-span-1 space-y-6">
                             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                                <h3 className="text-sm font-bold text-gray-700 mb-4">Configuração do Vídeo</h3>
-                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                <h3 className="text-sm font-bold text-gray-700 mb-4">Configuração do Disparo</h3>
+                                
+                                <div className="space-y-4">
                                     <div>
-                                        <label className="text-xs font-bold text-gray-500 block mb-1">Resolução</label>
-                                        <select className="w-full border rounded p-2 text-sm">
-                                            <option>1080p (1920x1080)</option>
-                                            <option>720p (1280x720)</option>
-                                            <option>Vertical (1080x1920)</option>
+                                        <label className="text-xs font-bold text-gray-500 block mb-1 uppercase">Template do E-mail</label>
+                                        <select 
+                                            value={selectedTemplate} 
+                                            onChange={(e) => setSelectedTemplate(e.target.value)}
+                                            className="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-primary outline-none"
+                                        >
+                                            <option value="welcome">Boas-vindas (Novo Template)</option>
+                                            <option value="recall">Recall (Retorno de Pacientes)</option>
+                                            <option value="subscription_success">Assinatura Concluída</option>
+                                            <option value="feedback_request">Pedido de Feedback</option>
                                         </select>
+                                        <p className="text-[10px] text-gray-400 mt-1 italic">O template selecionado será enviado para todos os usuários marcados.</p>
                                     </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-gray-500 block mb-1">FPS</label>
-                                        <select className="w-full border rounded p-2 text-sm">
-                                            <option>30 FPS</option>
-                                            <option>60 FPS</option>
-                                        </select>
+
+                                    <div className="pt-4 border-t">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className="text-xs font-bold text-gray-500 uppercase">Resumo</span>
+                                            <span className="text-xs font-black text-primary">{selectedUsers.length} selecionados</span>
+                                        </div>
+                                        <button 
+                                            onClick={handleSendBulkEmail}
+                                            disabled={isSendingEmails || selectedUsers.length === 0}
+                                            className="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-blue-600 transition flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg"
+                                        >
+                                            {isSendingEmails ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
+                                            {isSendingEmails ? 'Enviando...' : 'Disparar E-mails'}
+                                        </button>
                                     </div>
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-gray-500 block mb-1">Script do Vídeo (Prompt para IA)</label>
-                                    <textarea 
-                                        className="w-full border rounded p-2 text-sm h-32 font-mono focus:ring-2 focus:ring-purple-500 outline-none transition" 
-                                        placeholder="Descreva o que deve acontecer no vídeo..."
-                                        value={remotionPrompt}
-                                        onChange={(e) => setRemotionPrompt(e.target.value)}
-                                    />
-                                </div>
-                                <div className="mt-4 flex justify-end">
-                                    <button 
-                                        onClick={handleGenerateRemotionCode}
-                                        disabled={isGeneratingRemotion}
-                                        className="bg-purple-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-purple-700 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        {isGeneratingRemotion ? <RefreshCw size={18} className="animate-spin" /> : <Sparkles size={18} />}
-                                        {isGeneratingRemotion ? 'Gerando...' : 'Gerar Código Remotion'}
-                                    </button>
                                 </div>
                             </div>
 
-                            {generatedRemotionCode && (
-                                <div className="space-y-4 animate-fade-in">
-                                    <div className="bg-gray-900 rounded-xl shadow-sm border border-gray-800 overflow-hidden">
-                                        <div className="flex justify-between items-center p-4 border-b border-gray-800 bg-gray-900/50">
-                                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Código Gerado (Remotion)</h3>
-                                            <div className="flex gap-4">
-                                                <button 
-                                                    onClick={() => {
-                                                        navigator.clipboard.writeText(generatedRemotionCode);
-                                                        setToast({ message: "Código copiado!", type: 'success' });
-                                                    }}
-                                                    className="text-xs text-purple-400 hover:text-purple-300 font-bold flex items-center gap-1"
-                                                >
-                                                    <Copy size={14} /> Copiar
-                                                </button>
-                                                <button 
-                                                    onClick={handleStartRender}
-                                                    disabled={isRendering}
-                                                    className="text-xs bg-green-600 text-white px-3 py-1 rounded hover:bg-green-500 font-bold flex items-center gap-1 disabled:opacity-50"
-                                                >
-                                                    <Activity size={14} /> {isRendering ? 'Renderizando...' : 'Renderizar MP4'}
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <pre className="p-6 text-xs text-gray-300 font-mono overflow-x-auto max-h-[300px] custom-scrollbar bg-black/30">
-                                            <code>{generatedRemotionCode}</code>
-                                        </pre>
-                                    </div>
-
-                                    <div className="bg-blue-900/10 border border-blue-500/20 p-4 rounded-lg">
-                                        <h4 className="text-blue-400 font-bold text-xs mb-2 flex items-center gap-2">
-                                            <Monitor size={14} /> Como renderizar no seu PC:
-                                        </h4>
-                                        <code className="block bg-black/40 p-3 rounded text-[10px] text-blue-200 font-mono">
-                                            npx remotion render src/index.tsx out/video.mp4
-                                        </code>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="bg-gray-900 rounded-xl shadow-2xl p-4 aspect-video flex items-center justify-center relative group overflow-hidden border-4 border-gray-800">
-                                {isRendering ? (
-                                    <div className="w-full max-w-md text-center">
-                                        <div className="flex justify-between text-xs text-purple-400 font-bold mb-2">
-                                            <span>Renderizando Frames...</span>
-                                            <span>{Math.round(renderProgress)}%</span>
-                                        </div>
-                                        <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
-                                            <div 
-                                                className="h-full bg-gradient-to-r from-purple-600 to-blue-500 transition-all duration-300"
-                                                style={{ width: `${renderProgress}%` }}
-                                            ></div>
-                                        </div>
-                                        <p className="text-[10px] text-gray-500 mt-4 animate-pulse">Processando camadas de vídeo e áudio via Cloud Workers...</p>
-                                    </div>
-                                ) : renderComplete ? (
-                                    <div className="text-center animate-fade-in">
-                                        <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-500/30">
-                                            <CheckCircle size={40} className="text-green-400" />
-                                        </div>
-                                        <h3 className="text-white font-bold text-xl">Vídeo Pronto!</h3>
-                                        <p className="text-gray-400 text-sm mt-2">A renderização foi concluída com sucesso.</p>
-                                        <button className="mt-6 bg-white text-black px-6 py-2 rounded-full font-bold hover:bg-gray-200 transition flex items-center gap-2 mx-auto">
-                                            <TrendingUp size={18} /> Baixar MP4
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <div className="text-center">
-                                        <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-purple-500/30">
-                                            <Monitor size={32} className="text-purple-400" />
-                                        </div>
-                                        <p className="text-gray-400 font-bold">Preview do Vídeo</p>
-                                        <p className="text-xs text-gray-600 mt-2">O player do Remotion será carregado aqui após a geração do código.</p>
-                                    </div>
-                                )}
-                                
-                                {!isRendering && !renderComplete && (
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
-                                        <button onClick={handleStartRender} className="bg-white text-black p-4 rounded-full shadow-xl hover:scale-110 transition">
-                                            <Activity size={32} />
-                                        </button>
-                                    </div>
-                                )}
+                            <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl">
+                                <h4 className="text-blue-700 font-bold text-xs mb-2 flex items-center gap-2">
+                                    <Sparkles size={14} /> Dica de Uso
+                                </h4>
+                                <p className="text-xs text-blue-600 leading-relaxed">
+                                    Use o template de <strong>Boas-vindas</strong> para educar usuários antigos sobre as novas funcionalidades do sistema.
+                                </p>
                             </div>
                         </div>
 
-                        <div className="space-y-6">
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                                <h3 className="text-sm font-bold text-gray-700 mb-4">Recursos Disponíveis</h3>
-                                <div className="space-y-3">
-                                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                        <div className="p-2 bg-blue-100 text-blue-600 rounded-md"><FileText size={16}/></div>
-                                        <div>
-                                            <p className="text-xs font-bold text-gray-800">Templates de UI</p>
-                                            <p className="text-[10px] text-gray-500">Componentes do DentiHub prontos para animar.</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                        <div className="p-2 bg-purple-100 text-purple-600 rounded-md"><Mic size={16}/></div>
-                                        <div>
-                                            <p className="text-xs font-bold text-gray-800">Voiceover IA</p>
-                                            <p className="text-[10px] text-gray-500">Narração automática integrada.</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                        <div className="p-2 bg-green-100 text-green-600 rounded-md"><Activity size={16}/></div>
-                                        <div>
-                                            <p className="text-xs font-bold text-gray-800">Renderização Cloud</p>
-                                            <p className="text-[10px] text-gray-500">Processamento via AWS Lambda.</p>
-                                        </div>
-                                    </div>
+                        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col max-h-[600px]">
+                            <div className="p-4 border-b bg-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                <h3 className="text-sm font-bold text-gray-700">Lista de Usuários</h3>
+                                <div className="flex items-center gap-2 w-full sm:w-auto">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Buscar e-mail ou clínica..." 
+                                        value={searchUser}
+                                        onChange={(e) => setSearchUser(e.target.value)}
+                                        className="text-xs border rounded-lg px-3 py-2 w-full sm:w-48 outline-none focus:ring-2 focus:ring-primary"
+                                    />
+                                    <button 
+                                        onClick={() => {
+                                            if (selectedUsers.length === users.length) setSelectedUsers([]);
+                                            else setSelectedUsers(users.map(u => u.id));
+                                        }}
+                                        className="text-[10px] font-bold text-primary hover:underline whitespace-nowrap"
+                                    >
+                                        {selectedUsers.length === users.length ? 'Desmarcar Todos' : 'Marcar Todos'}
+                                    </button>
                                 </div>
                             </div>
-
-                            <div className="bg-purple-900/10 border border-purple-500/20 p-6 rounded-xl">
-                                <h4 className="text-purple-700 font-bold text-sm mb-2 flex items-center gap-2">
-                                    <Sparkles size={16} /> Dica de Especialista
-                                </h4>
-                                <p className="text-xs text-purple-600 leading-relaxed">
-                                    Use o Remotion para criar vídeos de boas-vindas personalizados para cada nova clínica que assinar o plano Pro. Isso aumenta o engajamento e reduz o churn.
-                                </p>
+                            <div className="flex-1 overflow-y-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead className="bg-gray-50 text-gray-500 text-[10px] uppercase font-bold sticky top-0 z-10 border-b">
+                                        <tr>
+                                            <th className="px-6 py-3 w-10"></th>
+                                            <th className="px-6 py-3">E-mail</th>
+                                            <th className="px-6 py-3">Clínica</th>
+                                            <th className="px-6 py-3">Perfil</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100 text-xs">
+                                        {users.filter(u => 
+                                            u.email.toLowerCase().includes(searchUser.toLowerCase()) || 
+                                            (u.clinics?.name || '').toLowerCase().includes(searchUser.toLowerCase())
+                                        ).map((user) => (
+                                            <tr 
+                                                key={user.id} 
+                                                className={`hover:bg-blue-50 transition cursor-pointer ${selectedUsers.includes(user.id) ? 'bg-blue-50/50' : ''}`}
+                                                onClick={() => {
+                                                    if (selectedUsers.includes(user.id)) setSelectedUsers(prev => prev.filter(id => id !== user.id));
+                                                    else setSelectedUsers(prev => [...prev, user.id]);
+                                                }}
+                                            >
+                                                <td className="px-6 py-3">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={selectedUsers.includes(user.id)}
+                                                        onChange={() => {}} // Handled by row click
+                                                        className="rounded border-gray-300 text-primary focus:ring-primary"
+                                                    />
+                                                </td>
+                                                <td className="px-6 py-3 font-medium text-gray-800">{user.email}</td>
+                                                <td className="px-6 py-3 text-gray-500">{user.clinics?.name || 'N/A'}</td>
+                                                <td className="px-6 py-3">
+                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${user.role === 'administrator' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                        {user.role}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>

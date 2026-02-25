@@ -422,27 +422,27 @@ Deno.serve(async (req) => {
                         
                         <div style="margin-top: 15px;">
                             <p style="margin: 0 0 5px 0;"><strong>1. Cadastrar Equipe e Funcionários:</strong></p>
-                            <p style="margin: 0 0 15px 0; font-size: 14px; color: #64748b;">Vá em <strong>Configurações > Equipe</strong>. Clique em "Convidar Membro", insira o e-mail e defina o perfil (Administrador ou Recepcionista). Eles receberão um convite para criar o acesso.</p>
+                            <p style="margin: 0 0 15px 0; font-size: 14px; color: #64748b;">Vá em <strong>Configurações > Gestão de Acessos</strong>.Insira o e-mail, defina o perfil (Administrador, Funcionário ou crie um novo perfil) e clique em "Convidar". Eles receberão um convite para criar o acesso.</p>
                         </div>
 
                         <div style="margin-top: 15px;">
-                            <p style="margin: 0 0 5px 0;"><strong>2. Editar Perfil de Funcionário:</strong></p>
-                            <p style="margin: 0 0 15px 0; font-size: 14px; color: #64748b;">Ainda em <strong>Configurações > Equipe</strong>, você verá a lista de membros. Clique no ícone de edição (lápis) ao lado do nome para alterar o cargo ou as permissões de acesso.</p>
+                            <p style="margin: 0 0 5px 0;"><strong>2. Editar Perfil de Acesso:</strong></p>
+                            <p style="margin: 0 0 15px 0; font-size: 14px; color: #64748b;">Vá até <strong>Configurações > Perfis de Acesso</strong>. Você verá a lista de perfis. Selecione as telas que deseja habilitar o acesso para cada perfil, assim como os e-mails de notificações.</p>
                         </div>
 
                         <div style="margin-top: 15px;">
                             <p style="margin: 0 0 5px 0;"><strong>3. Incluir um Dentista:</strong></p>
-                            <p style="margin: 0 0 15px 0; font-size: 14px; color: #64748b;">Acesse a aba <strong>Dentistas</strong> no menu lateral. Clique em "Adicionar Dentista", preencha os dados e escolha uma cor para a agenda. Isso é essencial para organizar os horários de atendimento.</p>
+                            <p style="margin: 0 0 15px 0; font-size: 14px; color: #64748b;">Acesse a aba <strong>Dentistas</strong> no menu lateral. Clique em "Novo", preencha os dados do dentista, os planos aceitos, sua especialidade e os horários de atendimento. Isso é muito importante para que os pacientes consigam solicitar agendamento apenas nos horários disponíveis do dentista.</p>
                         </div>
 
                         <div style="margin-top: 15px;">
                             <p style="margin: 0 0 5px 0;"><strong>4. Cadastrar um Paciente:</strong></p>
-                            <p style="margin: 0 0 15px 0; font-size: 14px; color: #64748b;">No menu lateral, clique em <strong>Pacientes</strong> e depois no botão "Novo Paciente". Preencha os dados básicos e o CPF para garantir um histórico clínico organizado e seguro.</p>
+                            <p style="margin: 0 0 15px 0; font-size: 14px; color: #64748b;">No menu lateral, clique em <strong>Pacientes</strong> e depois no botão "Novo". Preencha os dados básicos e o CPF para garantir um histórico clínico organizado e seguro.</p>
                         </div>
 
                         <div style="margin-top: 15px;">
                             <p style="margin: 0 0 5px 0;"><strong>5. Fazer um Agendamento:</strong></p>
-                            <p style="margin: 0 0 15px 0; font-size: 14px; color: #64748b;">Vá em <strong>Agenda</strong>, escolha o dia e clique no horário desejado. Selecione o paciente, o dentista e o procedimento. Pronto! O paciente receberá um lembrete automático.</p>
+                            <p style="margin: 0 0 15px 0; font-size: 14px; color: #64748b;">Vá em <strong>Agenda</strong>, escolha o dia e clique no horário desejado. Selecione o paciente, o dentista e o procedimento. Pronto! O paciente receberá um lembrete automático caso tenha cadastrado o e-mail do paciente.</p>
                         </div>
                     </div>
 
