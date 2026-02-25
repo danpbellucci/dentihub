@@ -143,6 +143,11 @@ Deno.serve(async (req) => {
                         // Aqui permitimos o HTML customizado pois validamos o Admin
                         await sendEmailViaResend(resendApiKey, [r.email], reqSubject, reqHtmlContent, clinicName, clinicEmail);
                         results.count++;
+                        
+                        // Pequeno delay para evitar rate limit do Resend (especialmente no plano free)
+                        if (recipients.length > 1) {
+                            await new Promise(resolve => setTimeout(resolve, 200));
+                        }
                     } catch (err) {
                         console.error(`Falha ao enviar para ${r.email}:`, err);
                     }
@@ -239,6 +244,10 @@ Deno.serve(async (req) => {
                 try {
                     await sendEmailViaResend(resendApiKey, [r.email], subject, htmlContent, "DentiHub Notificações", "naoresponda@dentihub.com.br");
                     results.count++;
+                    
+                    if (recipients.length > 1) {
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                    }
                 } catch (err) {
                     console.error(`Erro ao enviar notificação para ${r.email}:`, err);
                 }
@@ -308,6 +317,10 @@ Deno.serve(async (req) => {
                 try {
                     await sendEmailViaResend(resendApiKey, [r.email], subject, html, clinicName, clinicEmail);
                     results.count++;
+                    
+                    if (recipients.length > 1) {
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                    }
                 } catch (e) {
                     console.error("Erro envio convite:", e);
                 }
@@ -365,6 +378,10 @@ Deno.serve(async (req) => {
                         status: 'sent'
                     });
                     results.count++;
+                    
+                    if (recipients.length > 1) {
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                    }
                 } catch (e) { console.error(e); }
             }
         }
@@ -463,9 +480,103 @@ Deno.serve(async (req) => {
             </div>`;
 
          for (const r of recipients) {
-            if(r.email) {
+            if(!r.email) continue;
+            
+            try {
+                const htmlContent = type === 'recall' 
+                    ? `
+                    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background-color: #ffffff;">
+                        <div style="background-color: #f97316; padding: 30px 20px; text-align: center;">
+                            <h1 style="color: white; margin: 0; font-size: 24px; font-weight: bold;">Cuidar do sorriso é essencial! 😁</h1>
+                        </div>
+                        <div style="padding: 40px 30px; line-height: 1.6;">
+                            <p style="font-size: 16px;">Olá,</p>
+                            <p>Esperamos que esteja tudo bem com você!</p>
+                            <p>Notamos que já faz um tempo desde sua última visita à <strong>${clinicName}</strong>. A prevenção é sempre o melhor caminho para manter sua saúde bucal em dia e evitar desconfortos futuros.</p>
+                            
+                            <div style="background-color: #fff7ed; border-left: 4px solid #f97316; padding: 15px; margin: 25px 0; border-radius: 4px;">
+                                <p style="margin: 0; color: #9a3412;"><strong>Dica de Saúde:</strong> Check-ups regulares a cada 6 meses são fundamentais para prevenir cáries, problemas gengivais e manter seu sorriso brilhante.</p>
+                            </div>
+
+                            <p>Que tal agendar uma avaliação de retorno para garantirmos que está tudo certo?</p>
+
+                            <div style="text-align: center; margin: 40px 0;">
+                                <a href="https://dentihub.com.br/#/${clinicName.toLowerCase().replace(/\s/g, '-')}" target="_blank" style="background-color: #f97316; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(249, 115, 22, 0.3);">
+                                    Agendar Meu Retorno Agora
+                                </a>
+                            </div>
+                            
+                            <p style="font-size: 14px; color: #64748b; text-align: center;">Estamos aguardando sua visita!</p>
+                        </div>
+                        <div style="background-color: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0;">
+                            <p style="margin: 0;">${clinicName}</p>
+                            <p style="margin: 5px 0;">${clinicEmail}</p>
+                        </div>
+                    </div>`
+                    : `
+                    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background-color: #ffffff;">
+                        <div style="background-color: #0ea5e9; padding: 40px 20px; text-align: center;">
+                            <h1 style="color: white; margin: 0; font-size: 28px; font-weight: bold;">Bem-vindo(a) ao DentiHub! 🦷</h1>
+                            <p style="color: #e0f2fe; margin-top: 10px; font-size: 16px;">Sua jornada para uma gestão brilhante começa aqui.</p>
+                        </div>
+                        <div style="padding: 40px 30px; line-height: 1.6;">
+                            <p style="font-size: 16px;">Olá <strong>${r.name || 'Doutor(a)'}</strong>,</p>
+                            <p>Ficamos muito felizes em ter você conosco! Para ajudar você a começar com o pé direito, preparamos este guia rápido com as principais funções do sistema:</p>
+                            
+                            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; margin: 30px 0; border-radius: 8px;">
+                                <h3 style="margin-top: 0; color: #0ea5e9; font-size: 18px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">🚀 Guia de Início Rápido</h3>
+                                
+                                <div style="margin-top: 15px;">
+                                    <p style="margin: 0 0 5px 0;"><strong>1. Cadastrar Equipe e Funcionários:</strong></p>
+                                    <p style="margin: 0 0 15px 0; font-size: 14px; color: #64748b;">Vá em <strong>Configurações > Gestão de Acessos</strong>.Insira o e-mail, defina o perfil (Administrador, Funcionário ou crie um novo perfil) e clique em "Convidar". Eles receberão um convite para criar o acesso.</p>
+                                </div>
+
+                                <div style="margin-top: 15px;">
+                                    <p style="margin: 0 0 5px 0;"><strong>2. Editar Perfil de Acesso:</strong></p>
+                                    <p style="margin: 0 0 15px 0; font-size: 14px; color: #64748b;">Vá até <strong>Configurações > Perfis de Acesso</strong>. Você verá a lista de perfis. Selecione as telas que deseja habilitar o acesso para cada perfil, assim como os e-mails de notificações.</p>
+                                </div>
+
+                                <div style="margin-top: 15px;">
+                                    <p style="margin: 0 0 5px 0;"><strong>3. Incluir um Dentista:</strong></p>
+                                    <p style="margin: 0 0 15px 0; font-size: 14px; color: #64748b;">Acesse a aba <strong>Dentistas</strong> no menu lateral. Clique em "Novo", preencha os dados do dentista, os planos aceitos, sua especialidade e os horários de atendimento. Isso é muito importante para que os pacientes consigam solicitar agendamento apenas nos horários disponíveis do dentista.</p>
+                                </div>
+
+                                <div style="margin-top: 15px;">
+                                    <p style="margin: 0 0 5px 0;"><strong>4. Cadastrar um Paciente:</strong></p>
+                                    <p style="margin: 0 0 15px 0; font-size: 14px; color: #64748b;">No menu lateral, clique em <strong>Pacientes</strong> e depois no botão "Novo". Preencha os dados básicos e o CPF para garantir um histórico clínico organizado e seguro.</p>
+                                </div>
+
+                                <div style="margin-top: 15px;">
+                                    <p style="margin: 0 0 5px 0;"><strong>5. Fazer um Agendamento:</strong></p>
+                                    <p style="margin: 0 0 15px 0; font-size: 14px; color: #64748b;">Vá em <strong>Agenda</strong>, escolha o dia e clique no horário desejado. Selecione o paciente, o dentista e o procedimento. Pronto! O paciente receberá um lembrete automático caso tenha cadastrado o e-mail do paciente.</p>
+                                </div>
+                            </div>
+
+                            <p>Tudo isso e muito mais está detalhado no nosso Guia Prático interativo dentro do sistema.</p>
+
+                            <div style="text-align: center; margin: 40px 0;">
+                                <a href="https://dentihub.com.br/#/dashboard/guide" target="_blank" style="background-color: #0ea5e9; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.3);">
+                                    Acessar Guia Completo
+                                </a>
+                            </div>
+                            
+                            <p style="font-size: 14px; color: #64748b; text-align: center;">Dúvidas? Responda a este e-mail ou use o botão de ajuda no sistema.</p>
+                        </div>
+                        <div style="background-color: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0;">
+                            <p style="margin: 0;">Equipe DentiHub - Gestão Inteligente para Dentistas</p>
+                            <p style="margin: 5px 0;">contato@dentihub.com.br</p>
+                        </div>
+                    </div>`;
+
                 await sendEmailViaResend(resendApiKey, [r.email], subject, htmlContent, clinicName, clinicEmail);
                 results.count++;
+                
+                // Pequeno delay para evitar rate limit do Resend (especialmente no plano free)
+                if (recipients.length > 1) {
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                }
+            } catch (err) {
+                console.error(`Erro ao enviar ${type} para ${r.email}:`, err);
             }
          }
          success = true;

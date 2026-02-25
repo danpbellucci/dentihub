@@ -157,7 +157,8 @@ const SuperAdminPage: React.FC = () => {
           });
 
           if (error) throw error;
-          setToast({ message: `E-mails enviados com sucesso para ${recipients.length} usuários!`, type: 'success' });
+          const sentCount = data?.results?.count ?? recipients.length;
+          setToast({ message: `E-mails enviados com sucesso para ${sentCount} usuários!`, type: 'success' });
           setSelectedUsers([]);
       } catch (err: any) {
           setToast({ message: "Erro ao enviar e-mails: " + err.message, type: 'error' });
