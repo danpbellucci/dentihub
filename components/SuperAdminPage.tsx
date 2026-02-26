@@ -5,7 +5,7 @@ import {
   Users, Building2, Calendar, Mic, Activity, 
   FileText, CalendarRange, RefreshCw,
   BarChart3, ArrowLeft, Sparkles, CreditCard,
-  Monitor, Menu, X, HeartPulse, AlertTriangle, CheckCircle, TrendingUp,
+  Monitor, Menu, X, HeartPulse, AlertTriangle, CheckCircle, TrendingUp, Play,
   Megaphone, Trash2, Send, AlertOctagon, UserX, Clock, Tag, Copy, Mail, Image, DollarSign,
   CalendarClock, Timer, Target, MousePointer, Type, List, Layout, Loader2, Image as ImageIcon,
   Download, FileSpreadsheet, Ban, Star, Box, ChevronUp, ChevronDown
@@ -15,6 +15,8 @@ import * as XLSX from 'xlsx';
 import Toast, { ToastType } from './Toast';
 
 // ... (MetricCard e HealthIndicator mantidos iguais) ...
+import SuperAdminTestFunctions from './SuperAdminTestFunctions';
+
 const MetricCard: React.FC<{title: string, value: string, icon: any, color: string, trend?: string, subtext?: string}> = ({ title, value, icon: Icon, color, trend, subtext }) => (
   <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center relative overflow-hidden">
     <div className={`p-4 rounded-full mr-4 ${color.replace('text-', 'bg-').replace('600', '50').replace('500', '50')}`}>
@@ -50,7 +52,7 @@ const SuperAdminPage: React.FC = () => {
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   
   // New States
-  const [activeTab, setActiveTab] = useState<'overview' | 'churn' | 'broadcast' | 'marketing' | 'nano-banana' | 'clinics' | 'campaign_emails' | 'google-ads' | 'meta-ads'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'churn' | 'broadcast' | 'marketing' | 'nano-banana' | 'clinics' | 'campaign_emails' | 'google-ads' | 'meta-ads' | 'test-functions'>('overview');
   const [atRiskClinics, setAtRiskClinics] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -452,6 +454,7 @@ const SuperAdminPage: React.FC = () => {
               <button onClick={() => { setActiveTab('nano-banana'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'nano-banana' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><Image size={18} className="mr-3"/> Nano Banana</button>
               <button onClick={() => { setActiveTab('google-ads'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'google-ads' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><Monitor size={18} className="mr-3"/> Google Ads</button>
               <button onClick={() => { setActiveTab('meta-ads'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'meta-ads' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><Megaphone size={18} className="mr-3"/> Meta Ads</button>
+              <button onClick={() => { setActiveTab('test-functions'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'test-functions' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><Play size={18} className="mr-3"/> Testar Funções</button>
               
               <div className="pt-4 mt-4 border-t border-gray-800">
                   <button onClick={() => { navigate('/super-admin/campaigns'); }} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/5 hover:text-white"><Sparkles size={18} className="mr-3"/> Marketing Studio</button>
@@ -1189,6 +1192,9 @@ const SuperAdminPage: React.FC = () => {
                 </div>
             )}
 
+            {activeTab === 'test-functions' && (
+                <SuperAdminTestFunctions />
+            )}
         </div>
       </main>
     </div>
