@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase, SUPABASE_URL } from '../services/supabase';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Logo } from './Logo';
-import { Smile, Lock, Mail, ArrowLeft, AlertTriangle, User, KeyRound, X, FileText, Tag, Eye, EyeOff } from 'lucide-react';
+import { Smile, Lock, Mail, ArrowLeft, AlertTriangle, User, KeyRound, X, FileText, Tag, Eye, EyeOff, Check } from 'lucide-react';
 
 const TERMS_OF_USE_TEXT = `TERMOS DE USO – DENTIHUB
 
@@ -383,7 +383,7 @@ const AuthPage: React.FC = () => {
                             onChange={(e) => setPassword(e.target.value)}
                             onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(e as any); }}
                             className="block w-full pl-10 pr-10 bg-gray-800 border border-gray-700 text-white rounded-lg py-2.5 placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition disabled:opacity-50"
-                            placeholder={view === 'signup' ? '8+ chars, Maiúscula, Núm, Especial' : '••••••••'}
+                            placeholder={view === 'signup' ? '8+ caracteres, Maiúscula, Número, Especial' : '••••••••'}
                         />
                         <button
                             type="button"
@@ -432,6 +432,37 @@ const AuthPage: React.FC = () => {
                             >
                                 {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                             </button>
+                            </div>
+                        </div>
+
+                        {/* Password Requirements Checklist */}
+                        <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700 space-y-2">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Requisitos da Senha</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div className={`flex items-center gap-2 text-[11px] transition-colors ${password.length >= 8 ? 'text-green-400' : 'text-gray-500'}`}>
+                                    <div className={`p-0.5 rounded-full ${password.length >= 8 ? 'bg-green-400/20' : 'bg-gray-700'}`}>
+                                        <Check size={10} className={password.length >= 8 ? 'opacity-100' : 'opacity-0'} />
+                                    </div>
+                                    <span>8+ caracteres</span>
+                                </div>
+                                <div className={`flex items-center gap-2 text-[11px] transition-colors ${/[0-9]/.test(password) ? 'text-green-400' : 'text-gray-500'}`}>
+                                    <div className={`p-0.5 rounded-full ${/[0-9]/.test(password) ? 'bg-green-400/20' : 'bg-gray-700'}`}>
+                                        <Check size={10} className={/[0-9]/.test(password) ? 'opacity-100' : 'opacity-0'} />
+                                    </div>
+                                    <span>Pelo menos 1 número</span>
+                                </div>
+                                <div className={`flex items-center gap-2 text-[11px] transition-colors ${/[A-Z]/.test(password) ? 'text-green-400' : 'text-gray-500'}`}>
+                                    <div className={`p-0.5 rounded-full ${/[A-Z]/.test(password) ? 'bg-green-400/20' : 'bg-gray-700'}`}>
+                                        <Check size={10} className={/[A-Z]/.test(password) ? 'opacity-100' : 'opacity-0'} />
+                                    </div>
+                                    <span>1 letra maiúscula</span>
+                                </div>
+                                <div className={`flex items-center gap-2 text-[11px] transition-colors ${/[!@#$%^&*(),.?":{}|<>]/.test(password) ? 'text-green-400' : 'text-gray-500'}`}>
+                                    <div className={`p-0.5 rounded-full ${/[!@#$%^&*(),.?":{}|<>]/.test(password) ? 'bg-green-400/20' : 'bg-gray-700'}`}>
+                                        <Check size={10} className={/[!@#$%^&*(),.?":{}|<>]/.test(password) ? 'opacity-100' : 'opacity-0'} />
+                                    </div>
+                                    <span>1 caracter especial</span>
+                                </div>
                             </div>
                         </div>
 

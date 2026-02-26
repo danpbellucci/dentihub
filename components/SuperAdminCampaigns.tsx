@@ -6,7 +6,8 @@ import {
   ArrowLeft, Send, Sparkles, User, Users, 
   Eye, Code, Loader2, CheckCircle, AlertTriangle, MessageSquare, X, Mail,
   Timer, UserX, Clock, PenTool, Facebook, Instagram, Share2, Globe, Upload,
-  Users2, Target, Info, Check, Filter
+  Users2, Target, Info, Check, Filter,
+  Activity, BarChart3, CreditCard, Tag, Menu
 } from 'lucide-react';
 import Toast, { ToastType } from './Toast';
 import DOMPurify from 'dompurify';
@@ -47,6 +48,7 @@ const SuperAdminCampaigns: React.FC = () => {
         { role: 'ai', text: 'Olá! Sou sua IA de Marketing. O que vamos criar hoje? Escolha o tipo de conteúdo acima e me dê o tema.' }
     ]);
     const [generatedContent, setGeneratedContent] = useState<any>(null);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
@@ -196,159 +198,187 @@ const SuperAdminCampaigns: React.FC = () => {
     };
 
     return (
-        <div className="p-6 bg-gray-50 min-h-screen h-screen flex flex-col overflow-hidden">
+        <div className="flex h-screen bg-gray-50 overflow-hidden relative">
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6 shrink-0">
-                <div className="flex items-center gap-4">
-                    <button onClick={() => navigate('/super-admin')} className="p-2 bg-white border rounded-full hover:bg-gray-100 transition shadow-sm">
-                        <ArrowLeft size={20} />
-                    </button>
-                    <div>
-                        <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
-                            <Sparkles className="text-purple-600" /> Marketing Studio
-                        </h1>
-                        <p className="text-sm text-gray-500">Crie conteúdo e dispare para sua base de leads e clientes.</p>
-                    </div>
+            {/* --- OVERLAY MOBILE --- */}
+            {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)}></div>}
+
+            {/* --- LEFT SIDEBAR (UNIFIED) --- */}
+            <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-900 flex-shrink-0 flex flex-col border-r border-gray-800 transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0`}>
+                <div className="p-6 border-b border-gray-800 flex justify-between items-center">
+                    <div><h1 className="text-xl font-black text-white flex items-center gap-2"><Activity className="text-red-600" /> GOD MODE</h1><p className="text-xs text-gray-500 mt-1">Centro de Comando</p></div>
+                    <button onClick={() => setSidebarOpen(false)} className="text-gray-400 hover:text-white md:hidden"><X size={24} /></button>
                 </div>
-            </div>
+                <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+                    <button onClick={() => navigate('/super-admin')} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all text-gray-400 hover:bg-white/5 hover:text-white"><BarChart3 size={18} className="mr-3"/> Visão Geral</button>
+                    <button onClick={() => navigate('/super-admin')} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all text-gray-400 hover:bg-white/5 hover:text-white"><Sparkles size={18} className="mr-3"/> Agente de Marketing</button>
+                    
+                    <div className="pt-4 mt-4 border-t border-gray-800">
+                        <button className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all bg-primary text-white shadow-lg shadow-blue-900/20"><Sparkles size={18} className="mr-3"/> Marketing Studio</button>
+                        <button onClick={() => navigate('/super-admin/leads')} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all text-gray-400 hover:bg-white/5 hover:text-white"><Users size={18} className="mr-3"/> Gestão de Leads</button>
+                        <button onClick={() => navigate('/super-admin/subscriptions')} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all text-gray-400 hover:bg-white/5 hover:text-white"><CreditCard size={18} className="mr-3"/> Assinaturas</button>
+                        <button onClick={() => navigate('/super-admin/plans')} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all text-gray-400 hover:bg-white/5 hover:text-white"><Tag size={18} className="mr-3"/> Preços e Planos</button>
+                    </div>
+                </nav>
+                <div className="p-4 border-t border-gray-800">
+                    <button onClick={() => navigate('/dashboard')} className="w-full flex items-center justify-center px-4 py-2 border border-gray-700 text-gray-400 rounded-lg hover:text-white hover:border-gray-500 transition text-xs font-bold"><ArrowLeft size={14} className="mr-2"/> Voltar à Clínica</button>
+                </div>
+            </aside>
 
-            {/* --- MARKETING AGENT --- */}
-            <div className="flex flex-1 gap-6 overflow-hidden animate-fade-in">
-                    {/* Left Panel: Chat & Settings */}
-                    <div className="w-1/3 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
-                        <div className="p-4 border-b bg-gray-50">
-                            <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Tipo de Conteúdo</label>
-                            <div className="grid grid-cols-2 gap-2">
-                                <button onClick={() => setContentType('email')} className={`flex items-center justify-center gap-2 py-2 rounded text-xs font-bold border ${contentType === 'email' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-white border-gray-200 text-gray-600'}`}><Mail size={14}/> E-mail Marketing</button>
-                                <button onClick={() => setContentType('blog_post')} className={`flex items-center justify-center gap-2 py-2 rounded text-xs font-bold border ${contentType === 'blog_post' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-white border-gray-200 text-gray-600'}`}><PenTool size={14}/> Blog Post</button>
-                                <button onClick={() => setContentType('social_media')} className={`flex items-center justify-center gap-2 py-2 rounded text-xs font-bold border ${contentType === 'social_media' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-white border-gray-200 text-gray-600'}`}><Instagram size={14}/> Social Media</button>
-                                <button onClick={() => setContentType('meta_ads')} className={`flex items-center justify-center gap-2 py-2 rounded text-xs font-bold border ${contentType === 'meta_ads' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-white border-gray-200 text-gray-600'}`}><Facebook size={14}/> Meta Ads</button>
-                            </div>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-white">
-                            {messages.map((msg, idx) => (
-                                <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[85%] rounded-lg p-3 text-sm ${msg.role === 'user' ? 'bg-gray-100 text-gray-800 rounded-tr-none' : 'bg-purple-50 text-purple-900 rounded-tl-none border border-purple-100'}`}>
-                                        {msg.role === 'ai' && <Sparkles size={14} className="mb-1 text-purple-400 inline mr-2" />}
-                                        {msg.text}
-                                    </div>
-                                </div>
-                            ))}
-                            {loading && <div className="flex justify-start"><div className="bg-purple-50 p-3 rounded-lg rounded-tl-none flex items-center gap-2 text-sm text-purple-800"><Loader2 className="animate-spin" size={16} /> Criando...</div></div>}
-                            <div ref={chatEndRef} />
-                        </div>
-                        <div className="p-4 border-t bg-gray-50">
-                            <div className="flex gap-2">
-                                <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !loading && handleSendMessage()} placeholder="Sobre o que é o conteúdo?" className="flex-1 border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none" disabled={loading}/>
-                                <button onClick={handleSendMessage} disabled={loading || !chatInput.trim()} className="bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-700 disabled:opacity-50 transition shadow-sm"><Send size={18} /></button>
-                            </div>
+            {/* --- MAIN CONTENT --- */}
+            <main className="flex-1 overflow-y-auto bg-gray-50 flex flex-col w-full relative">
+                {/* Mobile Header */}
+                <div className="md:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-30">
+                    <h2 className="text-lg font-black text-gray-800 flex items-center gap-2"><Activity className="text-red-600" size={20} /> God Mode</h2>
+                    <button onClick={() => setSidebarOpen(true)} className="text-gray-600 hover:text-gray-900 p-1"><Menu size={24} /></button>
+                </div>
+
+                <div className="p-4 sm:p-8 animate-fade-in w-full">
+                    <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                                <Sparkles className="text-blue-600"/> Marketing Studio
+                            </h1>
+                            <p className="text-sm text-gray-500">Crie conteúdo e dispare para sua base de leads e clientes.</p>
                         </div>
                     </div>
 
-                    {/* Right Panel: Result Display */}
-                    <div className="w-2/3 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
-                        <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
-                            <h3 className="font-bold text-gray-700">Resultado Gerado</h3>
-                            <div className="flex items-center gap-3">
-                                {generatedContent && (
-                                    <button className="text-xs text-gray-500 hover:text-gray-900 font-bold flex items-center gap-1" onClick={() => {navigator.clipboard.writeText(JSON.stringify(generatedContent, null, 2)); setToast({message: 'JSON Copiado', type:'success'})}}>
-                                        <Code size={14}/> JSON
-                                    </button>
-                                )}
-                                
-                                {contentType === 'email' && generatedContent && (
-                                    <button 
-                                        onClick={() => setShowTargetModal(true)}
-                                        className="text-xs bg-purple-600 text-white px-4 py-1.5 rounded-md font-bold hover:bg-purple-700 transition flex items-center gap-2 shadow-sm"
-                                    >
-                                        <Users2 size={14}/> Disparar E-mail
-                                    </button>
-                                )}
-
-                                {contentType === 'blog_post' && generatedContent && (
-                                    <button 
-                                        onClick={handlePublishBlogPost}
-                                        disabled={publishing}
-                                        className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-md font-bold hover:bg-green-700 transition flex items-center gap-1 disabled:opacity-50 shadow-sm"
-                                    >
-                                        {publishing ? <Loader2 size={14} className="animate-spin"/> : <Globe size={14}/>}
-                                        Aprovar e Publicar
-                                    </button>
-                                )}
+                    <div className="flex flex-1 gap-6 overflow-hidden animate-fade-in">
+                        {/* Left Panel: Chat & Settings */}
+                        <div className="w-1/3 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+                            <div className="p-4 border-b bg-gray-50">
+                                <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Tipo de Conteúdo</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button onClick={() => setContentType('email')} className={`flex items-center justify-center gap-2 py-2 rounded text-xs font-bold border ${contentType === 'email' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-white border-gray-200 text-gray-600'}`}><Mail size={14}/> E-mail Marketing</button>
+                                    <button onClick={() => setContentType('blog_post')} className={`flex items-center justify-center gap-2 py-2 rounded text-xs font-bold border ${contentType === 'blog_post' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-white border-gray-200 text-gray-600'}`}><PenTool size={14}/> Blog Post</button>
+                                    <button onClick={() => setContentType('social_media')} className={`flex items-center justify-center gap-2 py-2 rounded text-xs font-bold border ${contentType === 'social_media' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-white border-gray-200 text-gray-600'}`}><Instagram size={14}/> Social Media</button>
+                                    <button onClick={() => setContentType('meta_ads')} className={`flex items-center justify-center gap-2 py-2 rounded text-xs font-bold border ${contentType === 'meta_ads' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-white border-gray-200 text-gray-600'}`}><Facebook size={14}/> Meta Ads</button>
+                                </div>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-white">
+                                {messages.map((msg, idx) => (
+                                    <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`max-w-[85%] rounded-lg p-3 text-sm ${msg.role === 'user' ? 'bg-gray-100 text-gray-800 rounded-tr-none' : 'bg-purple-50 text-purple-900 rounded-tl-none border border-purple-100'}`}>
+                                            {msg.role === 'ai' && <Sparkles size={14} className="mb-1 text-purple-400 inline mr-2" />}
+                                            {msg.text}
+                                        </div>
+                                    </div>
+                                ))}
+                                {loading && <div className="flex justify-start"><div className="bg-purple-50 p-3 rounded-lg rounded-tl-none flex items-center gap-2 text-sm text-purple-800"><Loader2 className="animate-spin" size={16} /> Criando...</div></div>}
+                                <div ref={chatEndRef} />
+                            </div>
+                            <div className="p-4 border-t bg-gray-50">
+                                <div className="flex gap-2">
+                                    <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !loading && handleSendMessage()} placeholder="Sobre o que é o conteúdo?" className="flex-1 border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none" disabled={loading}/>
+                                    <button onClick={handleSendMessage} disabled={loading || !chatInput.trim()} className="bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-700 disabled:opacity-50 transition shadow-sm"><Send size={18} /></button>
+                                </div>
                             </div>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
-                            {!generatedContent ? (
-                                <div className="h-full flex flex-col items-center justify-center text-gray-400">
-                                    <Sparkles size={48} className="mb-4 opacity-20"/>
-                                    <p>O conteúdo gerado pela IA aparecerá aqui.</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-6">
-                                    {/* BLOG POST */}
-                                    {contentType === 'blog_post' && (
-                                        <div className="prose max-w-none">
-                                            <h1 className="text-2xl font-bold text-gray-900">{generatedContent.title}</h1>
-                                            <div className="text-sm text-gray-500 mb-4 font-mono">Slug: {generatedContent.slug}</div>
-                                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-6 text-sm text-blue-800">
-                                                <strong>Prompt Imagem:</strong> {generatedContent.image_prompt}
-                                            </div>
-                                            <div dangerouslySetInnerHTML={{ __html: generatedContent.content_html }} className="text-gray-700 space-y-4" />
-                                        </div>
+
+                        {/* Right Panel: Result Display */}
+                        <div className="w-2/3 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+                            <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+                                <h3 className="font-bold text-gray-700">Resultado Gerado</h3>
+                                <div className="flex items-center gap-3">
+                                    {generatedContent && (
+                                        <button className="text-xs text-gray-500 hover:text-gray-900 font-bold flex items-center gap-1" onClick={() => {navigator.clipboard.writeText(JSON.stringify(generatedContent, null, 2)); setToast({message: 'JSON Copiado', type:'success'})}}>
+                                            <Code size={14}/> JSON
+                                        </button>
+                                    )}
+                                    
+                                    {contentType === 'email' && generatedContent && (
+                                        <button 
+                                            onClick={() => setShowTargetModal(true)}
+                                            className="text-xs bg-purple-600 text-white px-4 py-1.5 rounded-md font-bold hover:bg-purple-700 transition flex items-center gap-2 shadow-sm"
+                                        >
+                                            <Users2 size={14}/> Disparar E-mail
+                                        </button>
                                     )}
 
-                                    {/* SOCIAL MEDIA */}
-                                    {contentType === 'social_media' && (
-                                        <div className="flex flex-col gap-6">
+                                    {contentType === 'blog_post' && generatedContent && (
+                                        <button 
+                                            onClick={handlePublishBlogPost}
+                                            disabled={publishing}
+                                            className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-md font-bold hover:bg-green-700 transition flex items-center gap-1 disabled:opacity-50 shadow-sm"
+                                        >
+                                            {publishing ? <Loader2 size={14} className="animate-spin"/> : <Globe size={14}/>}
+                                            Aprovar e Publicar
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+                                {!generatedContent ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-gray-400">
+                                        <Sparkles size={48} className="mb-4 opacity-20"/>
+                                        <p>O conteúdo gerado pela IA aparecerá aqui.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6">
+                                        {/* BLOG POST */}
+                                        {contentType === 'blog_post' && (
+                                            <div className="prose max-w-none">
+                                                <h1 className="text-2xl font-bold text-gray-900">{generatedContent.title}</h1>
+                                                <div className="text-sm text-gray-500 mb-4 font-mono">Slug: {generatedContent.slug}</div>
+                                                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-6 text-sm text-blue-800">
+                                                    <strong>Prompt Imagem:</strong> {generatedContent.image_prompt}
+                                                </div>
+                                                <div dangerouslySetInnerHTML={{ __html: generatedContent.content_html }} className="text-gray-700 space-y-4" />
+                                            </div>
+                                        )}
+
+                                        {/* SOCIAL MEDIA */}
+                                        {contentType === 'social_media' && (
+                                            <div className="flex flex-col gap-6">
+                                                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm max-w-md mx-auto w-full">
+                                                    <div className="flex items-center gap-2 mb-3">
+                                                        <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                                                        <div className="font-bold text-sm">DentiHub</div>
+                                                    </div>
+                                                    <div className="bg-gray-100 aspect-square rounded-lg flex items-center justify-center mb-3 text-gray-400 text-center p-4">
+                                                        <p className="text-xs">Ideia Visual: {generatedContent.image_idea}</p>
+                                                    </div>
+                                                    <div className="text-sm whitespace-pre-wrap">{generatedContent.caption}</div>
+                                                    <div className="text-blue-600 text-sm mt-2">{generatedContent.hashtags}</div>
+                                                </div>
+                                                <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 text-sm text-yellow-800">
+                                                    <strong>Roteiro Stories:</strong> {generatedContent.story_script}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* META ADS */}
+                                        {contentType === 'meta_ads' && (
                                             <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm max-w-md mx-auto w-full">
-                                                <div className="flex items-center gap-2 mb-3">
-                                                    <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
-                                                    <div className="font-bold text-sm">DentiHub</div>
+                                                <div className="text-xs text-gray-500 mb-2">Patrocinado</div>
+                                                <div className="text-sm mb-3 whitespace-pre-wrap">{generatedContent.primary_text}</div>
+                                                <div className="bg-gray-200 aspect-video rounded flex items-center justify-center mb-3 text-gray-500 text-center p-4 text-xs">
+                                                    Ideia Criativo: {generatedContent.creative_ideas?.[0]}
                                                 </div>
-                                                <div className="bg-gray-100 aspect-square rounded-lg flex items-center justify-center mb-3 text-gray-400 text-center p-4">
-                                                    <p className="text-xs">Ideia Visual: {generatedContent.image_idea}</p>
+                                                <div className="flex justify-between items-center bg-gray-50 p-2 rounded border border-gray-200">
+                                                    <div>
+                                                        <div className="font-bold text-sm">{generatedContent.headline}</div>
+                                                        <div className="text-xs text-gray-500">{generatedContent.description}</div>
+                                                    </div>
+                                                    <button className="bg-gray-300 px-3 py-1.5 rounded text-xs font-bold text-gray-700">{generatedContent.call_to_action}</button>
                                                 </div>
-                                                <div className="text-sm whitespace-pre-wrap">{generatedContent.caption}</div>
-                                                <div className="text-blue-600 text-sm mt-2">{generatedContent.hashtags}</div>
+                                                <div className="mt-4 p-3 bg-gray-50 rounded text-xs text-gray-600 border border-gray-200">
+                                                    <strong>Interesses Sugeridos:</strong> {generatedContent.audience_interests}
+                                                </div>
                                             </div>
-                                            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 text-sm text-yellow-800">
-                                                <strong>Roteiro Stories:</strong> {generatedContent.story_script}
-                                            </div>
-                                        </div>
-                                    )}
+                                        )}
 
-                                    {/* META ADS */}
-                                    {contentType === 'meta_ads' && (
-                                        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm max-w-md mx-auto w-full">
-                                            <div className="text-xs text-gray-500 mb-2">Patrocinado</div>
-                                            <div className="text-sm mb-3 whitespace-pre-wrap">{generatedContent.primary_text}</div>
-                                            <div className="bg-gray-200 aspect-video rounded flex items-center justify-center mb-3 text-gray-500 text-center p-4 text-xs">
-                                                Ideia Criativo: {generatedContent.creative_ideas?.[0]}
+                                        {/* EMAIL */}
+                                        {contentType === 'email' && (
+                                            <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                                                <div className="bg-gray-100 px-4 py-2 text-sm border-b border-gray-200 font-bold text-gray-700">Assunto: {generatedContent.subject}</div>
+                                                <div className="p-6 bg-white" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(generatedContent.html_content) }} />
                                             </div>
-                                            <div className="flex justify-between items-center bg-gray-50 p-2 rounded border border-gray-200">
-                                                <div>
-                                                    <div className="font-bold text-sm">{generatedContent.headline}</div>
-                                                    <div className="text-xs text-gray-500">{generatedContent.description}</div>
-                                                </div>
-                                                <button className="bg-gray-300 px-3 py-1.5 rounded text-xs font-bold text-gray-700">{generatedContent.call_to_action}</button>
-                                            </div>
-                                            <div className="mt-4 p-3 bg-gray-50 rounded text-xs text-gray-600 border border-gray-200">
-                                                <strong>Interesses Sugeridos:</strong> {generatedContent.audience_interests}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* EMAIL */}
-                                    {contentType === 'email' && (
-                                        <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                                            <div className="bg-gray-100 px-4 py-2 text-sm border-b border-gray-200 font-bold text-gray-700">Assunto: {generatedContent.subject}</div>
-                                            <div className="p-6 bg-white" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(generatedContent.html_content) }} />
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -472,6 +502,7 @@ const SuperAdminCampaigns: React.FC = () => {
                     </div>
                 </div>
             )}
+            </main>
         </div>
     );
 };

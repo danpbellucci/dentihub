@@ -33,7 +33,7 @@ const SubscriptionPaymentModal: React.FC<SubscriptionPaymentModalProps> = ({ pla
       confirmParams: {
         // Redireciona de volta para a página de configurações com um parâmetro de sucesso
         // FIX: Aponta para a rota correta do dashboard
-        return_url: `${window.location.origin}/#/dashboard/settings?success=true`,
+        return_url: `${window.location.origin}/dashboard/settings?success=true`,
       },
       redirect: 'if_required',
     });

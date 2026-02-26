@@ -30,7 +30,7 @@ VALUES (
 
     <h2>Conclusão</h2>
     <p>Um sistema de gestão não é um luxo, é a base para qualquer clínica que deseja ser lucrativa e profissional. Se você ainda usa papel ou sistemas lentos, está na hora de conhecer o DentiHub.</p>',
-    'https://images.unsplash.com/photo-1588776814546-1ffce47267a5?auto=format&fit=crop&q=80&w=2070',
+    'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=2070',
     'Equipe DentiHub'
 ) ON CONFLICT (slug) DO UPDATE SET
     title = EXCLUDED.title,

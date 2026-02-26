@@ -317,10 +317,10 @@ const DashboardHome: React.FC = () => {
                                   
                                   <div className="flex items-center gap-2 bg-gray-900 p-2 rounded-lg border border-white/10">
                                       <code className="text-xs text-blue-400 flex-1 truncate">
-                                          {`https://dentihub.com.br/#/${userProfile.clinics?.slug}`}
+                                          {`https://dentihub.com.br/${userProfile.clinics?.slug}`}
                                       </code>
                                       <button 
-                                          onClick={() => copyToClipboard(`https://dentihub.com.br/#/${userProfile.clinics?.slug}`)}
+                                          onClick={() => copyToClipboard(`https://dentihub.com.br/${userProfile.clinics?.slug}`)}
                                           className="p-2 hover:bg-white/5 rounded-md transition-colors text-gray-400 hover:text-white"
                                           title="Copiar Link"
                                       >

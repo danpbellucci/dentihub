@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 import AuthPage from './components/AuthPage';
@@ -166,16 +166,16 @@ const App: React.FC = () => {
   if (isRecoveryMode) {
       return (
           <ErrorBoundary>
-            <HashRouter>
+            <BrowserRouter>
                 <UpdatePasswordPage />
-            </HashRouter>
+            </BrowserRouter>
           </ErrorBoundary>
       );
   }
 
   return (
     <ErrorBoundary>
-      <HashRouter>
+      <BrowserRouter>
         <AuthListener />
         <Routes>
           {/* Landing Page (Public Root) */}
@@ -237,7 +237,7 @@ const App: React.FC = () => {
           <Route path="/:slug" element={<PublicBookingPage />} />
 
         </Routes>
-      </HashRouter>
+      </BrowserRouter>
     </ErrorBoundary>
   );
 };

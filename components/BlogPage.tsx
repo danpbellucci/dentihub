@@ -159,8 +159,11 @@ const BlogPage: React.FC = () => {
 
             {/* Post Modal Overlay */}
             {selectedPost && (
-                <div className="fixed inset-0 z-[100] flex justify-center items-start bg-black/90 backdrop-blur-sm overflow-y-auto custom-scrollbar p-4 sm:p-8 animate-fade-in">
-                    <div className="bg-gray-950 w-full max-w-3xl rounded-2xl border border-white/10 shadow-2xl relative flex flex-col my-8">
+                <div 
+                    className="fixed inset-0 z-[100] flex justify-center items-start bg-black/90 backdrop-blur-sm overflow-y-auto custom-scrollbar p-4 sm:p-8 animate-fade-in cursor-pointer"
+                    onClick={(e) => e.target === e.currentTarget && setSelectedPost(null)}
+                >
+                    <div className="bg-gray-950 w-full max-w-3xl rounded-2xl border border-white/10 shadow-2xl relative flex flex-col my-8 cursor-default" onClick={(e) => e.stopPropagation()}>
                         <button 
                             onClick={() => setSelectedPost(null)} 
                             className="absolute top-4 right-4 z-20 p-2 bg-black/50 text-white rounded-full hover:bg-white hover:text-black transition backdrop-blur-md"

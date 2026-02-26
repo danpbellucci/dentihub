@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     }
 
     const getUnsubscribeLink = (email: string) => {
-        return `https://dentihub.com.br/#/?action=unsubscribe&email=${encodeURIComponent(email)}`;
+        return `https://dentihub.com.br/?action=unsubscribe&email=${encodeURIComponent(email)}`;
     };
 
     const getFooter = (email: string) => `
@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
                 <p>Você pode começar a usar tudo isso agora mesmo, sem custo e sem cartão de crédito.</p>
 
                 <div style="text-align: center; margin: 30px 0;">
-                    <a href="https://dentihub.com.br/#/auth?view=signup" style="background-color: #0ea5e9; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
+                    <a href="https://dentihub.com.br/auth?view=signup" style="background-color: #0ea5e9; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
                         Criar Minha Conta Grátis
                     </a>
                 </div>

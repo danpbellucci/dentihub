@@ -123,8 +123,8 @@ const ClinicProfileSettings: React.FC = () => {
         <div className="mt-8 bg-blue-900/20 border border-blue-500/20 rounded-lg p-4">
             <h4 className="text-sm font-bold text-blue-400 flex items-center gap-2 mb-2"><Copy size={16} /> Link de Agendamento</h4>
             <div className="flex gap-2">
-                <input type="text" readOnly className="flex-1 border border-blue-500/20 rounded px-3 py-2 text-sm text-blue-300 bg-blue-900/10" value={`${window.location.origin}/#/${clinicData.slug}`} />
-                <button onClick={() => copyToClipboard(`${window.location.origin}/#/${clinicData.slug}`)} className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-blue-700">Copiar</button>
+                <input type="text" readOnly className="flex-1 border border-blue-500/20 rounded px-3 py-2 text-sm text-blue-300 bg-blue-900/10" value={`${window.location.origin}/${clinicData.slug}`} />
+                <button onClick={() => copyToClipboard(`${window.location.origin}/${clinicData.slug}`)} className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-blue-700">Copiar</button>
             </div>
         </div>
     </div>

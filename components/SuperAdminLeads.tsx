@@ -5,7 +5,7 @@ import { supabase } from '../services/supabase';
 import { 
   ArrowLeft, Mail, RefreshCw, CheckCircle, XCircle, 
   Loader2, Send, Users, Filter, Rocket, AlertTriangle, X,
-  Activity, BarChart3, Sparkles, CreditCard, Menu
+  Activity, BarChart3, Sparkles, CreditCard, Tag, Menu
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import Toast, { ToastType } from './Toast';
@@ -108,7 +108,7 @@ const SuperAdminLeads: React.FC = () => {
                         </p>
 
                         <div style="text-align: center; margin-top: 35px;">
-                            <a href="https://dentihub.com.br/#/auth?view=signup" style="background-color: #0ea5e9; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.2);">
+                            <a href="https://dentihub.com.br/auth?view=signup" style="background-color: #0ea5e9; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.2);">
                                 Criar Minha Conta Grátis
                             </a>
                         </div>
@@ -160,16 +160,19 @@ const SuperAdminLeads: React.FC = () => {
                 <div className="p-6 border-b border-gray-800 flex justify-between items-center">
                     <div>
                         <h1 className="text-xl font-black text-white flex items-center gap-2"><Activity className="text-red-600" /> GOD MODE</h1>
-                        <p className="text-xs text-gray-500 mt-1">Super Admin Dashboard</p>
+                        <p className="text-xs text-gray-500 mt-1">Centro de Comando</p>
                     </div>
                     <button onClick={() => setSidebarOpen(false)} className="text-gray-400 hover:text-white md:hidden"><X size={24} /></button>
                 </div>
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
                     <button onClick={() => navigate('/super-admin')} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all text-gray-400 hover:bg-white/5 hover:text-white"><BarChart3 size={18} className="mr-3"/> Visão Geral</button>
                     <button onClick={() => navigate('/super-admin')} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all text-gray-400 hover:bg-white/5 hover:text-white"><Sparkles size={18} className="mr-3"/> Agente de Marketing</button>
+                    
                     <div className="pt-4 mt-4 border-t border-gray-800">
+                        <button onClick={() => navigate('/super-admin/campaigns')} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all text-gray-400 hover:bg-white/5 hover:text-white"><Sparkles size={18} className="mr-3"/> Marketing Studio</button>
                         <button className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all bg-primary text-white shadow-lg shadow-blue-900/20"><Users size={18} className="mr-3"/> Gestão de Leads</button>
                         <button onClick={() => navigate('/super-admin/subscriptions')} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all text-gray-400 hover:bg-white/5 hover:text-white"><CreditCard size={18} className="mr-3"/> Assinaturas</button>
+                        <button onClick={() => navigate('/super-admin/plans')} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all text-gray-400 hover:bg-white/5 hover:text-white"><Tag size={18} className="mr-3"/> Preços e Planos</button>
                     </div>
                 </nav>
                 <div className="p-4 border-t border-gray-800">

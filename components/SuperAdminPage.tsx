@@ -7,9 +7,11 @@ import {
   BarChart3, ArrowLeft, Sparkles, CreditCard,
   Monitor, Menu, X, HeartPulse, AlertTriangle, CheckCircle, TrendingUp,
   Megaphone, Trash2, Send, AlertOctagon, UserX, Clock, Tag, Copy, Mail, Image, DollarSign,
-  CalendarClock, Timer
+  CalendarClock, Timer, Target, MousePointer, Type, List, Layout, Loader2, Image as ImageIcon,
+  Download, FileSpreadsheet, Ban, Star, Box, ChevronUp, ChevronDown
 } from 'lucide-react';
 import { format, subDays, startOfDay, endOfDay, parseISO, differenceInHours, isToday } from 'date-fns';
+import * as XLSX from 'xlsx';
 import Toast, { ToastType } from './Toast';
 
 // ... (MetricCard e HealthIndicator mantidos iguais) ...
@@ -48,7 +50,7 @@ const SuperAdminPage: React.FC = () => {
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   
   // New States
-  const [activeTab, setActiveTab] = useState<'overview' | 'churn' | 'broadcast' | 'remotion' | 'marketing' | 'nano-banana' | 'clinics' | 'campaign_emails'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'churn' | 'broadcast' | 'marketing' | 'nano-banana' | 'clinics' | 'campaign_emails' | 'google-ads' | 'meta-ads'>('overview');
   const [atRiskClinics, setAtRiskClinics] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -56,16 +58,11 @@ const SuperAdminPage: React.FC = () => {
   const [selectedTemplate, setSelectedTemplate] = useState('welcome');
   const [isSendingEmails, setIsSendingEmails] = useState(false);
   const [searchUser, setSearchUser] = useState('');
-  const [remotionPrompt, setRemotionPrompt] = useState(`Crie um vídeo tutorial de 60 segundos mostrando:
-1. Abertura com logo animado.
-2. Transição para o Dashboard.
-3. Destaque para o Prontuário com IA.
-4. Encerramento com CTA para o plano Pro.`);
-  const [generatedRemotionCode, setGeneratedRemotionCode] = useState('');
-  const [isGeneratingRemotion, setIsGeneratingRemotion] = useState(false);
-  const [isRendering, setIsRendering] = useState(false);
-  const [renderProgress, setRenderProgress] = useState(0);
-  const [renderComplete, setRenderComplete] = useState(false);
+  
+  // Ads States
+  const [googleAdsData, setGoogleAdsData] = useState<any>(null);
+  const [metaAdsData, setMetaAdsData] = useState<any>(null);
+  const [isLoadingAds, setIsLoadingAds] = useState(false);
 
   // Nano Banana States
   const [imagePrompt, setImagePrompt] = useState('');
@@ -75,6 +72,7 @@ const SuperAdminPage: React.FC = () => {
   const [campaignForecast, setCampaignForecast] = useState<any[]>([]);
   const [loadingForecast, setLoadingForecast] = useState(false);
   const [filterForecastStatus, setFilterForecastStatus] = useState<string>('Pending');
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
   
   // State atualizado para incluir datas
   const [newAnnouncement, setNewAnnouncement] = useState({ 
@@ -129,6 +127,135 @@ const SuperAdminPage: React.FC = () => {
       } finally {
           setLoading(false);
       }
+  };
+
+  const handleSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortedData = (data: any[]) => {
+    if (!sortConfig) return data;
+    return [...data].sort((a, b) => {
+      const aValue = a[sortConfig.key] || '';
+      const bValue = b[sortConfig.key] || '';
+      if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
+
+  const handleGenerateAds = async (type: 'google' | 'meta') => {
+    setIsLoadingAds(true);
+    if (type === 'google') setGoogleAdsData(null);
+    else setMetaAdsData(null);
+
+    try {
+        const prompt = type === 'google' 
+            ? 'Crie uma campanha de Pesquisa Google Ads completa para o DentiHub. FOCO: Dentistas que buscam inovação e automação. \n\nREQUISITOS OBRIGATÓRIOS:\n- Gere pelo menos 15 palavras-chave de alta intenção.\n- Gere pelo menos 10 palavras-chave negativas (ex: crack, pirata, gratis).\n- Sugira pelo menos 10 Títulos (headlines) persuasivos.\n- Sugira pelo menos 4 Descrições fortes.'
+            : 'Crie uma campanha de Meta Ads (Facebook/Instagram) completa para o DentiHub. FOCO: Dentistas que buscam inovação e automação. \n\nREQUISITOS OBRIGATÓRIOS:\n- Sugira 3 variações de Criativos (Copy para imagem/vídeo).\n- Sugira 5 Títulos (headlines) chamativos.\n- Sugira 3 opções de Texto Principal (Primary Text) persuasivos.\n- Sugira segmentação de público (Interesses, Idade, Comportamento).';
+
+        const { data, error } = await supabase.functions.invoke('generate-campaign-content', {
+            body: { 
+                taskType: type === 'google' ? 'google_ads_setup' : 'meta_ads_setup',
+                prompt 
+            }
+        });
+
+        if (error) throw error;
+        if (data && data.error) throw new Error(data.error);
+        
+        if (type === 'google') setGoogleAdsData(data);
+        else setMetaAdsData(data);
+        
+        setToast({ message: `Campanha de ${type === 'google' ? 'Google' : 'Meta'} Ads gerada!`, type: 'success' });
+
+    } catch (err: any) {
+        console.error(err);
+        setToast({ message: "Erro ao gerar: " + err.message, type: 'error' });
+    } finally {
+        setIsLoadingAds(false);
+    }
+  };
+
+  const handleExportAdsExcel = (type: 'google' | 'meta') => {
+    const campaignData = type === 'google' ? googleAdsData : metaAdsData;
+    if (!campaignData) return;
+
+    const wb = XLSX.utils.book_new();
+    const campaignName = campaignData.campaign_name || `Campanha DentiHub ${type === 'google' ? 'Google' : 'Meta'}`;
+    const adGroupName = "Grupo de Anúncios 1";
+    const finalUrl = "https://dentihub.com.br";
+
+    if (type === 'google') {
+        const mainData: any[] = [];
+        const adRow: any = {
+            'Campaign': campaignName,
+            'Ad Group': adGroupName,
+            'Final URL': finalUrl,
+            'Ad type': 'Responsive search ad'
+        };
+
+        (campaignData.ads?.headlines || []).forEach((h: string, i: number) => {
+            adRow[`Headline ${i + 1}`] = h;
+        });
+
+        (campaignData.ads?.descriptions || []).forEach((d: string, i: number) => {
+            adRow[`Description ${i + 1}`] = d;
+        });
+
+        mainData.push(adRow);
+
+        (campaignData.keywords || []).forEach((kw: string) => {
+            mainData.push({
+                'Campaign': campaignName,
+                'Ad Group': adGroupName,
+                'Keyword': kw,
+                'Criterion Type': 'Phrase',
+                'Final URL': finalUrl
+            });
+        });
+
+        const wsMain = XLSX.utils.json_to_sheet(mainData);
+        XLSX.utils.book_append_sheet(wb, wsMain, "Anuncios_e_KWs");
+
+        const negData = (campaignData.negative_keywords || []).map((nkw: string) => ({
+            'Campaign': campaignName,
+            'Keyword': nkw,
+            'Criterion Type': 'Negative Broad'
+        }));
+        const wsNeg = XLSX.utils.json_to_sheet(negData);
+        XLSX.utils.book_append_sheet(wb, wsNeg, "KWs_Negativas");
+    } else {
+        // Meta Ads Export
+        const metaData = [
+            { 'Campo': 'Nome da Campanha', 'Valor': campaignData.campaign_name },
+            { 'Campo': 'Objetivo', 'Valor': campaignData.objective },
+            { 'Campo': 'Público Alvo', 'Valor': campaignData.target_audience },
+            { 'Campo': 'Segmentação', 'Valor': campaignData.targeting?.join(', ') },
+            ... (campaignData.ads?.creatives || []).map((c: any, i: number) => ({
+                'Campo': `Criativo ${i+1}`, 'Valor': c.copy
+            })),
+            ... (campaignData.ads?.headlines || []).map((h: string, i: number) => ({
+                'Campo': `Título ${i+1}`, 'Valor': h
+            }))
+        ];
+        const wsMeta = XLSX.utils.json_to_sheet(metaData);
+        XLSX.utils.book_append_sheet(wb, wsMeta, "Meta_Ads_Config");
+    }
+
+    const fileName = `${campaignName.replace(/\s+/g, '_')}_${type === 'google' ? 'Google' : 'Meta'}Ads.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    setToast({ message: "Planilha exportada com sucesso!", type: 'success' });
+  };
+
+  const copyToClipboard = (text: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setToast({ message: "Copiado!", type: 'success' });
   };
 
   const fetchData = async () => {
@@ -293,45 +420,6 @@ const SuperAdminPage: React.FC = () => {
       fetchAnnouncements();
   };
 
-  const handleGenerateRemotionCode = async () => {
-    if (!remotionPrompt.trim()) {
-        setToast({ message: "Por favor, insira um script para o vídeo.", type: 'warning' });
-        return;
-    }
-
-    setIsGeneratingRemotion(true);
-    try {
-        const { GoogleGenAI } = await import("@google/genai");
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        
-        const response = await ai.models.generateContent({
-            model: "gemini-3.1-pro-preview",
-            contents: `Você é um especialista em Remotion (remotion.dev). 
-            Gere um código React completo para um vídeo do Remotion baseado no seguinte script: "${remotionPrompt}".
-            
-            Regras:
-            1. Use componentes funcionais e hooks do React.
-            2. Use a biblioteca 'remotion' e 'lucide-react' para ícones. 
-            3. ATENÇÃO: Use apenas nomes de ícones VÁLIDOS do Lucide (ex: LayoutDashboard, Users, Calendar, DollarSign, Brain, Settings). NÃO invente nomes como 'Sidebar'.
-            4. O código deve ser um componente React principal (ex: export const RemotionVideo = () => { ... }) que retorna um <AbsoluteFill>.
-            5. Defina todos os sub-componentes (como Sidebar, Header, etc) DENTRO do mesmo arquivo, ANTES do componente principal.
-            6. IMPORTANTE: NÃO inclua a tag <Composition>.
-            7. Retorne APENAS o código dentro de um bloco de código markdown.`,
-        });
-
-        const codeMatch = response.text?.match(/```(?:tsx|jsx|javascript|typescript)?\s*([\s\S]*?)```/);
-        const code = codeMatch ? codeMatch[1] : response.text;
-        
-        setGeneratedRemotionCode(code || '');
-        setToast({ message: "Código Remotion gerado com sucesso!", type: 'success' });
-    } catch (err: any) {
-        console.error(err);
-        setToast({ message: "Erro ao gerar código: " + err.message, type: 'error' });
-    } finally {
-        setIsGeneratingRemotion(false);
-    }
-  };
-
   const getStatusBadge = (status: string, date: string) => {
     const isTodayDate = isToday(parseISO(date));
     
@@ -342,27 +430,6 @@ const SuperAdminPage: React.FC = () => {
         case 'Sent': return <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs font-bold flex items-center w-fit"><CheckCircle size={12} className="mr-1"/> Enviado</span>;
         default: return <span className="bg-gray-200 text-gray-500 px-2 py-1 rounded-full text-xs font-bold">{status}</span>;
     }
-  };
-
-  const handleStartRender = () => {
-    if (!generatedRemotionCode) return;
-    
-    setIsRendering(true);
-    setRenderProgress(0);
-    setRenderComplete(false);
-
-    const interval = setInterval(() => {
-        setRenderProgress(prev => {
-            if (prev >= 100) {
-                clearInterval(interval);
-                setIsRendering(false);
-                setRenderComplete(true);
-                setToast({ message: "Renderização concluída (Simulação)!", type: 'success' });
-                return 100;
-            }
-            return prev + Math.random() * 15;
-        });
-    }, 400);
   };
 
   return (
@@ -383,11 +450,11 @@ const SuperAdminPage: React.FC = () => {
               <button onClick={() => { setActiveTab('marketing'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'marketing' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><Mail size={18} className="mr-3"/> E-mail Marketing</button>
               <button onClick={() => { setActiveTab('campaign_emails'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'campaign_emails' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><CalendarClock size={18} className="mr-3"/> Emails de Campanha</button>
               <button onClick={() => { setActiveTab('nano-banana'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'nano-banana' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><Image size={18} className="mr-3"/> Nano Banana</button>
-              <button onClick={() => { setActiveTab('remotion'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'remotion' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><Monitor size={18} className="mr-3"/> Remotion</button>
+              <button onClick={() => { setActiveTab('google-ads'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'google-ads' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><Monitor size={18} className="mr-3"/> Google Ads</button>
+              <button onClick={() => { setActiveTab('meta-ads'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'meta-ads' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><Megaphone size={18} className="mr-3"/> Meta Ads</button>
               
               <div className="pt-4 mt-4 border-t border-gray-800">
                   <button onClick={() => { navigate('/super-admin/campaigns'); }} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/5 hover:text-white"><Sparkles size={18} className="mr-3"/> Marketing Studio</button>
-                  <button onClick={() => { navigate('/super-admin/ads'); }} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/5 hover:text-white"><Monitor size={18} className="mr-3"/> Google Ads</button>
                   <button onClick={() => { navigate('/super-admin/leads'); }} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/5 hover:text-white"><Users size={18} className="mr-3"/> Gestão de Leads</button>
                   <button onClick={() => { navigate('/super-admin/subscriptions'); }} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/5 hover:text-white"><CreditCard size={18} className="mr-3"/> Assinaturas</button>
                   <button onClick={() => { navigate('/super-admin/plans'); }} className="w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold text-gray-400 hover:bg-white/5 hover:text-white"><Tag size={18} className="mr-3"/> Preços e Planos</button>
@@ -870,20 +937,40 @@ const SuperAdminPage: React.FC = () => {
                         <table className="w-full text-left border-collapse">
                             <thead className="bg-gray-100 text-gray-600 text-xs uppercase font-bold sticky top-0 z-10">
                                 <tr>
-                                    <th className="px-6 py-4">Data Prevista</th>
-                                    <th className="px-6 py-4">Campanha</th>
-                                    <th className="px-6 py-4">Clínica</th>
-                                    <th className="px-6 py-4 text-center">Status</th>
+                                    <th className="px-6 py-4 cursor-pointer hover:bg-gray-200 transition" onClick={() => handleSort('scheduled_for')}>
+                                        <div className="flex items-center gap-1">
+                                            Data Prevista
+                                            {sortConfig?.key === 'scheduled_for' && (sortConfig.direction === 'asc' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>)}
+                                        </div>
+                                    </th>
+                                    <th className="px-6 py-4 cursor-pointer hover:bg-gray-200 transition" onClick={() => handleSort('campaign_type')}>
+                                        <div className="flex items-center gap-1">
+                                            Campanha
+                                            {sortConfig?.key === 'campaign_type' && (sortConfig.direction === 'asc' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>)}
+                                        </div>
+                                    </th>
+                                    <th className="px-6 py-4 cursor-pointer hover:bg-gray-200 transition" onClick={() => handleSort('clinic_name')}>
+                                        <div className="flex items-center gap-1">
+                                            Clínica
+                                            {sortConfig?.key === 'clinic_name' && (sortConfig.direction === 'asc' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>)}
+                                        </div>
+                                    </th>
+                                    <th className="px-6 py-4 text-center cursor-pointer hover:bg-gray-200 transition" onClick={() => handleSort('status')}>
+                                        <div className="flex items-center justify-center gap-1">
+                                            Status
+                                            {sortConfig?.key === 'status' && (sortConfig.direction === 'asc' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>)}
+                                        </div>
+                                    </th>
                                     <th className="px-6 py-4">Motivo / Detalhes</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 text-sm">
                                 {loadingForecast ? (
                                     <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500">Carregando previsão...</td></tr>
-                                ) : campaignForecast.filter(item => filterForecastStatus === 'All' || item.status === filterForecastStatus).length === 0 ? (
+                                ) : getSortedData(campaignForecast.filter(item => filterForecastStatus === 'All' || item.status === filterForecastStatus)).length === 0 ? (
                                     <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500">Nenhum registro encontrado.</td></tr>
                                 ) : (
-                                    campaignForecast.filter(item => filterForecastStatus === 'All' || item.status === filterForecastStatus).map((item, idx) => (
+                                    getSortedData(campaignForecast.filter(item => filterForecastStatus === 'All' || item.status === filterForecastStatus)).map((item, idx) => (
                                         <tr key={idx} className="hover:bg-gray-50 transition">
                                             <td className="px-6 py-4 font-medium text-gray-800">
                                                 {format(parseISO(item.scheduled_for), "dd/MM/yyyy")}
@@ -899,6 +986,206 @@ const SuperAdminPage: React.FC = () => {
                             </tbody>
                         </table>
                     </div>
+                </div>
+            )}
+
+            {(activeTab === 'google-ads' || activeTab === 'meta-ads') && (
+                <div className="space-y-8 animate-fade-in">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div>
+                            <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2">
+                                {activeTab === 'google-ads' ? <Monitor className="text-blue-600" /> : <Megaphone className="text-pink-600" />}
+                                {activeTab === 'google-ads' ? 'Google Ads Generator' : 'Meta Ads Generator'}
+                            </h2>
+                            <p className="text-gray-500 text-sm">IA treinada especificamente para o mercado odontológico e DentiHub.</p>
+                        </div>
+                        
+                        <div className="flex gap-2 w-full sm:w-auto">
+                            {(activeTab === 'google-ads' ? googleAdsData : metaAdsData) && (
+                                <button 
+                                    onClick={() => handleExportAdsExcel(activeTab === 'google-ads' ? 'google' : 'meta')}
+                                    className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 transition flex items-center gap-2 shadow-sm text-sm"
+                                >
+                                    <FileSpreadsheet size={18} /> Exportar Excel
+                                </button>
+                            )}
+                            
+                            <button 
+                                onClick={() => handleGenerateAds(activeTab === 'google-ads' ? 'google' : 'meta')} 
+                                disabled={isLoadingAds}
+                                className="bg-primary text-white px-4 py-2 rounded-lg font-bold hover:shadow-lg transition flex items-center gap-2 disabled:opacity-50 text-sm"
+                            >
+                                {isLoadingAds ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
+                                {isLoadingAds ? 'Gerando...' : 'Gerar Campanha'}
+                            </button>
+                        </div>
+                    </div>
+
+                    {!(activeTab === 'google-ads' ? googleAdsData : metaAdsData) && !isLoadingAds && (
+                        <div className="text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+                            <Megaphone className="text-gray-200 mx-auto mb-4" size={64} />
+                            <h3 className="text-xl font-bold text-gray-800 mb-2">Acelere seu Tráfego Pago</h3>
+                            <p className="text-gray-500 max-w-md mx-auto text-sm">
+                                Clique no botão acima para gerar uma estrutura profissional de {activeTab === 'google-ads' ? 'Google Ads' : 'Meta Ads'}, focada em converter dentistas.
+                            </p>
+                        </div>
+                    )}
+
+                    {isLoadingAds && (
+                        <div className="space-y-6 animate-pulse">
+                            <div className="h-24 bg-white rounded-xl border"></div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="h-64 bg-white rounded-xl border"></div>
+                                <div className="h-64 bg-white rounded-xl border"></div>
+                            </div>
+                        </div>
+                    )}
+
+                    {(activeTab === 'google-ads' ? googleAdsData : metaAdsData) && (
+                        <div className="space-y-8 pb-10">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                                    <div className="flex items-center gap-2 mb-3 text-blue-600">
+                                        <Box size={20}/>
+                                        <h3 className="font-bold uppercase text-[10px] tracking-wider">Produto / Serviço</h3>
+                                    </div>
+                                    <p className="text-gray-800 font-bold text-lg">{(activeTab === 'google-ads' ? googleAdsData : metaAdsData).product_service || 'DentiHub - Gestão Inteligente'}</p>
+                                </section>
+                                <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                                    <div className="flex items-center gap-2 mb-3 text-yellow-600">
+                                        <Star size={20}/>
+                                        <h3 className="font-bold uppercase text-[10px] tracking-wider">Diferencial (USP)</h3>
+                                    </div>
+                                    <p className="text-gray-800 font-bold text-lg">{(activeTab === 'google-ads' ? googleAdsData : metaAdsData).unique_selling_proposition || 'IA Generativa e Automação Total.'}</p>
+                                </section>
+                            </div>
+
+                            {activeTab === 'google-ads' ? (
+                                <>
+                                    <section className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                        <div className="bg-gray-50 px-6 py-4 border-b flex items-center gap-2">
+                                            <Target className="text-gray-500" size={18} />
+                                            <h2 className="font-bold text-gray-800 text-xs uppercase">Configurações</h2>
+                                        </div>
+                                        <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <div>
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Nome</label>
+                                                <div className="font-bold text-gray-900">{googleAdsData.campaign_name}</div>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Objetivo</label>
+                                                <div className="font-bold text-gray-900">{googleAdsData.objective}</div>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Estratégia</label>
+                                                <div className="font-bold text-gray-900">{googleAdsData.bidding_strategy}</div>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                        <section className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                            <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
+                                                <div className="flex items-center gap-2">
+                                                    <List className="text-green-600" size={18} />
+                                                    <h2 className="font-bold text-gray-800 text-xs uppercase">Keywords (+)</h2>
+                                                </div>
+                                                <button onClick={() => copyToClipboard(googleAdsData.keywords?.join('\n'))} className="text-[10px] font-bold text-blue-600 hover:underline">Copiar</button>
+                                            </div>
+                                            <div className="p-6 flex flex-wrap gap-2">
+                                                {googleAdsData.keywords?.map((kw: string, i: number) => (
+                                                    <span key={i} className="px-2 py-1 bg-green-50 text-green-700 rounded text-[10px] border border-green-100 font-bold">{kw}</span>
+                                                ))}
+                                            </div>
+                                        </section>
+                                        <section className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                            <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
+                                                <div className="flex items-center gap-2">
+                                                    <Ban className="text-red-600" size={18} />
+                                                    <h2 className="font-bold text-gray-800 text-xs uppercase">Keywords (-)</h2>
+                                                </div>
+                                                <button onClick={() => copyToClipboard(googleAdsData.negative_keywords?.join('\n'))} className="text-[10px] font-bold text-red-600 hover:underline">Copiar</button>
+                                            </div>
+                                            <div className="p-6 flex flex-wrap gap-2">
+                                                {googleAdsData.negative_keywords?.map((kw: string, i: number) => (
+                                                    <span key={i} className="px-2 py-1 bg-red-50 text-red-700 rounded text-[10px] border border-red-100 font-bold line-through">{kw}</span>
+                                                ))}
+                                            </div>
+                                        </section>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <section className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                        <div className="bg-gray-50 px-6 py-4 border-b flex items-center gap-2">
+                                            <Target className="text-gray-500" size={18} />
+                                            <h2 className="font-bold text-gray-800 text-xs uppercase">Público e Segmentação</h2>
+                                        </div>
+                                        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            <div>
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Público Alvo</label>
+                                                <div className="text-sm text-gray-800 font-medium">{metaAdsData.target_audience}</div>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Interesses / Segmentação</label>
+                                                <div className="flex flex-wrap gap-2 mt-1">
+                                                    {metaAdsData.targeting?.map((t: string, i: number) => (
+                                                        <span key={i} className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-[10px] font-bold border border-blue-100">{t}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <section className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                        <div className="bg-gray-50 px-6 py-4 border-b flex items-center gap-2">
+                                            <ImageIcon className="text-gray-500" size={18} />
+                                            <h2 className="font-bold text-gray-800 text-xs uppercase">Criativos Sugeridos</h2>
+                                        </div>
+                                        <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            {metaAdsData.ads?.creatives?.map((c: any, i: number) => (
+                                                <div key={i} className="bg-gray-50 p-4 rounded-lg border border-gray-100 flex flex-col">
+                                                    <div className="text-[10px] font-bold text-gray-400 uppercase mb-2">Variação {i+1}</div>
+                                                    <p className="text-xs text-gray-700 leading-relaxed flex-1 italic">"{c.copy}"</p>
+                                                    <button onClick={() => copyToClipboard(c.copy)} className="mt-3 text-[10px] font-bold text-blue-600 flex items-center gap-1 hover:underline"><Copy size={10}/> Copiar Texto</button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </section>
+                                </>
+                            )}
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <section className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                    <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
+                                        <h2 className="font-bold text-gray-800 text-xs uppercase">Títulos</h2>
+                                        <span className="text-[9px] bg-gray-200 px-1.5 py-0.5 rounded font-bold">HOOKS</span>
+                                    </div>
+                                    <div className="p-4 space-y-2">
+                                        {(activeTab === 'google-ads' ? googleAdsData : metaAdsData).ads?.headlines?.map((h: string, i: number) => (
+                                            <div key={i} className="flex justify-between items-center bg-gray-50 p-2 rounded border border-gray-100 group">
+                                                <span className="text-xs font-medium text-gray-700 truncate">{h}</span>
+                                                <button onClick={() => copyToClipboard(h)} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600"><Copy size={12}/></button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                                <section className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                    <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
+                                        <h2 className="font-bold text-gray-800 text-xs uppercase">Textos Principais / Descrições</h2>
+                                    </div>
+                                    <div className="p-4 space-y-3">
+                                        {(activeTab === 'google-ads' ? googleAdsData : metaAdsData).ads?.descriptions?.map((d: string, i: number) => (
+                                            <div key={i} className="bg-gray-50 p-3 rounded border border-gray-100 group">
+                                                <p className="text-xs text-gray-800 leading-relaxed mb-2">{d}</p>
+                                                <button onClick={() => copyToClipboard(d)} className="opacity-0 group-hover:opacity-100 text-[10px] font-bold text-blue-600 flex items-center gap-1"><Copy size={10}/> Copiar</button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 

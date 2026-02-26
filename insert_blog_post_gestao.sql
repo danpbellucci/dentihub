@@ -22,7 +22,7 @@ VALUES (
     <p>Investir em gestão profissional não é um custo, é o investimento com maior retorno que você pode fazer pela sua clínica. Ao adotar o DentiHub, você não está apenas comprando um software, está adotando uma nova cultura de eficiência e cuidado.</p>
 
     <p><strong>Pronto para levar sua clínica ao próximo nível?</strong> Comece hoje mesmo sua jornada com o DentiHub e descubra como a tecnologia pode humanizar ainda mais seu atendimento.</p>',
-    'https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&q=80&w=1200&h=630',
+    'https://images.unsplash.com/photo-1606811841689-23dfddce3e95?auto=format&fit=crop&q=80&w=2070',
     'Equipe DentiHub'
 ) ON CONFLICT (slug) DO UPDATE SET
     title = EXCLUDED.title,
