@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
                     </ul>
                     <p>Crie sua conta agora para pegar seu código e começar a indicar:</p>
                     <div style="text-align: center; margin: 30px 0;">
-                        <a href="https://dentihub.com.br/#/auth?view=signup" style="background-color: #0f172a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                        <a href="https://dentihub.com.br/auth?view=signup" style="background-color: #0f172a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
                             Criar Conta e Pegar Código
                         </a>
                     </div>
@@ -201,7 +201,7 @@ Deno.serve(async (req) => {
                     <p>Gostaríamos de saber: <strong>o que está faltando para você modernizar sua clínica?</strong></p>
                     <p>Responda este e-mail ou crie sua conta gratuitamente agora:</p>
                     <div style="text-align: center; margin: 30px 0;">
-                        <a href="https://dentihub.com.br/#/auth?view=signup" style="background-color: #0f172a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                        <a href="https://dentihub.com.br/auth?view=signup" style="background-color: #0f172a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
                             Finalizar Cadastro Agora
                         </a>
                     </div>

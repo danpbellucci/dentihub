@@ -55,8 +55,8 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
-    const successUrl = `${corsOrigin}/#/settings?success=true`;
-    const cancelUrl = `${corsOrigin}/#/settings?canceled=true`;
+    const successUrl = `${corsOrigin}/dashboard/settings?success=true`;
+    const cancelUrl = `${corsOrigin}/dashboard/settings?canceled=true`;
     
     const session = await stripe.checkout.sessions.create({
       customer: customerId,

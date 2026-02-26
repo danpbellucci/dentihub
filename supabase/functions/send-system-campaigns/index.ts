@@ -23,7 +23,7 @@ const CAMPAIGNS = {
             </ul>
             <p>Experimente agora em seu próximo atendimento.</p>
         `,
-        ctaLink: 'https://dentihub.com.br/#/dashboard/smart-record',
+        ctaLink: 'https://dentihub.com.br/dashboard/smart-record',
         ctaText: 'Testar Prontuário IA'
     },
     'activation_agenda': {
@@ -38,7 +38,7 @@ const CAMPAIGNS = {
                 <li>Veja como é fácil visualizar sua semana</li>
             </ol>
         `,
-        ctaLink: 'https://dentihub.com.br/#/dashboard/calendar',
+        ctaLink: 'https://dentihub.com.br/dashboard/calendar',
         ctaText: 'Acessar Agenda'
     },
     'retention_ghost': {
@@ -49,7 +49,7 @@ const CAMPAIGNS = {
             <p>Mesmo em dias mais calmos, lembre-se de registrar <strong>bloqueios</strong> ou <strong>retornos</strong> para manter suas métricas financeiras e de produtividade sempre precisas.</p>
             <p>Use o sistema para enviar e-mails de retorno para pacientes antigos e lotar sua agenda novamente!</p>
         `,
-        ctaLink: 'https://dentihub.com.br/#/dashboard/messaging',
+        ctaLink: 'https://dentihub.com.br/dashboard/messaging',
         ctaText: 'Criar Campanha de Retorno'
     },
     'monetization_limit': {
@@ -64,7 +64,7 @@ const CAMPAIGNS = {
                 <li>✅ Mais uso da IA</li>
             </ul>
         `,
-        ctaLink: 'https://dentihub.com.br/#/dashboard/settings',
+        ctaLink: 'https://dentihub.com.br/dashboard/settings',
         ctaText: 'Fazer Upgrade Agora'
     },
     'monetization_ai': {
@@ -74,7 +74,7 @@ const CAMPAIGNS = {
             <p>Você utilizou todas as suas cotas gratuitas do Prontuário com Inteligência Artificial. Esperamos que tenha gostado da experiência!</p>
             <p>Imagine nunca mais ter que digitar evoluções longas manualmente? No plano <strong>Starter</strong>, você pode usar a IA todos os dias.</p>
         `,
-        ctaLink: 'https://dentihub.com.br/#/dashboard/settings',
+        ctaLink: 'https://dentihub.com.br/dashboard/settings',
         ctaText: 'Liberar IA Diária'
     },
     // NOVOS E-MAILS
@@ -103,7 +103,7 @@ const CAMPAIGNS = {
             <p>Ajude outros profissionais a modernizarem suas clínicas e seja recompensado por isso!</p>
             <p>Pegue seu link exclusivo e comece a indicar agora mesmo:</p>
         `,
-        ctaLink: 'https://dentihub.com.br/#/indique-e-ganhe',
+        ctaLink: 'https://dentihub.com.br/indique-e-ganhe',
         ctaText: 'Pegar Meu Link de Indicação'
     },
     'onboarding_7d': {
@@ -119,7 +119,7 @@ const CAMPAIGNS = {
             </ul>
             <p>Estamos à disposição para ajudar você a extrair o máximo da plataforma.</p>
         `,
-        ctaLink: 'https://dentihub.com.br/#/dashboard/guide',
+        ctaLink: 'https://dentihub.com.br/dashboard/guide',
         ctaText: 'Ver Guia Prático'
     },
     'onboarding_30d': {
@@ -131,7 +131,7 @@ const CAMPAIGNS = {
             <p>Esperamos que você esteja sentindo essa liberdade para focar no que realmente importa: seus pacientes e sua qualidade de vida.</p>
             <p>Continue contando conosco para o sucesso da sua clínica!</p>
         `,
-        ctaLink: 'https://dentihub.com.br/#/dashboard',
+        ctaLink: 'https://dentihub.com.br/dashboard',
         ctaText: 'Acessar Meu Painel'
     }
 };

@@ -196,8 +196,8 @@ Deno.serve(async (req) => {
                     
                     ${appointment.id && appointment.id !== 'pending' ? `
                     <div style="margin-top: 20px;">
-                        <a href="${baseUrl}/#/appointment-action?id=${appointment.id}&action=confirm" style="background-color: #22c55e; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-right: 10px;">Confirmar Presença</a>
-                        <a href="${baseUrl}/#/appointment-action?id=${appointment.id}&action=cancel" style="background-color: #ef4444; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Cancelar</a>
+                        <a href="${baseUrl}/appointment-action?id=${appointment.id}&action=confirm" style="background-color: #22c55e; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-right: 10px;">Confirmar Presença</a>
+                        <a href="${baseUrl}/appointment-action?id=${appointment.id}&action=cancel" style="background-color: #ef4444; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Cancelar</a>
                     </div>
                     ` : ''}
                 </div>
@@ -232,7 +232,7 @@ Deno.serve(async (req) => {
                 <p>Acesse o sistema para aceitar ou recusar esta solicitação.</p>
                 
                 <div style="margin-top: 25px; text-align: center;">
-                    <a href="https://dentihub.com.br/#/dashboard/requests" style="background-color: #0f172a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; display: inline-block;">
+                    <a href="https://dentihub.com.br/dashboard/requests" style="background-color: #0f172a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; display: inline-block;">
                         Gerenciar Solicitações
                     </a>
                 </div>
@@ -307,7 +307,7 @@ Deno.serve(async (req) => {
                            <p>Para começar, clique no botão abaixo e crie sua conta:</p>
 
                            <div style="margin: 35px 0;">
-                              <a href="https://dentihub.com.br/#/auth?view=forgot" target="_blank" style="background-color: #0ea5e9; color: #ffffff; padding: 12px 24px; font-family: Helvetica, Arial, sans-serif; font-size: 14px; font-weight: bold; text-decoration: none; border-radius: 6px; display: inline-block;">
+                              <a href="https://dentihub.com.br/auth?view=signup" target="_blank" style="background-color: #0ea5e9; color: #ffffff; padding: 12px 24px; font-family: Helvetica, Arial, sans-serif; font-size: 14px; font-weight: bold; text-decoration: none; border-radius: 6px; display: inline-block;">
                                 Criar minha conta
                               </a>
                            </div>
@@ -360,7 +360,7 @@ Deno.serve(async (req) => {
                 
                 <p style="margin-top: 20px;">Por favor, verifique a necessidade de reposição.</p>
                 <div style="margin-top: 20px;">
-                    <a href="https://dentihub.com.br/#/dashboard/inventory" style="background-color: #ef4444; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Gerenciar Estoque</a>
+                    <a href="https://dentihub.com.br/dashboard/inventory" style="background-color: #ef4444; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Gerenciar Estoque</a>
                 </div>
             </div>
         `;
@@ -412,7 +412,7 @@ Deno.serve(async (req) => {
                     <p>Que tal agendar uma avaliação de retorno para garantirmos que está tudo certo?</p>
 
                     <div style="text-align: center; margin: 40px 0;">
-                        <a href="https://dentihub.com.br/#/${clinicName.toLowerCase().replace(/\s/g, '-')}" target="_blank" style="background-color: #f97316; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(249, 115, 22, 0.3);">
+                        <a href="https://dentihub.com.br/${clinicName.toLowerCase().replace(/\s/g, '-')}" target="_blank" style="background-color: #f97316; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(249, 115, 22, 0.3);">
                             Agendar Meu Retorno Agora
                         </a>
                     </div>
@@ -466,7 +466,7 @@ Deno.serve(async (req) => {
                     <p>Tudo isso e muito mais está detalhado no nosso Guia Prático interativo dentro do sistema.</p>
 
                     <div style="text-align: center; margin: 40px 0;">
-                        <a href="https://dentihub.com.br/#/dashboard/guide" target="_blank" style="background-color: #0ea5e9; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.3);">
+                        <a href="https://dentihub.com.br/dashboard/guide" target="_blank" style="background-color: #0ea5e9; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.3);">
                             Acessar Guia Completo
                         </a>
                     </div>
@@ -501,7 +501,7 @@ Deno.serve(async (req) => {
                             <p>Que tal agendar uma avaliação de retorno para garantirmos que está tudo certo?</p>
 
                             <div style="text-align: center; margin: 40px 0;">
-                                <a href="https://dentihub.com.br/#/${clinicName.toLowerCase().replace(/\s/g, '-')}" target="_blank" style="background-color: #f97316; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(249, 115, 22, 0.3);">
+                                <a href="https://dentihub.com.br/${clinicName.toLowerCase().replace(/\s/g, '-')}" target="_blank" style="background-color: #f97316; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(249, 115, 22, 0.3);">
                                     Agendar Meu Retorno Agora
                                 </a>
                             </div>
@@ -555,7 +555,7 @@ Deno.serve(async (req) => {
                             <p>Tudo isso e muito mais está detalhado no nosso Guia Prático interativo dentro do sistema.</p>
 
                             <div style="text-align: center; margin: 40px 0;">
-                                <a href="https://dentihub.com.br/#/dashboard/guide" target="_blank" style="background-color: #0ea5e9; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.3);">
+                                <a href="https://dentihub.com.br/dashboard/guide" target="_blank" style="background-color: #0ea5e9; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.3);">
                                     Acessar Guia Completo
                                 </a>
                             </div>
@@ -606,7 +606,7 @@ Deno.serve(async (req) => {
                     </div>
                     
                     <div style="text-align: center; margin-top: 30px;">
-                        <a href="https://dentihub.com.br/#/dashboard" style="background-color: #10b981; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold;">
+                        <a href="https://dentihub.com.br/dashboard" style="background-color: #10b981; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold;">
                             Acessar Meu Painel
                         </a>
                     </div>

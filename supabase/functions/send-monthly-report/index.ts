@@ -222,7 +222,7 @@ Deno.serve(async (req) => {
 
                     <div style="background-color: #f1f5f9; padding: 15px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0;">
                         <p>Enviado automaticamente pelo DentiHub</p>
-                        <a href="https://dentihub.com.br/#/dashboard" style="color: #0ea5e9; text-decoration: none;">Acessar Painel</a>
+                        <a href="https://dentihub.com.br/dashboard" style="color: #0ea5e9; text-decoration: none;">Acessar Painel</a>
                     </div>
                 </div>
             </div>

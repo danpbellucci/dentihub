@@ -240,7 +240,7 @@ Deno.serve(async (req) => {
 
                     <div style="background-color: #f1f5f9; padding: 15px; text-align: center; font-size: 12px; color: #94a3b8;">
                         <p>Enviado automaticamente pelo DentiHub</p>
-                        <a href="https://dentihub.com.br/#/dashboard/finance" style="color: #0ea5e9; text-decoration: none;">Acessar Financeiro Completo</a>
+                        <a href="https://dentihub.com.br/dashboard/finance" style="color: #0ea5e9; text-decoration: none;">Acessar Financeiro Completo</a>
                     </div>
                 </div>
             </div>

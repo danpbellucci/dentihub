@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
 
     // Define a URL de retorno. Usa a origin do request se disponível, senão fallback.
     const reqOrigin = req.headers.get('origin');
-    const returnUrl = reqOrigin ? `${reqOrigin}/#/dashboard/settings` : 'https://dentihub.com.br/#/dashboard/settings';
+    const returnUrl = reqOrigin ? `${reqOrigin}/dashboard/settings` : 'https://dentihub.com.br/dashboard/settings';
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,

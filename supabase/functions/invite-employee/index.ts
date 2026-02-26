@@ -187,7 +187,7 @@ Deno.serve(async (req) => {
                        <p>Para começar, clique no botão abaixo e crie sua conta:</p>
 
                        <div style="margin: 35px 0;">
-                          <a href="https://dentihub.com.br/#/auth?view=forgot" target="_blank" style="background-color: #0ea5e9; color: #ffffff; padding: 12px 24px; font-family: Helvetica, Arial, sans-serif; font-size: 14px; font-weight: bold; text-decoration: none; border-radius: 6px; display: inline-block;">
+                          <a href="https://dentihub.com.br/auth?view=signup" target="_blank" style="background-color: #0ea5e9; color: #ffffff; padding: 12px 24px; font-family: Helvetica, Arial, sans-serif; font-size: 14px; font-weight: bold; text-decoration: none; border-radius: 6px; display: inline-block;">
                             Criar minha conta
                           </a>
                        </div>

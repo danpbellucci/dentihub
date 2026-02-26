@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
                 </table>
 
                 <div style="margin-top: 30px; text-align: center;">
-                    <a href="https://dentihub.com.br/#/super-admin" style="background-color: #0f172a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; display: inline-block;">
+                    <a href="https://dentihub.com.br/super-admin" style="background-color: #0f172a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; display: inline-block;">
                         Acessar God Mode
                     </a>
                 </div>

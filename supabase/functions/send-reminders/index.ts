@@ -117,9 +117,9 @@ Deno.serve(async (req) => {
             const dentistName = appt.dentist?.name || "Dentista";
 
             const domain = 'https://dentihub.com.br';
-            const confirmLink = `${domain}/#/appointment-action?id=${appt.id}&action=confirm`;
-            const cancelLink = `${domain}/#/appointment-action?id=${appt.id}&action=cancel`;
-            const rescheduleLink = `${domain}/#/appointment-action?id=${appt.id}&action=reschedule`;
+            const confirmLink = `${domain}/appointment-action?id=${appt.id}&action=confirm`;
+            const cancelLink = `${domain}/appointment-action?id=${appt.id}&action=cancel`;
+            const rescheduleLink = `${domain}/appointment-action?id=${appt.id}&action=reschedule`;
 
             const htmlContent = `
                 <div style="font-family: Helvetica, Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 8px; overflow: hidden;">
