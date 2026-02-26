@@ -74,7 +74,7 @@ const RolesPermissionsSettings: React.FC = () => {
 
           // Notifications
           const initialNotifs: Record<string, Record<string, boolean>> = {};
-          NOTIFICATION_TYPES.forEach(n => { initialNotifs[n.key] = {}; allRoles.forEach(role => initialNotifs[n.key][role.name] = false); });
+          NOTIFICATION_TYPES.forEach(n => { initialNotifs[n.key] = {}; allRoles.forEach(role => initialNotifs[n.key][role.name] = true); });
           const { data: notifs } = await supabase.from('role_notifications').select('*').eq('clinic_id', userProfile?.clinic_id);
           if (notifs) notifs.forEach(n => { if (initialNotifs[n.notification_type]) initialNotifs[n.notification_type][n.role] = n.is_enabled; });
           setNotificationsSettings(initialNotifs);

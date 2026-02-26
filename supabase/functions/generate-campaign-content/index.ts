@@ -105,15 +105,40 @@ serve(async (req) => {
             },
             required: ["title", "content_html", "excerpt"]
         };
+    } else if (taskType === 'social_media') {
+        responseSchema = {
+            type: Type.OBJECT,
+            properties: {
+                image_idea: { type: Type.STRING },
+                caption: { type: Type.STRING },
+                hashtags: { type: Type.STRING },
+                story_script: { type: Type.STRING }
+            },
+            required: ["image_idea", "caption", "hashtags", "story_script"]
+        };
+    } else if (taskType === 'meta_ads') {
+        responseSchema = {
+            type: Type.OBJECT,
+            properties: {
+                primary_text: { type: Type.STRING },
+                creative_ideas: { type: Type.ARRAY, items: { type: Type.STRING } },
+                headline: { type: Type.STRING },
+                description: { type: Type.STRING },
+                call_to_action: { type: Type.STRING },
+                audience_interests: { type: Type.STRING }
+            },
+            required: ["primary_text", "creative_ideas", "headline", "description", "call_to_action", "audience_interests"]
+        };
     } else {
-        // Fallback schema
+        // Fallback schema (Email)
         responseSchema = {
             type: Type.OBJECT,
             properties: {
                 subject: { type: Type.STRING },
                 html_content: { type: Type.STRING },
                 rationale: { type: Type.STRING }
-            }
+            },
+            required: ["subject", "html_content"]
         };
     }
 

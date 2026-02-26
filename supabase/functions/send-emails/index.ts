@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
                         
                         // Pequeno delay para evitar rate limit do Resend (especialmente no plano free)
                         if (recipients.length > 1) {
-                            await new Promise(resolve => setTimeout(resolve, 200));
+                            await new Promise(resolve => setTimeout(resolve, 500));
                         }
                     } catch (err) {
                         console.error(`Falha ao enviar para ${r.email}:`, err);
@@ -246,7 +246,7 @@ Deno.serve(async (req) => {
                     results.count++;
                     
                     if (recipients.length > 1) {
-                        await new Promise(resolve => setTimeout(resolve, 200));
+                        await new Promise(resolve => setTimeout(resolve, 500));
                     }
                 } catch (err) {
                     console.error(`Erro ao enviar notificação para ${r.email}:`, err);
@@ -319,7 +319,7 @@ Deno.serve(async (req) => {
                     results.count++;
                     
                     if (recipients.length > 1) {
-                        await new Promise(resolve => setTimeout(resolve, 200));
+                        await new Promise(resolve => setTimeout(resolve, 500));
                     }
                 } catch (e) {
                     console.error("Erro envio convite:", e);
@@ -380,7 +380,7 @@ Deno.serve(async (req) => {
                     results.count++;
                     
                     if (recipients.length > 1) {
-                        await new Promise(resolve => setTimeout(resolve, 200));
+                        await new Promise(resolve => setTimeout(resolve, 500));
                     }
                 } catch (e) { console.error(e); }
             }
@@ -573,7 +573,7 @@ Deno.serve(async (req) => {
                 
                 // Pequeno delay para evitar rate limit do Resend (especialmente no plano free)
                 if (recipients.length > 1) {
-                    await new Promise(resolve => setTimeout(resolve, 200));
+                    await new Promise(resolve => setTimeout(resolve, 500));
                 }
             } catch (err) {
                 console.error(`Erro ao enviar ${type} para ${r.email}:`, err);

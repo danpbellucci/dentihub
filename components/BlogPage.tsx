@@ -207,11 +207,8 @@ const BlogPage: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="p-6 sm:p-10 text-gray-300 leading-relaxed text-lg space-y-6">
-                            {/* Renderização simples de parágrafos por enquanto. Em produção, usaríamos um Markdown renderer. */}
-                            {selectedPost.content.split('\n').map((paragraph, idx) => (
-                                paragraph.trim() !== '' ? <p key={idx}>{paragraph}</p> : <br key={idx}/>
-                            ))}
+                        <div className="p-6 sm:p-10 text-gray-300 leading-relaxed text-lg blog-content">
+                            <div dangerouslySetInnerHTML={{ __html: selectedPost.content }} />
                         </div>
 
                         <div className="p-8 border-t border-white/5 bg-gray-900/50 mt-auto text-center">

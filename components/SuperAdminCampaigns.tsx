@@ -5,7 +5,7 @@ import { supabase } from '../services/supabase';
 import { 
   ArrowLeft, Send, Sparkles, User, Users, 
   Eye, Code, Loader2, CheckCircle, AlertTriangle, MessageSquare, X, Mail,
-  CalendarClock, Timer, UserX, Clock, PenTool, Facebook, Instagram, Share2, Globe, Upload,
+  Timer, UserX, Clock, PenTool, Facebook, Instagram, Share2, Globe, Upload,
   Users2, Target, Info, Check, Filter
 } from 'lucide-react';
 import Toast, { ToastType } from './Toast';
@@ -32,7 +32,6 @@ const SuperAdminCampaigns: React.FC = () => {
     const [publishing, setPublishing] = useState(false);
     const [sending, setSending] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
-    const [activeTab, setActiveTab] = useState<'marketing_agent' | 'system_status'>('marketing_agent');
 
     // --- TARGETING MODAL STATE ---
     const [showTargetModal, setShowTargetModal] = useState(false);
@@ -40,11 +39,6 @@ const SuperAdminCampaigns: React.FC = () => {
     const [manualEmails, setManualEmails] = useState<string>('');
     const [targetedRecipients, setTargetedRecipients] = useState<any[]>([]);
     const [loadingTargets, setLoadingTargets] = useState(false);
-
-    // --- SYSTEM STATUS STATE ---
-    const [forecast, setForecast] = useState<CampaignForecast[]>([]);
-    const [loadingForecast, setLoadingForecast] = useState(false);
-    const [filterStatus, setFilterStatus] = useState<string>('Pending');
 
     // --- MARKETING AGENT STATE ---
     const [contentType, setContentType] = useState<'email' | 'blog_post' | 'social_media' | 'meta_ads'>('email');
@@ -63,12 +57,6 @@ const SuperAdminCampaigns: React.FC = () => {
         scrollToBottom();
     }, [messages]);
 
-    useEffect(() => {
-        if (activeTab === 'system_status') {
-            fetchForecast();
-        }
-    }, [activeTab]);
-
     // Busca destinatários quando o segmento muda
     useEffect(() => {
         if (selectedSegment) {
@@ -77,20 +65,6 @@ const SuperAdminCampaigns: React.FC = () => {
             setTargetedRecipients([]);
         }
     }, [selectedSegment]);
-
-    const fetchForecast = async () => {
-        setLoadingForecast(true);
-        try {
-            const { data, error } = await supabase.rpc('get_campaign_forecast');
-            if (error) throw error;
-            setForecast(data || []);
-        } catch (err: any) {
-            console.error(err);
-            setToast({ message: "Erro ao carregar previsão: " + err.message, type: 'error' });
-        } finally {
-            setLoadingForecast(false);
-        }
-    };
 
     const fetchTargetRecipients = async () => {
         if (!selectedSegment) return;
@@ -221,23 +195,6 @@ const SuperAdminCampaigns: React.FC = () => {
         }
     };
 
-    const getStatusBadge = (status: string, date: string) => {
-        const isTodayDate = isToday(parseISO(date));
-        
-        switch (status) {
-            case 'Pending':
-                if (isTodayDate) return <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold flex items-center w-fit"><Clock size={12} className="mr-1"/> Envia Hoje</span>;
-                return <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-bold flex items-center w-fit"><Timer size={12} className="mr-1"/> Agendado</span>;
-            case 'Sent': return <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs font-bold flex items-center w-fit"><CheckCircle size={12} className="mr-1"/> Enviado</span>;
-            default: return <span className="bg-gray-200 text-gray-500 px-2 py-1 rounded-full text-xs font-bold">{status}</span>;
-        }
-    };
-
-    const filteredForecast = forecast.filter(item => {
-        if (filterStatus === 'All') return true;
-        return item.status === filterStatus;
-    });
-
     return (
         <div className="p-6 bg-gray-50 min-h-screen h-screen flex flex-col overflow-hidden">
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
@@ -255,16 +212,10 @@ const SuperAdminCampaigns: React.FC = () => {
                         <p className="text-sm text-gray-500">Crie conteúdo e dispare para sua base de leads e clientes.</p>
                     </div>
                 </div>
-                
-                <div className="flex bg-white p-1 rounded-lg border shadow-sm">
-                    <button onClick={() => setActiveTab('marketing_agent')} className={`px-4 py-2 rounded-md text-sm font-bold transition ${activeTab === 'marketing_agent' ? 'bg-purple-100 text-purple-700' : 'text-gray-500 hover:bg-gray-50'}`}>Estúdio IA</button>
-                    <button onClick={() => setActiveTab('system_status')} className={`px-4 py-2 rounded-md text-sm font-bold transition ${activeTab === 'system_status' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-50'}`}>Automação</button>
-                </div>
             </div>
 
-            {/* --- TAB 1: MARKETING AGENT --- */}
-            {activeTab === 'marketing_agent' && (
-                <div className="flex flex-1 gap-6 overflow-hidden animate-fade-in">
+            {/* --- MARKETING AGENT --- */}
+            <div className="flex flex-1 gap-6 overflow-hidden animate-fade-in">
                     {/* Left Panel: Chat & Settings */}
                     <div className="w-1/3 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
                         <div className="p-4 border-b bg-gray-50">
@@ -401,64 +352,9 @@ const SuperAdminCampaigns: React.FC = () => {
                         </div>
                     </div>
                 </div>
-            )}
 
-            {/* --- TAB 2: SYSTEM STATUS --- */}
-            {activeTab === 'system_status' && (
-                <div className="flex flex-col h-full bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden animate-fade-in">
-                    <div className="p-6 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-                        <div>
-                            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2"><CalendarClock size={20} className="text-blue-600"/> Previsão de Envios Automáticos</h3>
-                            <p className="text-sm text-gray-500">Visualização de quando cada clínica receberá os e-mails do sistema.</p>
-                        </div>
-                        <div className="flex gap-2">
-                            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="All">Todos Status</option>
-                                <option value="Pending">Pendentes</option>
-                                <option value="Sent">Enviados</option>
-                            </select>
-                            <button onClick={fetchForecast} className="p-2 bg-white border rounded-lg hover:bg-gray-100 text-gray-600 transition"><Loader2 size={18} className={loadingForecast ? "animate-spin" : ""}/></button>
-                        </div>
-                    </div>
-
-                    <div className="flex-1 overflow-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead className="bg-gray-100 text-gray-600 text-xs uppercase font-bold sticky top-0 z-10">
-                                <tr>
-                                    <th className="px-6 py-4">Data Prevista</th>
-                                    <th className="px-6 py-4">Campanha</th>
-                                    <th className="px-6 py-4">Clínica</th>
-                                    <th className="px-6 py-4 text-center">Status</th>
-                                    <th className="px-6 py-4">Motivo / Detalhes</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100 text-sm">
-                                {loadingForecast ? (
-                                    <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500">Carregando previsão...</td></tr>
-                                ) : filteredForecast.length === 0 ? (
-                                    <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500">Nenhum registro encontrado.</td></tr>
-                                ) : (
-                                    filteredForecast.map((item, idx) => (
-                                        <tr key={idx} className="hover:bg-gray-50 transition">
-                                            <td className="px-6 py-4 font-medium text-gray-800">
-                                                {format(parseISO(item.scheduled_for), "dd/MM/yyyy")}
-                                                {isToday(parseISO(item.scheduled_for)) && <span className="ml-2 text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold">HOJE</span>}
-                                            </td>
-                                            <td className="px-6 py-4 text-gray-700">{item.campaign_type}</td>
-                                            <td className="px-6 py-4 font-bold text-gray-800">{item.clinic_name}</td>
-                                            <td className="px-6 py-4 flex justify-center">{getStatusBadge(item.status, item.scheduled_for)}</td>
-                                            <td className="px-6 py-4 text-xs text-gray-500">{item.reason || '-'}</td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
-
-            {/* --- TARGET SELECTION MODAL --- */}
-            {showTargetModal && (
+                {/* --- TARGET SELECTION MODAL --- */}
+                {showTargetModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-fade-in">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
                         <div className="p-5 border-b flex justify-between items-center bg-gray-50">

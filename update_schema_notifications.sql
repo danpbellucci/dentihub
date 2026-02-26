@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS public.role_notifications (
     clinic_id UUID NOT NULL REFERENCES public.clinics(id) ON DELETE CASCADE,
     role TEXT NOT NULL, -- 'administrator', 'dentist', 'employee', ou custom
     notification_type TEXT NOT NULL, -- 'agenda_daily', 'finance_daily'
-    is_enabled BOOLEAN DEFAULT FALSE,
+    is_enabled BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(clinic_id, role, notification_type)
 );
@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS public.role_notifications (
 ALTER TABLE public.role_notifications ENABLE ROW LEVEL SECURITY;
 
 -- Política de Leitura: Membros veem as configurações
+DROP POLICY IF EXISTS "Membros leem notificacoes" ON public.role_notifications;
 CREATE POLICY "Membros leem notificacoes" ON public.role_notifications
 FOR SELECT
 USING (
@@ -21,6 +22,7 @@ USING (
 );
 
 -- Política de Escrita: Apenas administradores
+DROP POLICY IF EXISTS "Admins gerenciam notificacoes" ON public.role_notifications;
 CREATE POLICY "Admins gerenciam notificacoes" ON public.role_notifications
 FOR ALL
 USING (

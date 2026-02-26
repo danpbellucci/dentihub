@@ -6,9 +6,10 @@ import {
   FileText, CalendarRange, RefreshCw,
   BarChart3, ArrowLeft, Sparkles, CreditCard,
   Monitor, Menu, X, HeartPulse, AlertTriangle, CheckCircle, TrendingUp,
-  Megaphone, Trash2, Send, AlertOctagon, UserX, Clock, Tag, Copy, Mail
+  Megaphone, Trash2, Send, AlertOctagon, UserX, Clock, Tag, Copy, Mail, Image, DollarSign,
+  CalendarClock, Timer
 } from 'lucide-react';
-import { format, subDays, startOfDay, endOfDay, parseISO, differenceInHours } from 'date-fns';
+import { format, subDays, startOfDay, endOfDay, parseISO, differenceInHours, isToday } from 'date-fns';
 import Toast, { ToastType } from './Toast';
 
 // ... (MetricCard e HealthIndicator mantidos iguais) ...
@@ -47,7 +48,7 @@ const SuperAdminPage: React.FC = () => {
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   
   // New States
-  const [activeTab, setActiveTab] = useState<'overview' | 'churn' | 'broadcast' | 'remotion' | 'marketing'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'churn' | 'broadcast' | 'remotion' | 'marketing' | 'nano-banana' | 'clinics' | 'campaign_emails'>('overview');
   const [atRiskClinics, setAtRiskClinics] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -65,6 +66,15 @@ const SuperAdminPage: React.FC = () => {
   const [isRendering, setIsRendering] = useState(false);
   const [renderProgress, setRenderProgress] = useState(0);
   const [renderComplete, setRenderComplete] = useState(false);
+
+  // Nano Banana States
+  const [imagePrompt, setImagePrompt] = useState('');
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [generatedImagePrompt, setGeneratedImagePrompt] = useState<string | null>(null);
+  const [clinicsMetrics, setClinicsMetrics] = useState<any[]>([]);
+  const [campaignForecast, setCampaignForecast] = useState<any[]>([]);
+  const [loadingForecast, setLoadingForecast] = useState(false);
+  const [filterForecastStatus, setFilterForecastStatus] = useState<string>('Pending');
   
   // State atualizado para incluir datas
   const [newAnnouncement, setNewAnnouncement] = useState({ 
@@ -87,7 +97,39 @@ const SuperAdminPage: React.FC = () => {
     if (activeTab === 'churn') fetchChurnData();
     if (activeTab === 'broadcast') fetchAnnouncements();
     if (activeTab === 'marketing') fetchUsers();
+    if (activeTab === 'clinics') fetchClinicsMetrics();
+    if (activeTab === 'campaign_emails') fetchCampaignForecast();
   }, [dateRange, activeTab]);
+
+  const fetchCampaignForecast = async () => {
+    setLoadingForecast(true);
+    try {
+        const { data, error } = await supabase.rpc('get_campaign_forecast');
+        if (error) throw error;
+        setCampaignForecast(data || []);
+    } catch (err: any) {
+        console.error(err);
+        setToast({ message: "Erro ao carregar previsão: " + err.message, type: 'error' });
+    } finally {
+        setLoadingForecast(false);
+    }
+  };
+
+  const fetchClinicsMetrics = async () => {
+      setLoading(true);
+      try {
+          const { data, error } = await supabase.rpc('get_clinics_metrics', {
+              p_start_date: dateRange.start,
+              p_end_date: dateRange.end
+          });
+          if (error) throw error;
+          setClinicsMetrics(data || []);
+      } catch (err: any) {
+          setToast({ message: "Erro ao carregar métricas das clínicas: " + err.message, type: 'error' });
+      } finally {
+          setLoading(false);
+      }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -167,6 +209,61 @@ const SuperAdminPage: React.FC = () => {
       }
   };
 
+  const handleGenerateImagePrompt = async () => {
+      if (!imagePrompt.trim()) {
+          setToast({ message: "Descreva a imagem que deseja criar.", type: 'warning' });
+          return;
+      }
+
+      setIsGeneratingImage(true);
+      setGeneratedImagePrompt(null);
+      try {
+          const { GoogleGenAI } = await import("@google/genai");
+          const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+          
+          const dentiHubIdentity = `
+            Identidade Visual DentiHub:
+            - Cores: Gradientes de Azul, Roxo e Rosa (moderno e vibrante).
+            - Estilo: Limpo, profissional, tecnológico, futurista, minimalista.
+            - Tema: Odontologia inovadora, Inteligência Artificial, cuidado humano com tecnologia.
+            - Ambiente: Consultórios modernos, interfaces de software elegantes, iluminação suave.
+            - Atmosfera: Confiança, precisão, inovação e brilho.
+          `;
+
+          const response = await ai.models.generateContent({
+              model: 'gemini-3.1-pro-preview',
+              contents: `Você é um especialista em engenharia de prompts para modelos de geração de imagem (como Midjourney, DALL-E 3 ou Imagen).
+              
+              Sua tarefa é criar um prompt extremamente detalhado e técnico para gerar uma imagem para redes sociais do DentiHub, baseando-se na solicitação do usuário e na identidade visual da marca.
+              
+              ${dentiHubIdentity}
+              
+              Solicitação do usuário: "${imagePrompt}"
+              
+              O prompt gerado deve:
+              1. Ser em inglês (pois modelos de imagem funcionam melhor assim).
+              2. Descrever a cena, iluminação, estilo artístico, enquadramento e detalhes técnicos (ex: 8k, photorealistic, cinematic lighting).
+              3. Incorporar sutilmente as cores e a atmosfera do DentiHub.
+              4. Ser otimizado para gerar uma imagem impactante.
+              
+              Retorne APENAS o prompt final, sem explicações adicionais.`,
+          });
+
+          const prompt = response.text;
+          if (prompt) {
+              setGeneratedImagePrompt(prompt);
+              setToast({ message: "Prompt gerado com sucesso!", type: 'success' });
+          } else {
+              throw new Error("Não foi possível gerar o prompt.");
+          }
+      } catch (err: any) {
+          console.error(err);
+          setToast({ message: "Erro ao gerar prompt: " + err.message, type: 'error' });
+      } finally {
+          setIsGeneratingImage(false);
+      }
+  };
+
   const handlePostAnnouncement = async () => {
       if(!newAnnouncement.title || !newAnnouncement.message) {
           setToast({ message: "Preencha título e mensagem.", type: 'warning' });
@@ -235,6 +332,18 @@ const SuperAdminPage: React.FC = () => {
     }
   };
 
+  const getStatusBadge = (status: string, date: string) => {
+    const isTodayDate = isToday(parseISO(date));
+    
+    switch (status) {
+        case 'Pending':
+            if (isTodayDate) return <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold flex items-center w-fit"><Clock size={12} className="mr-1"/> Envia Hoje</span>;
+            return <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-bold flex items-center w-fit"><Timer size={12} className="mr-1"/> Agendado</span>;
+        case 'Sent': return <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs font-bold flex items-center w-fit"><CheckCircle size={12} className="mr-1"/> Enviado</span>;
+        default: return <span className="bg-gray-200 text-gray-500 px-2 py-1 rounded-full text-xs font-bold">{status}</span>;
+    }
+  };
+
   const handleStartRender = () => {
     if (!generatedRemotionCode) return;
     
@@ -268,9 +377,12 @@ const SuperAdminPage: React.FC = () => {
           </div>
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
               <button onClick={() => { setActiveTab('overview'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'overview' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><BarChart3 size={18} className="mr-3"/> Visão Geral</button>
+              <button onClick={() => { setActiveTab('clinics'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'clinics' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><Building2 size={18} className="mr-3"/> Clínicas</button>
               <button onClick={() => { setActiveTab('churn'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'churn' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><UserX size={18} className="mr-3"/> Radar de Churn</button>
               <button onClick={() => { setActiveTab('broadcast'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'broadcast' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><Megaphone size={18} className="mr-3"/> Comunicados</button>
               <button onClick={() => { setActiveTab('marketing'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'marketing' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><Mail size={18} className="mr-3"/> E-mail Marketing</button>
+              <button onClick={() => { setActiveTab('campaign_emails'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'campaign_emails' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><CalendarClock size={18} className="mr-3"/> Emails de Campanha</button>
+              <button onClick={() => { setActiveTab('nano-banana'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'nano-banana' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><Image size={18} className="mr-3"/> Nano Banana</button>
               <button onClick={() => { setActiveTab('remotion'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'remotion' ? 'bg-primary text-white shadow-lg shadow-blue-900/20' : 'text-gray-400 hover:text-white'}`}><Monitor size={18} className="mr-3"/> Remotion</button>
               
               <div className="pt-4 mt-4 border-t border-gray-800">
@@ -335,6 +447,87 @@ const SuperAdminPage: React.FC = () => {
                         </div>
                     </div>
                 </>
+            )}
+
+            {activeTab === 'clinics' && (
+                <div className="p-4 md:p-8 animate-fade-in">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                        <div>
+                            <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2">
+                                <Building2 className="text-primary" /> Gestão de Clínicas
+                            </h2>
+                            <p className="text-gray-500 text-sm">Métricas detalhadas por unidade no período selecionado.</p>
+                        </div>
+                        <div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border border-gray-100">
+                            <input 
+                                type="date" 
+                                value={dateRange.start}
+                                onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                                className="text-xs font-bold text-gray-600 bg-transparent px-3 py-2 outline-none"
+                            />
+                            <span className="text-gray-300">|</span>
+                            <input 
+                                type="date" 
+                                value={dateRange.end}
+                                onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                                className="text-xs font-bold text-gray-600 bg-transparent px-3 py-2 outline-none"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-gray-50 text-gray-500 text-[10px] uppercase font-bold border-b">
+                                    <tr>
+                                        <th className="px-6 py-4">Clínica</th>
+                                        <th className="px-6 py-4 text-center">Dentistas</th>
+                                        <th className="px-6 py-4 text-center">Pacientes</th>
+                                        <th className="px-6 py-4 text-center">Agendamentos</th>
+                                        <th className="px-6 py-4 text-center">Mov. Financeiras</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {clinicsMetrics.map((clinic) => (
+                                        <tr key={clinic.clinic_id} className="hover:bg-gray-50 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="font-bold text-gray-900">{clinic.clinic_name}</div>
+                                                <div className="text-[10px] text-gray-400 font-mono">{clinic.clinic_id}</div>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold">
+                                                    {clinic.dentists_count}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-center text-sm font-medium text-gray-600">
+                                                {clinic.patients_count}
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <div className="flex items-center justify-center gap-1 text-sm font-bold text-gray-700">
+                                                    <Calendar size={14} className="text-gray-400" />
+                                                    {clinic.appointments_count}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <div className="flex items-center justify-center gap-1 text-sm font-bold text-emerald-600">
+                                                    <DollarSign size={14} />
+                                                    {clinic.transactions_count}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {clinicsMetrics.length === 0 && !loading && (
+                                        <tr>
+                                            <td colSpan={5} className="px-6 py-12 text-center text-gray-500 italic">
+                                                Nenhuma clínica encontrada ou erro ao carregar dados.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {activeTab === 'churn' && (
@@ -434,6 +627,97 @@ const SuperAdminPage: React.FC = () => {
                                 </div>
                             );
                         })}
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'nano-banana' && (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><Image className="text-yellow-500"/> Nano Banana Studio</h2>
+                            <p className="text-gray-600">Gere prompts profissionais para criação de imagens com a identidade do DentiHub.</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-1 space-y-6">
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                                <h3 className="text-sm font-bold text-gray-700 mb-4">Criar Prompt de Imagem</h3>
+                                
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-500 block mb-1 uppercase">O que deseja criar?</label>
+                                        <textarea 
+                                            value={imagePrompt} 
+                                            onChange={(e) => setImagePrompt(e.target.value)}
+                                            placeholder="Ex: Um dentista moderno usando um tablet com o logo do DentiHub em um consultório futurista..."
+                                            className="w-full border rounded-lg p-3 text-sm h-32 focus:ring-2 focus:ring-primary outline-none resize-none"
+                                        />
+                                    </div>
+
+                                    <button 
+                                        onClick={handleGenerateImagePrompt}
+                                        disabled={isGeneratingImage || !imagePrompt.trim()}
+                                        className="w-full bg-yellow-500 text-black py-3 rounded-lg font-bold hover:bg-yellow-400 transition flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg"
+                                    >
+                                        {isGeneratingImage ? <RefreshCw size={18} className="animate-spin" /> : <Sparkles size={18} />}
+                                        {isGeneratingImage ? 'Gerando Prompt...' : 'Gerar Prompt com Gemini 3 Pro'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-xl">
+                                <h4 className="text-yellow-700 font-bold text-xs mb-2 flex items-center gap-2">
+                                    <Sparkles size={14} /> Identidade DentiHub
+                                </h4>
+                                <p className="text-xs text-yellow-800 leading-relaxed">
+                                    O Gemini 3 Pro criará um prompt técnico em inglês otimizado para modelos como Midjourney ou Imagen, mantendo as cores e o estilo do DentiHub.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="lg:col-span-2 bg-gray-900 rounded-xl shadow-2xl p-6 flex flex-col items-center justify-center relative overflow-hidden border-4 border-gray-800 min-h-[400px]">
+                            {isGeneratingImage ? (
+                                <div className="text-center">
+                                    <RefreshCw size={48} className="text-yellow-500 animate-spin mx-auto mb-4" />
+                                    <p className="text-yellow-500 font-bold animate-pulse">O Gemini 3 Pro está arquitetando seu prompt...</p>
+                                    <p className="text-gray-500 text-[10px] mt-2 uppercase tracking-widest">Modelo: Gemini 3.1 Pro Preview</p>
+                                </div>
+                            ) : generatedImagePrompt ? (
+                                <div className="w-full h-full flex flex-col">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="text-yellow-500 font-bold text-sm uppercase tracking-widest">Prompt Gerado</h3>
+                                        <button 
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(generatedImagePrompt);
+                                                setToast({ message: "Prompt copiado para a área de transferência!", type: 'success' });
+                                            }}
+                                            className="bg-yellow-500 text-black px-3 py-1.5 rounded-lg font-bold text-[10px] hover:bg-yellow-400 transition flex items-center gap-2"
+                                        >
+                                            <Copy size={12} /> Copiar Prompt
+                                        </button>
+                                    </div>
+                                    <div className="flex-1 bg-black/50 border border-gray-700 rounded-lg p-6 font-mono text-sm text-gray-300 leading-relaxed overflow-y-auto max-h-[300px]">
+                                        {generatedImagePrompt}
+                                    </div>
+                                    <div className="mt-6 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                                        <p className="text-yellow-500 text-xs flex items-center gap-2">
+                                            <AlertOctagon size={14} />
+                                            <span>Copie este prompt e use-o no seu projeto de geração de imagem no AI Studio.</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-center">
+                                    <div className="w-20 h-20 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-yellow-500/20">
+                                        <FileText size={40} className="text-yellow-500/50" />
+                                    </div>
+                                    <p className="text-gray-500 font-medium">Seu prompt aparecerá aqui</p>
+                                    <p className="text-[10px] text-gray-600 mt-2">Descreva sua ideia ao lado e clique em gerar.</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
@@ -561,6 +845,59 @@ const SuperAdminPage: React.FC = () => {
                                 </table>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'campaign_emails' && (
+                <div className="flex flex-col h-full bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden animate-fade-in">
+                    <div className="p-6 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                        <div>
+                            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2"><CalendarClock size={20} className="text-blue-600"/> Previsão de Envios Automáticos</h3>
+                            <p className="text-sm text-gray-500">Visualização de quando cada clínica receberá os e-mails do sistema.</p>
+                        </div>
+                        <div className="flex gap-2">
+                            <select value={filterForecastStatus} onChange={(e) => setFilterForecastStatus(e.target.value)} className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="All">Todos Status</option>
+                                <option value="Pending">Pendentes</option>
+                                <option value="Sent">Enviados</option>
+                            </select>
+                            <button onClick={fetchCampaignForecast} className="p-2 bg-white border rounded-lg hover:bg-gray-100 text-gray-600 transition"><RefreshCw size={18} className={loadingForecast ? "animate-spin" : ""}/></button>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead className="bg-gray-100 text-gray-600 text-xs uppercase font-bold sticky top-0 z-10">
+                                <tr>
+                                    <th className="px-6 py-4">Data Prevista</th>
+                                    <th className="px-6 py-4">Campanha</th>
+                                    <th className="px-6 py-4">Clínica</th>
+                                    <th className="px-6 py-4 text-center">Status</th>
+                                    <th className="px-6 py-4">Motivo / Detalhes</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 text-sm">
+                                {loadingForecast ? (
+                                    <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500">Carregando previsão...</td></tr>
+                                ) : campaignForecast.filter(item => filterForecastStatus === 'All' || item.status === filterForecastStatus).length === 0 ? (
+                                    <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500">Nenhum registro encontrado.</td></tr>
+                                ) : (
+                                    campaignForecast.filter(item => filterForecastStatus === 'All' || item.status === filterForecastStatus).map((item, idx) => (
+                                        <tr key={idx} className="hover:bg-gray-50 transition">
+                                            <td className="px-6 py-4 font-medium text-gray-800">
+                                                {format(parseISO(item.scheduled_for), "dd/MM/yyyy")}
+                                                {isToday(parseISO(item.scheduled_for)) && <span className="ml-2 text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold">HOJE</span>}
+                                            </td>
+                                            <td className="px-6 py-4 text-gray-700">{item.campaign_type}</td>
+                                            <td className="px-6 py-4 font-bold text-gray-800">{item.clinic_name}</td>
+                                            <td className="px-6 py-4 flex justify-center">{getStatusBadge(item.status, item.scheduled_for)}</td>
+                                            <td className="px-6 py-4 text-xs text-gray-500">{item.reason || '-'}</td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             )}
