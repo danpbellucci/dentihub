@@ -450,6 +450,14 @@ const PublicBookingPage: React.FC = () => {
                                 </div>
                             </button>
                         )}
+                        
+                        {/* Always show "Others" option */}
+                        <button onClick={() => { setSelectedService({name: 'Outros', price: 0, duration: 60}); setStep(3); }} className="w-full flex justify-between items-center p-4 border border-white/5 rounded-lg hover:border-primary/50 hover:bg-gray-800/50 transition group">
+                            <div className="text-left">
+                                <div className="font-bold text-white group-hover:text-primary transition-colors">Outros</div>
+                                <div className="text-xs text-gray-500 flex items-center mt-1"><Clock size={12} className="mr-1"/> 60 minutos</div>
+                            </div>
+                        </button>
                     </div>
                 </div>
             </div>
