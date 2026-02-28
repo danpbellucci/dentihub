@@ -12,7 +12,7 @@ STABLE
 AS $$
   -- A lógica fica 100% no banco de dados. 
   -- Se você mudar o e-mail aqui, o frontend atualiza automaticamente.
-  SELECT auth.jwt() ->> 'email' = 'danilobellucci@gmail.com';
+  SELECT auth.jwt() ->> 'email' = '[SEU_EMAIL_ADMIN]';
 $$;
 
 -- Permite que usuários logados (authenticated) chamem esta função via supabase.rpc()

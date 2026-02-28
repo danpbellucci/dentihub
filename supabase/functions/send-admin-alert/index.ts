@@ -24,7 +24,11 @@ Deno.serve(async (req) => {
     }
 
     const { function_name, error_details, metadata, created_at } = await req.json();
-    const adminEmail = 'danilobellucci@gmail.com'; 
+    const adminEmail = Deno.env.get('ADMIN_EMAIL'); 
+
+    if (!adminEmail) {
+        throw new Error("ADMIN_EMAIL não configurada.");
+    }
 
     const htmlContent = `
         <div style="font-family: monospace; padding: 20px; border: 2px solid #ef4444; border-radius: 8px; background-color: #fff1f2; color: #7f1d1d;">

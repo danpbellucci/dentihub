@@ -30,7 +30,11 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const resendApiKey = Deno.env.get('RESEND_API_KEY')!;
-    const adminEmail = 'danilobellucci@gmail.com'; 
+    const adminEmail = Deno.env.get('ADMIN_EMAIL'); 
+
+    if (!adminEmail) {
+        throw new Error("ADMIN_EMAIL não configurada.");
+    }
 
     if (!supabaseUrl || !supabaseKey || !resendApiKey) {
         throw new Error("Variáveis de ambiente não configuradas.");

@@ -18,7 +18,7 @@ CREATE POLICY "No API access" ON public.super_admins FOR ALL USING (false);
 
 -- Inserir Admin Inicial
 INSERT INTO public.super_admins (email)
-VALUES ('danilobellucci@gmail.com')
+VALUES ('[SEU_EMAIL_ADMIN]')
 ON CONFLICT (email) DO NOTHING;
 
 -- 2. Criar função verificadora

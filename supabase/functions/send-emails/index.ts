@@ -48,7 +48,8 @@ Deno.serve(async (req) => {
     'https://app.dentihub.com.br',
     'https://aistudio.google.com'
   ];
-  const corsOrigin = allowedOrigins.includes(origin) ? origin : 'https://dentihub.com.br';
+  const isDev = origin.endsWith('.run.app') || origin.includes('localhost');
+  const corsOrigin = (allowedOrigins.includes(origin) || isDev) ? origin : 'https://dentihub.com.br';
 
   const corsHeaders = {
     'Access-Control-Allow-Origin': corsOrigin,
@@ -95,16 +96,27 @@ Deno.serve(async (req) => {
 
     let clinicName = 'DentiHub';
     let clinicEmail = 'contato@dentihub.com.br';
+    let hasCustomClinicEmail = false;
 
     // Prioridade: Dados do Body > Dados do Usuário Logado
     if (bodyClinicName) {
         clinicName = bodyClinicName;
-        if (bodyClinicEmail) clinicEmail = bodyClinicEmail;
+        if (bodyClinicEmail) {
+            clinicEmail = bodyClinicEmail;
+            hasCustomClinicEmail = true;
+        }
     } else if (user.id !== 'system') {
-        const { data: clinic } = await supabaseAdmin.from('clinics').select('*').eq('id', user.id).single();
+        // Busca o clinic_id do perfil do usuário para garantir que pegamos a clínica correta mesmo se não for o admin
+        const { data: profile } = await supabaseAdmin.from('user_profiles').select('clinic_id').eq('id', user.id).single();
+        const clinicId = profile?.clinic_id || user.id;
+
+        const { data: clinic } = await supabaseAdmin.from('clinics').select('*').eq('id', clinicId).single();
         if (clinic) {
             clinicName = clinic.name || 'DentiHub';
-            clinicEmail = clinic.email || 'contato@dentihub.com.br';
+            if (clinic.email) {
+                clinicEmail = clinic.email;
+                hasCustomClinicEmail = true;
+            }
         }
     }
 
@@ -370,7 +382,7 @@ Deno.serve(async (req) => {
                 try {
                     await sendEmailViaResend(resendApiKey, [r.email], subject, htmlContent, clinicName, clinicEmail);
                     await supabaseAdmin.from('communications').insert({
-                        clinic_id: user.id !== 'system' ? user.id : (item.clinic_id), 
+                        clinic_id: item.clinic_id, 
                         type: 'stock_alert',
                         recipient_name: r.name || 'Admin',
                         recipient_email: r.email,
@@ -421,7 +433,7 @@ Deno.serve(async (req) => {
                 </div>
                 <div style="background-color: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0;">
                     <p style="margin: 0;">${clinicName}</p>
-                    <p style="margin: 5px 0;">${clinicEmail}</p>
+                    ${hasCustomClinicEmail ? `<p style="margin: 5px 0;">${clinicEmail}</p>` : ''}
                 </div>
             </div>`
             : `
@@ -510,7 +522,7 @@ Deno.serve(async (req) => {
                         </div>
                         <div style="background-color: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0;">
                             <p style="margin: 0;">${clinicName}</p>
-                            <p style="margin: 5px 0;">${clinicEmail}</p>
+                            ${hasCustomClinicEmail ? `<p style="margin: 5px 0;">${clinicEmail}</p>` : ''}
                         </div>
                     </div>`
                     : `

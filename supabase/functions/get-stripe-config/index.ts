@@ -28,8 +28,7 @@ serve(async (req) => {
 
   try {
     const publishableKey = Deno.env.get('STRIPE_PUBLISHABLE_KEY') || 
-                           Deno.env.get('STRIPE_PUBLIC_KEY') || 
-                           'pk_live_51SlBFr2Obfcu36b5A1xwCAouBbAsnZWRFEOEWYcfOmASaVvaBZM8uMhCCc11M3CNuaprfNXsVS0YnV3mlHQrXXKy00uj8Jzf7g';
+                           Deno.env.get('STRIPE_PUBLIC_KEY');
     
     if (!publishableKey) {
         return new Response(JSON.stringify({ error: 'STRIPE_PUBLISHABLE_KEY não configurada no servidor.' }), { 

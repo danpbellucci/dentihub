@@ -19,5 +19,5 @@ LANGUAGE sql
 SECURITY DEFINER
 STABLE
 AS $$
-  SELECT auth.jwt() ->> 'email' = 'danilobellucci@gmail.com';
+  SELECT auth.jwt() ->> 'email' = '[SEU_EMAIL_ADMIN]';
 $$;

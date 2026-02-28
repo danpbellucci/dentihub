@@ -9,7 +9,7 @@ import Toast, { ToastType } from './Toast';
 const SuperAdminTestFunctions: React.FC = () => {
     const [loading, setLoading] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
-    const [testEmail, setTestEmail] = useState('danilobellucci@gmail.com');
+    const [testEmail, setTestEmail] = useState('');
 
     const invokeFunction = async (name: string, body: any = {}) => {
         setLoading(name);
