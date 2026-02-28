@@ -24,7 +24,7 @@ CREATE POLICY "No public access super_admins" ON public.super_admins
 -- 3. Migrar o Admin Atual (Seed)
 -- Insere o admin atual automaticamente para não perder acesso.
 INSERT INTO public.super_admins (email)
-VALUES ('danilobellucci@gmail.com')
+VALUES ('[SEU_EMAIL_ADMIN]')
 ON CONFLICT (email) DO NOTHING;
 
 -- 4. Atualizar a Função is_super_admin()

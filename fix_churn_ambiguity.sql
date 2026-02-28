@@ -42,7 +42,7 @@ BEGIN
     ) latest_session ON true
     WHERE 
         -- FIX: Alias explícito na subquery também para segurança
-        c.id NOT IN (SELECT up_inner.clinic_id FROM public.user_profiles up_inner WHERE up_inner.email = 'danilobellucci@gmail.com')
+        c.id NOT IN (SELECT up_inner.clinic_id FROM public.user_profiles up_inner WHERE up_inner.email = '[SEU_EMAIL_ADMIN]')
         AND (
             latest_session.last_seen < NOW() - INTERVAL '7 days' 
             OR latest_session.last_seen IS NULL 

@@ -34,5 +34,5 @@ CREATE POLICY "Clinic manage status updates" ON public.appointment_status_update
       clinic_id = (SELECT clinic_id FROM public.user_profiles WHERE id = auth.uid() LIMIT 1)
       OR 
       -- Super Admin Bypass (opcional, útil para suporte)
-      (SELECT auth.jwt() ->> 'email' = 'danilobellucci@gmail.com')
+      (SELECT auth.jwt() ->> 'email' = '[SEU_EMAIL_ADMIN]')
     );

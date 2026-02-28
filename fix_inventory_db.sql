@@ -24,7 +24,7 @@ DROP POLICY IF EXISTS "Acesso Inventory" ON public.inventory_items;
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'get_my_clinic_id') THEN
-        EXECUTE 'CREATE POLICY "Acesso Inventory" ON public.inventory_items FOR ALL USING ( clinic_id = get_my_clinic_id() OR (SELECT auth.jwt() ->> ''email'') = ''danilobellucci@gmail.com'' )';
+        EXECUTE 'CREATE POLICY "Acesso Inventory" ON public.inventory_items FOR ALL USING ( clinic_id = get_my_clinic_id() OR (SELECT auth.jwt() ->> ''email'') = ''[SEU_EMAIL_ADMIN]'' )';
     ELSE
         EXECUTE 'CREATE POLICY "Acesso Inventory" ON public.inventory_items FOR ALL USING ( clinic_id = (SELECT clinic_id FROM public.user_profiles WHERE id = auth.uid() LIMIT 1) )';
     END IF;

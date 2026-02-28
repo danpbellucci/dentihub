@@ -73,7 +73,7 @@ BEGIN
         LIMIT 1
     ) latest_session ON true
     WHERE 
-        c.id NOT IN (SELECT clinic_id FROM public.user_profiles WHERE email = 'danilobellucci@gmail.com') -- Ignora o admin
+        c.id NOT IN (SELECT clinic_id FROM public.user_profiles WHERE email = '[SEU_EMAIL_ADMIN]') -- Ignora o admin
         AND (
             latest_session.last_seen < NOW() - INTERVAL '7 days' -- Sem agendamentos há 7 dias
             OR latest_session.last_seen IS NULL -- Nunca agendou nada
